@@ -616,15 +616,25 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         <DialogTitle sx={{ textAlign: 'center' }}>
           {t('runs_table.run_diff.title', { defaultValue: 'Changes vs Previous Run' })}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent
+          sx={{
+            height: '70vh',
+            minHeight: '70vh',
+            maxHeight: '70vh',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           {isDiffLoading ? (
-            <Box display="flex" justifyContent="center" py={4}>
+            <Box display="flex" alignItems="center" justifyContent="center" flex={1}>
               <CircularProgress size={24} />
             </Box>
           ) : !diffData ? (
-            <DialogContentText>
-              {t('runs_table.run_diff.no_previous_run', { defaultValue: 'No previous run found to compare against.' })}
-            </DialogContentText>
+            <Box display="flex" alignItems="center" justifyContent="center" flex={1}>
+              <DialogContentText>
+                {t('runs_table.run_diff.no_previous_run', { defaultValue: 'No previous run found to compare against.' })}
+              </DialogContentText>
+            </Box>
           ) : (
             <>
               <Tabs
@@ -634,6 +644,7 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                 sx={{
                   minHeight: 36,
                   mb: 2,
+                  flexShrink: 0,
                   '& .MuiTab-root': {
                     minHeight: 36,
                     paddingX: 2,
@@ -650,208 +661,254 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                   <Tab key={option.key} value={option.key} label={option.label} />
                 ))}
               </Tabs>
-              {selectedDiffFormat === 'captured-text' ? (
-                <Box>
-                  {Object.keys(capturedGroups).length > 1 && (
-                    <Tabs value={selectedCapturedGroup} onChange={(_, value) => setSelectedCapturedGroup(value)} variant="scrollable" scrollButtons="auto" sx={{ mb: 2, minHeight: 36 }}>
-                      {Object.keys(capturedGroups).map((name) => <Tab key={name} value={name} label={name} sx={{ minHeight: 36 }} />)}
-                    </Tabs>
-                  )}
-                  <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
-                    <Table
-                      stickyHeader
-                      sx={{
-                        '& .MuiTableCell-root': {
-                          px: 3,
-                          py: 2.25,
-                          fontSize: '1rem',
-                          lineHeight: 1.5,
-                        },
-                        '& .MuiTableCell-head': {
-                          py: 2.5,
-                        },
-                      }}
-                    >
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 600, width: '22%' }}>Label</TableCell>
-                          <TableCell sx={{ fontWeight: 600, width: '39%' }}>Previous Run</TableCell>
-                          <TableCell sx={{ fontWeight: 600, width: '39%' }}>Current Run</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {capturedTableRows.map((item) => (
-                          <TableRow key={item.key} hover>
-                            <TableCell sx={{ fontWeight: 500 }}>{item.label}</TableCell>
-                            <TableCell sx={{ wordBreak: 'break-word', backgroundColor: item.changed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>{displayCapturedValue(item.previous)}</TableCell>
-                            <TableCell sx={{ wordBreak: 'break-word', backgroundColor: item.changed ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>{displayCapturedValue(item.current)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-              ) : selectedDiffFormat === 'captured-list' ? (
-                <Box>
-                  {Object.keys(capturedListGroups).length > 1 && (
-                    <Tabs
-                      value={selectedCapturedList}
-                      onChange={(_, value) => setSelectedCapturedList(value)}
-                      variant="scrollable"
-                      scrollButtons="auto"
-                      sx={{ mb: 2, minHeight: 36 }}
-                    >
-                      {Object.keys(capturedListGroups).map((name) => (
-                        <Tab key={name} value={name} label={name} sx={{ minHeight: 36 }} />
-                      ))}
-                    </Tabs>
-                  )}
-                  {capturedListColumns.length === 0 ? (
-                    <DialogContentText align="center" sx={{ py: 4 }}>
-                      No captured list data is available for these runs.
-                    </DialogContentText>
-                  ) : (
-                    <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
-                      <Table
-                        stickyHeader
-                        sx={{
-                          width: 'max-content',
-                          minWidth: '100%',
-                          '& .MuiTableCell-root': { px: 3, py: 2, fontSize: '1rem', lineHeight: 1.5 },
-                          '& .MuiTableCell-head': { py: 2.5, whiteSpace: 'nowrap' },
-                        }}
+
+              <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                {selectedDiffFormat === 'captured-text' ? (
+                  <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    {Object.keys(capturedGroups).length > 1 && (
+                      <Tabs
+                        value={selectedCapturedGroup}
+                        onChange={(_, value) => setSelectedCapturedGroup(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        sx={{ mb: 2, minHeight: 36, flexShrink: 0 }}
                       >
-                        <TableHead>
-                          <TableRow>
-                            {capturedListColumns.map((column) => (
-                              <TableCell key={column} sx={{ fontWeight: 600, minWidth: 190 }}>{column}</TableCell>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {capturedListRows.map((item) => (
-                            <TableRow key={item.key} hover>
-                              {capturedListColumns.map((column) => {
-                                const previous = item.previous?.[column];
-                                const current = item.current?.[column];
-                                const changed = !valuesEqual(previous, current);
-                                return (
-                                  <TableCell
-                                    key={column}
-                                    sx={{
-                                      minWidth: 190,
-                                      maxWidth: 360,
-                                      verticalAlign: 'middle',
-                                      bgcolor: changed ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2) : 'transparent',
-                                      wordBreak: 'break-word',
-                                    }}
-                                  >
-                                    {!changed ? displayCapturedValue(current) : (
-                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 0.75 }}>
-                                        {item.previous && (
-                                          <Typography component="span" sx={{ color: 'error.main', textDecoration: 'line-through', fontSize: 'inherit' }}>
-                                            {displayCapturedValue(previous)}
-                                          </Typography>
-                                        )}
-                                        {item.current && (
-                                          <Typography component="span" sx={{ color: 'success.main', fontWeight: 600, fontSize: 'inherit' }}>
-                                            {displayCapturedValue(current)}
-                                          </Typography>
-                                        )}
-                                      </Box>
-                                    )}
-                                  </TableCell>
-                                );
-                              })}
+                        {Object.keys(capturedGroups).map((name) => (
+                          <Tab key={name} value={name} label={name} sx={{ minHeight: 36 }} />
+                        ))}
+                      </Tabs>
+                    )}
+                    {capturedTableRows.length === 0 ? (
+                      <Box display="flex" alignItems="center" justifyContent="center" flex={1}>
+                        <DialogContentText align="center">
+                          No captured text data is available for these runs.
+                        </DialogContentText>
+                      </Box>
+                    ) : (
+                      <TableContainer component={Paper} sx={{ flex: 1, overflow: 'auto' }}>
+                        <Table
+                          stickyHeader
+                          sx={{
+                            '& .MuiTableCell-root': {
+                              px: 3,
+                              py: 2.25,
+                              fontSize: '1rem',
+                              lineHeight: 1.5,
+                            },
+                            '& .MuiTableCell-head': {
+                              py: 2.5,
+                            },
+                          }}
+                        >
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 600, width: '30%' }}>Label</TableCell>
+                              <TableCell sx={{ fontWeight: 600, width: '70%' }}>Value</TableCell>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  )}
-                </Box>
-              ) : selectedScreenshot ? (
-                <Box>
-                  {selectedScreenshot.metadata && (
-                    <Typography variant="body2" align="center" sx={{ mb: 2 }}>
-                      {selectedScreenshot.metadata.changedPercentage.toFixed(2)}% of compared pixels changed
-                      {' · '}
-                      Previous {selectedScreenshot.metadata.previousWidth}×{selectedScreenshot.metadata.previousHeight}
-                      {' · '}
-                      Current {selectedScreenshot.metadata.currentWidth}×{selectedScreenshot.metadata.currentHeight}
-                    </Typography>
-                  )}
-                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, maxHeight: '60vh', overflow: 'auto' }}>
-                    {[
-                      { label: 'Previous Run', source: selectedScreenshot.previous },
-                      { label: 'Current Run', source: selectedScreenshot.current },
-                    ].map((image) => (
-                      <Box key={image.label}>
-                        <Typography variant="subtitle2" align="center" gutterBottom>{image.label}</Typography>
-                        {getDiffImageSrc(image.source) ? (
-                          <Box component="img" src={getDiffImageSrc(image.source)} alt={image.label} sx={{ display: 'block', width: '100%', height: 'auto', border: `1px solid ${theme.palette.divider}` }} />
+                          </TableHead>
+                          <TableBody>
+                            {capturedTableRows.map((item) => (
+                              <TableRow key={item.key} hover>
+                                <TableCell sx={{ fontWeight: 500 }}>{item.label}</TableCell>
+                                <TableCell
+                                  sx={{
+                                    wordBreak: 'break-word',
+                                    verticalAlign: 'middle',
+                                    bgcolor: item.changed
+                                      ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2)
+                                      : 'transparent',
+                                  }}
+                                >
+                                  {!item.changed ? (
+                                    displayCapturedValue(item.current)
+                                  ) : (
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 0.75 }}>
+                                      {item.previous && (
+                                        <Typography component="span" sx={{ color: 'error.main', textDecoration: 'line-through', fontSize: 'inherit' }}>
+                                          {displayCapturedValue(item.previous)}
+                                        </Typography>
+                                      )}
+                                      {item.current && (
+                                        <Typography component="span" sx={{ color: 'success.main', fontWeight: 600, fontSize: 'inherit' }}>
+                                          {displayCapturedValue(item.current)}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </Box>
+                ) : selectedDiffFormat === 'captured-list' ? (
+                  <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    {Object.keys(capturedListGroups).length > 1 && (
+                      <Tabs
+                        value={selectedCapturedList}
+                        onChange={(_, value) => setSelectedCapturedList(value)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        sx={{ mb: 2, minHeight: 36, flexShrink: 0 }}
+                      >
+                        {Object.keys(capturedListGroups).map((name) => (
+                          <Tab key={name} value={name} label={name} sx={{ minHeight: 36 }} />
+                        ))}
+                      </Tabs>
+                    )}
+                    {capturedListColumns.length === 0 ? (
+                      <Box display="flex" alignItems="center" justifyContent="center" flex={1}>
+                        <DialogContentText align="center">
+                          No captured list data is available for these runs.
+                        </DialogContentText>
+                      </Box>
+                    ) : (
+                      <TableContainer component={Paper} sx={{ flex: 1, overflow: 'auto' }}>
+                        <Table
+                          stickyHeader
+                          sx={{
+                            width: 'max-content',
+                            minWidth: '100%',
+                            '& .MuiTableCell-root': { px: 3, py: 2, fontSize: '1rem', lineHeight: 1.5 },
+                            '& .MuiTableCell-head': { py: 2.5, whiteSpace: 'nowrap' },
+                          }}
+                        >
+                          <TableHead>
+                            <TableRow>
+                              {capturedListColumns.map((column) => (
+                                <TableCell key={column} sx={{ fontWeight: 600, minWidth: 190 }}>{column}</TableCell>
+                              ))}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {capturedListRows.map((item) => (
+                              <TableRow key={item.key} hover>
+                                {capturedListColumns.map((column) => {
+                                  const previous = item.previous?.[column];
+                                  const current = item.current?.[column];
+                                  const changed = !valuesEqual(previous, current);
+                                  return (
+                                    <TableCell
+                                      key={column}
+                                      sx={{
+                                        minWidth: 190,
+                                        maxWidth: 360,
+                                        verticalAlign: 'middle',
+                                        bgcolor: changed ? alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.16 : 0.2) : 'transparent',
+                                        wordBreak: 'break-word',
+                                      }}
+                                    >
+                                      {!changed ? displayCapturedValue(current) : (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 0.75 }}>
+                                          {item.previous && (
+                                            <Typography component="span" sx={{ color: 'error.main', textDecoration: 'line-through', fontSize: 'inherit' }}>
+                                              {displayCapturedValue(previous)}
+                                            </Typography>
+                                          )}
+                                          {item.current && (
+                                            <Typography component="span" sx={{ color: 'success.main', fontWeight: 600, fontSize: 'inherit' }}>
+                                              {displayCapturedValue(current)}
+                                            </Typography>
+                                          )}
+                                        </Box>
+                                      )}
+                                    </TableCell>
+                                  );
+                                })}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </Box>
+                ) : selectedScreenshot ? (
+                  <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                    {selectedScreenshot.metadata && (
+                      <Typography variant="body2" align="center" sx={{ mb: 2 }}>
+                        {selectedScreenshot.metadata.changedPercentage.toFixed(2)}% of compared pixels changed
+                        {' · '}
+                        Previous {selectedScreenshot.metadata.previousWidth}×{selectedScreenshot.metadata.previousHeight}
+                        {' · '}
+                        Current {selectedScreenshot.metadata.currentWidth}×{selectedScreenshot.metadata.currentHeight}
+                      </Typography>
+                    )}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+                      {[
+                        { label: 'Previous Run', source: selectedScreenshot.previous },
+                        { label: 'Current Run', source: selectedScreenshot.current },
+                      ].map((image) => (
+                        <Box key={image.label}>
+                          <Typography variant="subtitle2" align="center" gutterBottom>{image.label}</Typography>
+                          {getDiffImageSrc(image.source) ? (
+                            <Box component="img" src={getDiffImageSrc(image.source)} alt={image.label} sx={{ display: 'block', width: '100%', height: 'auto', border: `1px solid ${theme.palette.divider}` }} />
+                          ) : (
+                            <DialogContentText align="center">Screenshot unavailable</DialogContentText>
+                          )}
+                        </Box>
+                      ))}
+                      <Box>
+                        <Typography variant="subtitle2" align="center" gutterBottom>
+                          Changes Highlighted
+                        </Typography>
+                        {selectedScreenshot.diff ? (
+                          <>
+                            <Box
+                              component="img"
+                              src={getDiffImageSrc(selectedScreenshot.diff)}
+                              alt="Current screenshot with changes highlighted"
+                              sx={{ display: 'block', width: '100%', height: 'auto', border: `1px solid ${theme.palette.divider}` }}
+                            />
+                            <Typography variant="caption" display="flex" alignItems="center" justifyContent="center" gap={0.75} sx={{ mt: 1, color: 'text.secondary' }}>
+                              <Box component="span" sx={{ width: 12, height: 12, bgcolor: '#ff00c3', borderRadius: '2px' }} />
+                              Magenta highlights show changed areas on the current screenshot.
+                            </Typography>
+                          </>
                         ) : (
-                          <DialogContentText align="center">Screenshot unavailable</DialogContentText>
+                          <DialogContentText align="center" sx={{ mt: 4 }}>
+                            A highlighted visual diff was not generated for this run. Run the robot again to create one with the updated comparison.
+                          </DialogContentText>
                         )}
                       </Box>
-                    ))}
-                    <Box>
+                    </Box>
+                  </Box>
+                ) : !hasDiff ? (
+                  <Box display="flex" alignItems="center" justifyContent="center" flex={1}>
+                    <DialogContentText>
+                      {t('runs_table.run_diff.no_changes', { defaultValue: 'No differences found between these runs.' })}
+                    </DialogContentText>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', gap: 2, flex: 1, minHeight: 0 }}>
+                    <Box sx={{ flex: 1, overflow: 'auto' }}>
                       <Typography variant="subtitle2" align="center" gutterBottom>
-                        Changes Highlighted
+                        {t('runs_table.run_diff.previous_run', { defaultValue: 'Previous Run' })}
                       </Typography>
-                      {selectedScreenshot.diff ? (
-                        <>
-                          <Box
-                            component="img"
-                            src={getDiffImageSrc(selectedScreenshot.diff)}
-                            alt="Current screenshot with changes highlighted"
-                            sx={{ display: 'block', width: '100%', height: 'auto', border: `1px solid ${theme.palette.divider}` }}
-                          />
-                          <Typography variant="caption" display="flex" alignItems="center" justifyContent="center" gap={0.75} sx={{ mt: 1, color: 'text.secondary' }}>
-                            <Box component="span" sx={{ width: 12, height: 12, bgcolor: '#ff00c3', borderRadius: '2px' }} />
-                            Magenta highlights show changed areas on the current screenshot.
-                          </Typography>
-                        </>
-                      ) : (
-                        <DialogContentText align="center" sx={{ mt: 4 }}>
-                          A highlighted visual diff was not generated for this run. Run the robot again to create one with the updated comparison.
-                        </DialogContentText>
-                      )}
+                      <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                        {diffParts.map((part, i) => part.added ? null : (
+                          <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.removed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>
+                            {part.value}
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                    <Box sx={{ flex: 1, overflow: 'auto' }}>
+                      <Typography variant="subtitle2" align="center" gutterBottom>
+                        {t('runs_table.run_diff.current_run', { defaultValue: 'Current Run' })}
+                      </Typography>
+                      <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                        {diffParts.map((part, i) => part.removed ? null : (
+                          <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.added ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>
+                            {part.value}
+                          </Box>
+                        ))}
+                      </Box>
                     </Box>
                   </Box>
-                </Box>
-              ) : !hasDiff ? (
-                <DialogContentText>
-                  {t('runs_table.run_diff.no_changes', { defaultValue: 'No differences found between these runs.' })}
-                </DialogContentText>
-              ) : (
-                <Box sx={{ display: 'flex', gap: 2, maxHeight: '60vh' }}>
-                  <Box sx={{ flex: 1, overflow: 'auto' }}>
-                    <Typography variant="subtitle2" align="center" gutterBottom>
-                      {t('runs_table.run_diff.previous_run', { defaultValue: 'Previous Run' })}
-                    </Typography>
-                    <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
-                      {diffParts.map((part, i) => part.added ? null : (
-                        <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.removed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>
-                          {part.value}
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                  <Box sx={{ flex: 1, overflow: 'auto' }}>
-                    <Typography variant="subtitle2" align="center" gutterBottom>
-                      {t('runs_table.run_diff.current_run', { defaultValue: 'Current Run' })}
-                    </Typography>
-                    <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
-                      {diffParts.map((part, i) => part.removed ? null : (
-                        <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.added ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>
-                          {part.value}
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                </Box>
-              )}
+                )}
+              </Box>
             </>
           )}
         </DialogContent>
