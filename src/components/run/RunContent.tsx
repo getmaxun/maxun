@@ -1,3 +1,4 @@
+import * as React from "react";
 import {
   Box,
   Typography,
@@ -19,28 +20,17 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
-import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ImageIcon from '@mui/icons-material/Image';
-import CodeIcon from '@mui/icons-material/Code';
-import DescriptionIcon from '@mui/icons-material/Description';
-import SubjectIcon from '@mui/icons-material/Subject';
+import {
+  ExpandMore, Image, Code, Description, Subject, InfoOutlined, TextFields, ViewList, TravelExplore, Search,
+  Psychology, Storage, ContentCopy, Check, ChevronLeft, ChevronRight, Download
+} from '@mui/icons-material';
 import LinkIcon from '@mui/icons-material/Link';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
-import ViewListIcon from '@mui/icons-material/ViewList';
-import TravelExploreIcon from '@mui/icons-material/TravelExplore';
-import SearchIcon from '@mui/icons-material/Search';
-import PsychologyIcon from '@mui/icons-material/Psychology';
-import StorageIcon from '@mui/icons-material/Storage';
-import { ContentCopy, Check, ChevronLeft, ChevronRight } from "@mui/icons-material";
 import { useEffect, useState, useRef, useCallback } from "react";
 import JSZip from "jszip";
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../../context/theme-provider";
-import DownloadIcon from '@mui/icons-material/Download';
 
 interface ScreenshotTabsProps {
   screenshotVisible?: string;
@@ -61,11 +51,6 @@ interface RunContentProps {
     percentage: number;
   } | null,
 }
-
-// NOTE: Keep all your existing imports from the original file, and ADD these three:
-// import DownloadIcon from '@mui/icons-material/Download';
-// import Menu from '@mui/material/Menu';
-// import MenuItem from '@mui/material/MenuItem'; // (you likely already import this)
 
 // ---------------------------------------------------------------------------
 // Reusable download control: renders a single icon button if there's one
@@ -89,7 +74,7 @@ const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => vo
         sx={{ color: '#FF00C3' }}
         aria-label={actions[0].label}
       >
-        <DownloadIcon fontSize="small" />
+        <Download fontSize="small" />
       </IconButton>
     );
   }
@@ -105,7 +90,7 @@ const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => vo
         sx={{ color: '#FF00C3' }}
         aria-label="Download options"
       >
-        <DownloadIcon fontSize="small" />
+        <Download fontSize="small" />
       </IconButton>
       <Menu
         anchorEl={anchorEl}
@@ -200,7 +185,7 @@ const ScreenshotTabs: React.FC<ScreenshotTabsProps> = ({ screenshotVisible, scre
           ))}
         </Box>
         <IconButton size="small" onClick={handleDownload} sx={{ color: '#FF00C3', ml: 1 }} aria-label="Download screenshot">
-          <DownloadIcon fontSize="small" />
+          <Download fontSize="small" />
         </IconButton>
       </Box>
       <Box>
@@ -1176,9 +1161,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     return (
       <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <AccordionSummary expandIcon={<ExpandMore />}>
           <AccordionHeader
-            icon={<ImageIcon sx={{ mr: 1 }} />}
+            icon={<Image sx={{ mr: 1 }} />}
             title={title}
             actions={activeTab ? [{ label: 'Download Screenshot', onClick: () => downloadScreenshot(activeTab.label, activeTab.value) }] : []}
           />
@@ -1362,12 +1347,12 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     return (
       <Accordion defaultExpanded sx={{ width: '100%', m: 0, mb: 2, boxSizing: 'border-box' }}>
         <AccordionSummary
-          expandIcon={<ExpandMoreIcon />}
+          expandIcon={<ExpandMore />}
           aria-controls={`${title.toLowerCase()}-content`}
           id={`${title.toLowerCase()}-header`}
         >
           <AccordionHeader
-            icon={<StorageIcon sx={{ mr: 1 }} />}
+            icon={<Storage sx={{ mr: 1 }} />}
             title={title}
             actions={[
               { label: t('run_content.captured_data.download_json', 'Download JSON'), onClick: () => downloadJSON(data, jsonFilename) },
@@ -1522,9 +1507,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasTextFormat && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
                     <AccordionHeader
-                      icon={<SubjectIcon sx={{ mr: 1 }} />}
+                      icon={<Subject sx={{ mr: 1 }} />}
                       title="Text Content"
                       actions={[{
                         label: 'Download Text',
@@ -1547,9 +1532,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {hasHTML && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
                     <AccordionHeader
-                      icon={<CodeIcon sx={{ mr: 1 }} />}
+                      icon={<Code sx={{ mr: 1 }} />}
                       title="HTML"
                       actions={[{
                         label: 'Download HTML',
@@ -1572,9 +1557,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {hasMarkdown && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
                     <AccordionHeader
-                      icon={<DescriptionIcon sx={{ mr: 1 }} />}
+                      icon={<Description sx={{ mr: 1 }} />}
                       title="Markdown"
                       actions={[{
                         label: 'Download Markdown',
@@ -1597,7 +1582,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {hasLinks && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
                     <AccordionHeader
                       icon={<LinkIcon sx={{ mr: 1 }} />}
                       title={`Links (${linksContent.length})`}
@@ -1626,9 +1611,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {hasSummary && crawlData.length === 0 && searchData.length === 0 && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
                     <AccordionHeader
-                      icon={<PsychologyIcon sx={{ mr: 1 }} />}
+                      icon={<Psychology sx={{ mr: 1 }} />}
                       title="Summary"
                       actions={[{
                         label: 'Download Summary',
@@ -1651,9 +1636,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {hasPromptResult && promptResultData && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
                     <AccordionHeader
-                      icon={<PsychologyIcon sx={{ mr: 1 }} />}
+                      icon={<Psychology sx={{ mr: 1 }} />}
                       title="Smart Queries"
                       actions={[{
                         label: 'Download Result',
@@ -1691,9 +1676,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     <>
                       {schemaData.length > 0 && (
                         <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <AccordionSummary expandIcon={<ExpandMore />}>
                             <AccordionHeader
-                              icon={<TextFieldsIcon sx={{ mr: 1 }} />}
+                              icon={<TextFields sx={{ mr: 1 }} />}
                               title={t('run_content.captured_data.schema_title', 'Captured Texts')}
                               actions={[
                                 {
@@ -1764,9 +1749,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                       {listData.length > 0 && (
                         <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <AccordionSummary expandIcon={<ExpandMore />}>
                             <AccordionHeader
-                              icon={<ViewListIcon sx={{ mr: 1 }} />}
+                              icon={<ViewList sx={{ mr: 1 }} />}
                               title={t('run_content.captured_data.list_title', 'Captured Lists')}
                               actions={[
                                 {
@@ -1899,9 +1884,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
                     <AccordionHeader
-                      icon={<TravelExploreIcon sx={{ mr: 1 }} />}
+                      icon={<TravelExplore sx={{ mr: 1 }} />}
                       title="Crawl Results"
                       actions={[
                         {
@@ -1989,9 +1974,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     {crawlData[0][currentCrawlIndex] && (
                       <>
                         <Accordion defaultExpanded sx={{ mb: 2 }}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <AccordionSummary expandIcon={<ExpandMore />}>
                             <AccordionHeader
-                              icon={<InfoOutlinedIcon sx={{ mr: 1 }} />}
+                              icon={<InfoOutlined sx={{ mr: 1 }} />}
                               title="Metadata"
                               actions={[{
                                 label: 'Download Metadata',
@@ -2031,9 +2016,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                         {crawlData[0][currentCrawlIndex].text && (
                           <Accordion defaultExpanded sx={{ mb: 2 }}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
                               <AccordionHeader
-                                icon={<SubjectIcon sx={{ mr: 1 }} />}
+                                icon={<Subject sx={{ mr: 1 }} />}
                                 title="Text Content"
                                 actions={[{
                                   label: 'Download Text Content',
@@ -2080,9 +2065,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                         {crawlData[0][currentCrawlIndex].html && (
                           <Accordion defaultExpanded sx={{ mb: 2 }}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
                               <AccordionHeader
-                                icon={<CodeIcon sx={{ mr: 1 }} />}
+                                icon={<Code sx={{ mr: 1 }} />}
                                 title="HTML"
                                 actions={[{
                                   label: 'Download HTML',
@@ -2129,9 +2114,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                         {crawlData[0][currentCrawlIndex].markdown && (
                           <Accordion sx={{ mb: 2 }}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
                               <AccordionHeader
-                                icon={<DescriptionIcon sx={{ mr: 1 }} />}
+                                icon={<Description sx={{ mr: 1 }} />}
                                 title="Markdown"
                                 actions={[{
                                   label: 'Download Markdown',
@@ -2183,7 +2168,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                           return validLinks.length > 0 && (
                             <Accordion sx={{ mb: 2 }}>
-                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <AccordionSummary expandIcon={<ExpandMore />}>
                                 <AccordionHeader
                                   icon={<LinkIcon sx={{ mr: 1 }} />}
                                   title={`Links (${validLinks.length})`}
@@ -2218,9 +2203,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                         {crawlData[0][currentCrawlIndex].summary && (
                           <Accordion>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
                               <AccordionHeader
-                                icon={<PsychologyIcon sx={{ mr: 1 }} />}
+                                icon={<Psychology sx={{ mr: 1 }} />}
                                 title="Summary"
                                 actions={[{
                                   label: 'Download Summary',
@@ -2250,9 +2235,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                         {(crawlData[0][currentCrawlIndex].screenshotVisible || crawlData[0][currentCrawlIndex].screenshotFullpage) && (
                           <Accordion>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
                               <AccordionHeader
-                                icon={<ImageIcon sx={{ mr: 1 }} />}
+                                icon={<Image sx={{ mr: 1 }} />}
                                 title={t('run_content.screenshot.title', 'Screenshots')}
                               />
                             </AccordionSummary>
@@ -2274,9 +2259,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {searchData.length > 0 && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
                     <AccordionHeader
-                      icon={<SearchIcon sx={{ mr: 1 }} />}
+                      icon={<Search sx={{ mr: 1 }} />}
                       title="Search Results"
                       actions={
                         searchMode === 'scrape'
@@ -2366,9 +2351,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         {searchData[currentSearchIndex] && (
                           <>
                             <Accordion defaultExpanded sx={{ mb: 2 }}>
-                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <AccordionSummary expandIcon={<ExpandMore />}>
                                 <AccordionHeader
-                                  icon={<InfoOutlinedIcon sx={{ mr: 1 }} />}
+                                  icon={<InfoOutlined sx={{ mr: 1 }} />}
                                   title="Metadata"
                                   actions={[{
                                     label: 'Download Metadata',
@@ -2409,9 +2394,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                             {searchData[currentSearchIndex].text && (
                               <Accordion defaultExpanded sx={{ mb: 2 }}>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
                                   <AccordionHeader
-                                    icon={<SubjectIcon sx={{ mr: 1 }} />}
+                                    icon={<Subject sx={{ mr: 1 }} />}
                                     title="Text Content"
                                     actions={[{
                                       label: 'Download Text Content',
@@ -2457,9 +2442,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                             {searchData[currentSearchIndex].html && (
                               <Accordion defaultExpanded sx={{ mb: 2 }}>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
                                   <AccordionHeader
-                                    icon={<CodeIcon sx={{ mr: 1 }} />}
+                                    icon={<Code sx={{ mr: 1 }} />}
                                     title="HTML"
                                     actions={[{
                                       label: 'Download HTML',
@@ -2507,9 +2492,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                             {searchData[currentSearchIndex].markdown && (
                               <Accordion sx={{ mb: 2 }}>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
                                   <AccordionHeader
-                                    icon={<DescriptionIcon sx={{ mr: 1 }} />}
+                                    icon={<Description sx={{ mr: 1 }} />}
                                     title="Markdown"
                                     actions={[{
                                       label: 'Download Markdown',
@@ -2562,7 +2547,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                               return validLinks.length > 0 && (
                                 <Accordion sx={{ mb: 2 }}>
-                                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                  <AccordionSummary expandIcon={<ExpandMore />}>
                                     <AccordionHeader
                                       icon={<LinkIcon sx={{ mr: 1 }} />}
                                       title={`Links (${validLinks.length})`}
@@ -2598,9 +2583,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                             {searchData[currentSearchIndex]?.summary && (
                               <Accordion>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
                                   <AccordionHeader
-                                    icon={<PsychologyIcon sx={{ mr: 1 }} />}
+                                    icon={<Psychology sx={{ mr: 1 }} />}
                                     title="Summary"
                                     actions={[{
                                       label: 'Download Summary',
@@ -2633,9 +2618,9 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                             {(searchData[currentSearchIndex].screenshotVisible || searchData[currentSearchIndex].screenshotFullpage) && (
                               <Accordion>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
                                   <AccordionHeader
-                                    icon={<ImageIcon sx={{ mr: 1 }} />}
+                                    icon={<Image sx={{ mr: 1 }} />}
                                     title={t('run_content.screenshot.title', 'Screenshots')}
                                   />
                                 </AccordionSummary>
