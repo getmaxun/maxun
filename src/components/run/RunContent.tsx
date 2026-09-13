@@ -66,33 +66,33 @@ const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => vo
   if (actions.length === 1) {
     return (
       <Tooltip title="Download" placement="left">
-      <IconButton
-        size="small"
-        onClick={(e) => {
-          e.stopPropagation();
-          actions[0].onClick();
-        }}
-        aria-label={actions[0].label}
-      >
-        <Download fontSize="small" />
-      </IconButton>
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            actions[0].onClick();
+          }}
+          aria-label={actions[0].label}
+        >
+          <Download fontSize="small" />
+        </IconButton>
       </Tooltip>
     );
   }
 
   return (
     <>
-    <Tooltip title="Download" placement="left">
-      <IconButton
-        size="small"
-        onClick={(e) => {
-          e.stopPropagation();
-          setAnchorEl(e.currentTarget);
-        }}
-        aria-label="Download options"
-      >
-        <Download fontSize="small" />
-      </IconButton>
+      <Tooltip title="Download" placement="left">
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setAnchorEl(e.currentTarget);
+          }}
+          aria-label="Download options"
+        >
+          <Download fontSize="small" />
+        </IconButton>
       </Tooltip>
       <Menu
         anchorEl={anchorEl}
@@ -186,10 +186,10 @@ const ScreenshotTabs: React.FC<ScreenshotTabsProps> = ({ screenshotVisible, scre
             </Box>
           ))}
         </Box>
-          <Tooltip title="Download" placement="left">
-        <IconButton size="small" onClick={handleDownload} sx={{ ml: 1 }} aria-label="Download screenshot">
-          <Download fontSize="small" />
-        </IconButton>
+        <Tooltip title="Download" placement="left">
+          <IconButton size="small" onClick={handleDownload} sx={{ ml: 1 }} aria-label="Download screenshot">
+            <Download fontSize="small" />
+          </IconButton>
         </Tooltip>
       </Box>
       <Box>
