@@ -50,7 +50,7 @@ export const RunDiffPage: React.FC = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, py: 2 }}>
         <IconButton onClick={() => navigate(-1)} aria-label="back">
           <ArrowBack />
         </IconButton>
