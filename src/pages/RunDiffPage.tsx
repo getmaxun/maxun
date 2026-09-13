@@ -103,7 +103,16 @@ export const RunDiffPage: React.FC = () => {
                 onChange={(_, value) => setSelectedDiffFormat(value)}
                 variant="scrollable"
                 scrollButtons="auto"
-                sx={{ mb: 2, minHeight: 36, flexShrink: 0 }}
+                sx={{
+                  minHeight: 36,
+                  mb: 3,
+                  flexShrink: 0,
+                  '& .MuiTab-root': {
+                    minHeight: 36, paddingX: 2, paddingY: 1.5, minWidth: 0,
+                    color: theme => `${theme.palette.mode === 'dark' ? '#fff' : '#000'} !important`,
+                  },
+                  '& .MuiTabs-indicator': { height: 2 },
+                }}
               >
                 {screenshotOptions.map((option) => (
                   <Tab key={option.key} value={option.key} label={option.label} sx={{ minHeight: 36 }} />
@@ -120,7 +129,16 @@ export const RunDiffPage: React.FC = () => {
                       onChange={(_, value) => setSelectedCapturedGroup(value)}
                       variant="scrollable"
                       scrollButtons="auto"
-                      sx={{ mb: 2, minHeight: 36, flexShrink: 0 }}
+                      sx={{
+                        minHeight: 36,
+                        mb: 3,
+                        flexShrink: 0,
+                        '& .MuiTab-root': {
+                          minHeight: 36, paddingX: 2, paddingY: 1.5, minWidth: 0,
+                          color: theme => `${theme.palette.mode === 'dark' ? '#fff' : '#000'} !important`,
+                        },
+                        '& .MuiTabs-indicator': { height: 2 },
+                      }}
                     >
                       {Object.keys(capturedGroups).map((name) => (
                         <Tab key={name} value={name} label={name} sx={{ minHeight: 36 }} />
@@ -198,7 +216,16 @@ export const RunDiffPage: React.FC = () => {
                       onChange={(_, value) => setSelectedCapturedList(value)}
                       variant="scrollable"
                       scrollButtons="auto"
-                      sx={{ mb: 2, minHeight: 36, flexShrink: 0 }}
+                      sx={{
+                        minHeight: 36,
+                        mb: 3,
+                        flexShrink: 0,
+                        '& .MuiTab-root': {
+                          minHeight: 36, paddingX: 2, paddingY: 1.5, minWidth: 0,
+                          color: theme => `${theme.palette.mode === 'dark' ? '#fff' : '#000'} !important`,
+                        },
+                        '& .MuiTabs-indicator': { height: 2 },
+                      }}
                     >
                       {Object.keys(capturedListGroups).map((name) => (
                         <Tab key={name} value={name} label={name} sx={{ minHeight: 36 }} />
