@@ -243,7 +243,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
               {(robot.recording_meta.type === 'scrape' || robot.recording_meta.type === 'extract') && (
                 <>
                 <Typography variant="h6">Monitoring</Typography>
-                <p>When enabled, each run is compared against the previous one for text content, Markdown, HTML, captured text, and captured lists. Screenshots are not compared. Changed values can be viewed in the run comparison results.</p>
+                <p>When enabled, each run is compared against the previous run to detect changes. Learn more.</p>
                 <FormControlLabel
                   control={
                     <Checkbox
