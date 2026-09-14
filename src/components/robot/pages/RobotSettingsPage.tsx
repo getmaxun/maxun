@@ -31,13 +31,13 @@ interface ScheduleConfig {
   runEvery: number;
   runEveryUnit: "MINUTES" | "HOURS" | "DAYS" | "WEEKS" | "MONTHS";
   startFrom:
-    | "SUNDAY"
-    | "MONDAY"
-    | "TUESDAY"
-    | "WEDNESDAY"
-    | "THURSDAY"
-    | "FRIDAY"
-    | "SATURDAY";
+  | "SUNDAY"
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY";
   atTimeStart?: string;
   atTimeEnd?: string;
   timezone: string;
@@ -104,7 +104,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
 
     return url;
   };
-  
+
   const handleCompareRunsToggle = async (checked: boolean) => {
     if (!robot) return;
     const requestId = compareRunsRequestId.current + 1;
@@ -242,24 +242,24 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
               />
               {(robot.recording_meta.type === 'scrape' || robot.recording_meta.type === 'extract') && (
                 <>
-                <Typography variant="h6">Monitoring</Typography>
-                <p>When enabled, each run is compared against the previous run to detect changes. 
-                  <a href="https://docs.maxun.dev/monitoring" target="_blank" rel="noopener noreferrer">
-                    Learn more
-                  </a>
-                  .
-                </p>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={compareRuns}
-                      disabled={compareRunsSaving}
-                      onChange={(e) => handleCompareRunsToggle(e.target.checked)}
-                    />
-                  }
-                  label={t("robot_settings.compare_runs")}
-                  style={{ marginBottom: "20px" }}
-                />
+                  <Typography variant="h6">Monitoring</Typography>
+                  <p>When enabled, each run is compared against the previous run to detect changes.
+                    <a href="https://docs.maxun.dev/monitoring" target="_blank" rel="noopener noreferrer">
+                      Learn more
+                    </a>
+                    .
+                  </p>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={compareRuns}
+                        disabled={compareRunsSaving}
+                        onChange={(e) => handleCompareRunsToggle(e.target.checked)}
+                      />
+                    }
+                    label={t("robot_settings.compare_runs")}
+                    style={{ marginBottom: "20px" }}
+                  />
                 </>
               )}
             </>
