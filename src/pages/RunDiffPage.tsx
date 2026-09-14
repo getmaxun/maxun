@@ -49,7 +49,7 @@ export const RunDiffPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ minHeight: '100vh', width: '100%', minWidth: 0, overflowX: 'hidden', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, py: 2 }}>
         <IconButton onClick={() => navigate(-1)} aria-label="back">
           <ArrowBack />
@@ -59,7 +59,7 @@ export const RunDiffPage: React.FC = () => {
         </Typography>
       </Box>
 
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', px: 3, py: 3, minHeight: 0 }}>
+      <Box sx={{ flex: 1, minWidth: 0, width: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', px: 3, py: 3, minHeight: 0 }}>
         {isDiffLoading ? (
           <Box display="flex" alignItems="center" justifyContent="center" flex={1}>
             <CircularProgress size={28} />
@@ -115,7 +115,7 @@ export const RunDiffPage: React.FC = () => {
               </Tabs>
             )}
 
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               {selectedDiffFormat === 'captured-text' ? (
                 <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                   {Object.keys(capturedGroups).length > 1 && (
@@ -357,29 +357,33 @@ export const RunDiffPage: React.FC = () => {
                   </Typography>
                 </Box>
               ) : (
-                <Box sx={{ display: 'flex', gap: 2, flex: 1, minHeight: 0 }}>
-                  <Box sx={{ flex: 1, overflow: 'auto' }}>
+                <Box sx={{ display: 'flex', gap: 2, flex: 1, minWidth: 0, minHeight: 0 }}>
+                  <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                     <Typography variant="subtitle2" align="center" gutterBottom>
                       {t('runs_table.run_diff.previous_run', { defaultValue: 'Previous Run' })}
                     </Typography>
-                    <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
-                      {diffParts.map((part, i) => part.added ? null : (
-                        <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.removed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>
-                          {part.value}
-                        </Box>
-                      ))}
+                    <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                      <Box component="pre" sx={{ whiteSpace: 'pre', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                        {diffParts.map((part, i) => part.added ? null : (
+                          <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.removed ? alpha(theme.palette.error.main, 0.12) : 'transparent' }}>
+                            {part.value}
+                          </Box>
+                        ))}
+                      </Box>
                     </Box>
                   </Box>
-                  <Box sx={{ flex: 1, overflow: 'auto' }}>
+                  <Box sx={{ flex: '1 1 0', minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                     <Typography variant="subtitle2" align="center" gutterBottom>
                       {t('runs_table.run_diff.current_run', { defaultValue: 'Current Run' })}
                     </Typography>
-                    <Box component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
-                      {diffParts.map((part, i) => part.removed ? null : (
-                        <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.added ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>
-                          {part.value}
-                        </Box>
-                      ))}
+                    <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                      <Box component="pre" sx={{ whiteSpace: 'pre', fontFamily: 'monospace', fontSize: 13, m: 0 }}>
+                        {diffParts.map((part, i) => part.removed ? null : (
+                          <Box key={i} component="span" sx={{ display: 'block', backgroundColor: part.added ? alpha(theme.palette.success.main, 0.12) : 'transparent' }}>
+                            {part.value}
+                          </Box>
+                        ))}
+                      </Box>
                     </Box>
                   </Box>
                 </Box>
