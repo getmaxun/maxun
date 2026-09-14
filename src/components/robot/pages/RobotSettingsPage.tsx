@@ -243,7 +243,12 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
               {(robot.recording_meta.type === 'scrape' || robot.recording_meta.type === 'extract') && (
                 <>
                 <Typography variant="h6">Monitoring</Typography>
-                <p>When enabled, each run is compared against the previous run to detect changes. Learn more.</p>
+                <p>When enabled, each run is compared against the previous run to detect changes. 
+                  <a href="https://docs.maxun.dev/monitoring" target="_blank" rel="noopener noreferrer">
+                    Learn more
+                  </a>
+                  .
+                </p>
                 <FormControlLabel
                   control={
                     <Checkbox
