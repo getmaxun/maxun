@@ -1,5 +1,8 @@
 import Run from '../models/Run';
 
+export const COMPARABLE_RUN_FORMATS = ['text', 'markdown', 'html'] as const;
+export type ComparableRunFormat = (typeof COMPARABLE_RUN_FORMATS)[number];
+
 const getRunTimestamp = (run: any): number => {
   const timestamp = Date.parse(run.finishedAt || run.startedAt || '');
   return Number.isNaN(timestamp) ? 0 : timestamp;
@@ -19,8 +22,6 @@ export async function findPreviousSuccessfulRun(currentRun: any) {
       robotMetaId: currentRun.robotMetaId,
       status: 'success',
     },
-    // Only pull the fields we actually use to avoid loading full
-    // serializableOutput for every historical run just to filter most of them out
     attributes: ['runId', 'finishedAt', 'startedAt', 'serializableOutput'],
   });
 
@@ -50,4 +51,85 @@ export async function compareRunTextWithPrevious(currentRun: any, currentText: s
   const hasChanges = normalizeComparableText(previousText ?? '') !== normalizeComparableText(currentText ?? '');
 
   return { previousRun, hasChanges };
+}
+
+/**
+ * Compares every text-based output produced by the current run against the
+ * matching output from the previous successful run.
+ */
+export async function compareRunOutputsWithPrevious(currentRun: any, currentOutput: any) {
+  const previousRun = await findPreviousSuccessfulRun(currentRun);
+  if (!previousRun) {
+    return {
+      previousRun: null,
+      hasChanges: false,
+      changedFormats: [] as string[],
+    };
+  }
+
+  const changedFormats: string[] = COMPARABLE_RUN_FORMATS.filter((format) => {
+    const currentContent = currentOutput?.[format]?.[0]?.content;
+    if (typeof currentContent !== 'string') return false;
+
+    const previousValue = previousRun.serializableOutput?.[format]?.[0]?.content;
+    const previousContent = typeof previousValue === 'string' ? previousValue : '';
+    return normalizeComparableText(previousContent) !== normalizeComparableText(currentContent);
+  });
+
+  return {
+    previousRun,
+    hasChanges: changedFormats.length > 0,
+    changedFormats,
+  };
+}
+
+const stableValue = (value: any): any => Array.isArray(value)
+  ? value.map(stableValue)
+  : value && typeof value === 'object'
+    ? Object.keys(value).sort().reduce((result, key) => ({ ...result, [key]: stableValue(value[key]) }), {})
+    : value;
+
+export const serializeCapturedText = (value: any) => JSON.stringify(stableValue(value || {}), null, 2);
+
+const canonicalizeCapturedLists = (value: any): any => {
+  if (Array.isArray(value)) {
+    return value
+      .map((row) => stableValue(row))
+      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  }
+  if (value && typeof value === 'object') {
+    return Object.keys(value).sort().reduce((result, key) => ({
+      ...result,
+      [key]: canonicalizeCapturedLists(value[key]),
+    }), {});
+  }
+  return value;
+};
+
+export const serializeCapturedLists = (value: any) => JSON.stringify(canonicalizeCapturedLists(value || {}));
+
+/** Compares captured text and lists produced by an extract robot. */
+export async function compareExtractRunWithPrevious(currentRun: any, currentOutput: any) {
+  const previousRun = await findPreviousSuccessfulRun(currentRun);
+  if (!previousRun) {
+    return {
+      previousRun: null,
+      hasChanges: false,
+      changedFormats: [] as string[],
+    };
+  }
+
+  const changedFormats: string[] = [];
+  if (serializeCapturedText(currentOutput?.scrapeSchema) !== serializeCapturedText(previousRun.serializableOutput?.scrapeSchema)) {
+    changedFormats.push('captured-text');
+  }
+  if (serializeCapturedLists(currentOutput?.scrapeList) !== serializeCapturedLists(previousRun.serializableOutput?.scrapeList)) {
+    changedFormats.push('captured-list');
+  }
+
+  return {
+    previousRun,
+    hasChanges: changedFormats.length > 0,
+    changedFormats,
+  };
 }

@@ -532,7 +532,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
 
     if (row.binaryOutput && Object.keys(row.binaryOutput).length > 0) {
-      const rawKeys = Object.keys(row.binaryOutput);
+      const rawKeys = Object.keys(row.binaryOutput).filter(key => !key.endsWith('-diff'));
 
       const isLegacyPattern = rawKeys.every(key => /^item-\d+-\d+$/.test(key));
 
