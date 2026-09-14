@@ -447,22 +447,11 @@ async function executeRun(id: string, userId: string) {
         const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
         if ((recording.recording_meta as any).compareRuns) {
           try {
-            const comparison = await compareRunOutputsWithPrevious(run, serializableOutput, binaryOutput);
+            const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
             hasChanges = comparison.hasChanges;
 
             serializableOutput._comparison = {
               changedFormats: comparison.changedFormats,
-              screenshots: Object.fromEntries(await Promise.all(
-                Object.entries(comparison.screenshotComparisons).map(async ([key, value]) => {
-                  if (!value) return [key, null];
-                  const { diff: _diff, ...metadata } = value;
-                  const diff = comparison.screenshotDiffs[`${key}-diff`];
-                  const diffUrl = diff
-                    ? await binaryOutputService.uploadBinaryOutputItem(plainRun.runId, `${key}-diff`, diff, 'image/png')
-                    : null;
-                  return [key, { ...metadata, diff: diffUrl || (diff ? `data:image/png;base64,${diff.toString('base64')}` : null) }];
-                }),
-              )),
             };
 
             if (comparison.previousRun) {
@@ -689,16 +678,10 @@ async function executeRun(id: string, userId: string) {
     let hasChanges = false;
     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
     if (robotType === 'extract' && (recording.recording_meta as any).compareRuns) {
-      const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput, binaryOutput);
+      const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput);
       hasChanges = comparison.hasChanges;
       finalSerializableOutput._comparison = {
         changedFormats: comparison.changedFormats,
-        screenshots: Object.fromEntries(await Promise.all(Object.entries(comparison.screenshotComparisons).map(async ([key, value]) => {
-          const { diff: _diff, ...metadata } = value;
-          const diff = comparison.screenshotDiffs[`${key}-diff`];
-          const diffUrl = diff ? await binaryOutputService.uploadBinaryOutputItem(plainRun.runId, `${key}-diff`, diff, 'image/png') : null;
-          return [key, { ...metadata, diff: diffUrl || (diff ? `data:image/png;base64,${diff.toString('base64')}` : null) }];
-        }))),
       };
     }
 

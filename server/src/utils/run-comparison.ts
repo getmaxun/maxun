@@ -1,9 +1,4 @@
 import Run from '../models/Run';
-import {
-  COMPARABLE_SCREENSHOT_FORMATS,
-  compareScreenshots,
-  ScreenshotComparisonResult,
-} from './screenshot-comparison';
 
 export const COMPARABLE_RUN_FORMATS = ['text', 'markdown', 'html'] as const;
 export type ComparableRunFormat = (typeof COMPARABLE_RUN_FORMATS)[number];
@@ -27,7 +22,7 @@ export async function findPreviousSuccessfulRun(currentRun: any) {
       robotMetaId: currentRun.robotMetaId,
       status: 'success',
     },
-    attributes: ['runId', 'finishedAt', 'startedAt', 'serializableOutput', 'binaryOutput'],
+    attributes: ['runId', 'finishedAt', 'startedAt', 'serializableOutput'],
   });
 
   const currentTimestamp = getRunTimestamp(currentRun);
@@ -62,15 +57,13 @@ export async function compareRunTextWithPrevious(currentRun: any, currentText: s
  * Compares every text-based output produced by the current run against the
  * matching output from the previous successful run.
  */
-export async function compareRunOutputsWithPrevious(currentRun: any, currentOutput: any, currentBinaryOutput?: any) {
+export async function compareRunOutputsWithPrevious(currentRun: any, currentOutput: any) {
   const previousRun = await findPreviousSuccessfulRun(currentRun);
   if (!previousRun) {
     return {
       previousRun: null,
       hasChanges: false,
       changedFormats: [] as string[],
-      screenshotComparisons: {} as Partial<Record<string, ScreenshotComparisonResult>>,
-      screenshotDiffs: {} as Record<string, Buffer>,
     };
   }
 
@@ -83,25 +76,10 @@ export async function compareRunOutputsWithPrevious(currentRun: any, currentOutp
     return normalizeComparableText(previousContent) !== normalizeComparableText(currentContent);
   });
 
-  const screenshotComparisons: Partial<Record<string, ScreenshotComparisonResult>> = {};
-  const screenshotDiffs: Record<string, Buffer> = {};
-  for (const format of COMPARABLE_SCREENSHOT_FORMATS) {
-    if (!currentBinaryOutput?.[format]) continue;
-    const comparison = await compareScreenshots(currentBinaryOutput[format], previousRun.binaryOutput?.[format]);
-    if (!comparison) continue;
-    screenshotComparisons[format] = comparison;
-    if (comparison.changed) {
-      changedFormats.push(format);
-      if (comparison.diff) screenshotDiffs[`${format}-diff`] = comparison.diff;
-    }
-  }
-
   return {
     previousRun,
     hasChanges: changedFormats.length > 0,
     changedFormats,
-    screenshotComparisons,
-    screenshotDiffs,
   };
 }
 
@@ -130,16 +108,14 @@ const canonicalizeCapturedLists = (value: any): any => {
 
 export const serializeCapturedLists = (value: any) => JSON.stringify(canonicalizeCapturedLists(value || {}));
 
-/** Compares named text and screenshot captures produced by an extract robot. */
-export async function compareExtractRunWithPrevious(currentRun: any, currentOutput: any, binaryOutput: any) {
+/** Compares captured text and lists produced by an extract robot. */
+export async function compareExtractRunWithPrevious(currentRun: any, currentOutput: any) {
   const previousRun = await findPreviousSuccessfulRun(currentRun);
   if (!previousRun) {
     return {
       previousRun: null,
       hasChanges: false,
       changedFormats: [] as string[],
-      screenshotComparisons: {} as Record<string, ScreenshotComparisonResult>,
-      screenshotDiffs: {} as Record<string, Buffer>,
     };
   }
 
@@ -151,23 +127,9 @@ export async function compareExtractRunWithPrevious(currentRun: any, currentOutp
     changedFormats.push('captured-list');
   }
 
-  const screenshotComparisons: Record<string, ScreenshotComparisonResult> = {};
-  const screenshotDiffs: Record<string, Buffer> = {};
-  for (const name of Object.keys(binaryOutput || {}).filter((key) => !key.endsWith('-diff'))) {
-    const comparison = await compareScreenshots(binaryOutput[name], previousRun.binaryOutput?.[name]);
-    if (!comparison) continue;
-    screenshotComparisons[name] = comparison;
-    if (comparison.changed) {
-      changedFormats.push(`screenshot:${name}`);
-      if (comparison.diff) screenshotDiffs[`${name}-diff`] = comparison.diff;
-    }
-  }
-
   return {
     previousRun,
     hasChanges: changedFormats.length > 0,
     changedFormats,
-    screenshotComparisons,
-    screenshotDiffs,
   };
 }

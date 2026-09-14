@@ -10,8 +10,6 @@ export const DIFF_FORMAT_LABELS: Record<string, string> = {
   text: 'Text Content',
   markdown: 'Markdown',
   html: 'HTML',
-  'screenshot-visible': 'Visible Screenshot',
-  'screenshot-fullpage': 'Full-page Screenshot',
 };
 
 export type CapturedListRow = Record<string, any>;
@@ -112,11 +110,9 @@ export function useRunDiff(runId: string | undefined) {
         ...TEXT_DIFF_FORMATS.filter((format) => data.formats?.[format]),
         ...(data.capturedText ? ['captured-text'] : []),
         ...(data.capturedLists ? ['captured-list'] : []),
-        ...Object.keys(data.screenshots || {}).map((name) => `screenshot:${name}`),
       ] : [];
       const firstChangedFormat = availableFormats.find((format) => {
-        const changedKey = format.startsWith('screenshot:') ? format.slice('screenshot:'.length) : format;
-        return data?.changedFormats?.includes(format) || data?.changedFormats?.includes(changedKey);
+        return data?.changedFormats?.includes(format);
       });
       const initialFormat = firstChangedFormat || availableFormats[0];
       if (initialFormat) setSelectedDiffFormat(initialFormat);
@@ -145,7 +141,7 @@ export function useRunDiff(runId: string | undefined) {
   }, [runId]);
 
   const diffParts = useMemo<Change[]>(() => {
-    if (!diffData || selectedDiffFormat.startsWith('screenshot:')) return [];
+    if (!diffData) return [];
     const selectedOutput = selectedDiffFormat === 'captured-text'
       ? diffData.capturedText
       : diffData.formats?.[selectedDiffFormat as TextDiffFormat];
@@ -155,28 +151,12 @@ export function useRunDiff(runId: string | undefined) {
   }, [diffData, selectedDiffFormat]);
 
   const hasDiff = diffParts.some((part) => part.added || part.removed);
-  const selectedScreenshotName = selectedDiffFormat.startsWith('screenshot:')
-    ? selectedDiffFormat.slice('screenshot:'.length)
-    : undefined;
-  const selectedScreenshot = selectedScreenshotName ? diffData?.screenshots?.[selectedScreenshotName] : undefined;
-
-  const getDiffImageSrc = (entry: string | { data?: string } | null | undefined) => {
-    const value = typeof entry === 'object' && entry !== null ? entry.data : entry;
-    if (!value) return '';
-    if (value.startsWith('http') || value.startsWith('data:')) return value;
-    return `data:image/png;base64,${value}`;
-  };
-
   const diffOptions = useMemo(() => {
     if (!diffData) return [];
     return [
       ...TEXT_DIFF_FORMATS.filter((format) => diffData.formats?.[format]).map((format) => ({ key: format, label: DIFF_FORMAT_LABELS[format] })),
       ...(diffData.capturedText ? [{ key: 'captured-text', label: 'Captured Text' }] : []),
       ...(diffData.capturedLists ? [{ key: 'captured-list', label: 'Captured Lists' }] : []),
-      ...Object.keys(diffData.screenshots || {}).map((name) => ({
-        key: `screenshot:${name}`,
-        label: DIFF_FORMAT_LABELS[name] || name,
-      })),
     ];
   }, [diffData]);
 
@@ -254,13 +234,11 @@ export function useRunDiff(runId: string | undefined) {
     setSelectedCapturedList,
     diffParts,
     hasDiff,
-    selectedScreenshot,
     diffOptions,
     capturedGroups,
     capturedTableRows,
     capturedListGroups,
     capturedListRows,
     capturedListColumns,
-    getDiffImageSrc,
   };
 }

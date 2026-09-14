@@ -1306,7 +1306,6 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
 
     const currentText = formats.text?.current || '';
     const previousText = formats.text?.previous || '';
-    const screenshotMetadata = currentOutput?._comparison?.screenshots || {};
     const isExtract = robot.recording_meta.type === 'extract';
     const currentCapturedText = currentOutput?.scrapeSchema || {};
     const previousCapturedText = previousOutput?.scrapeSchema || {};
@@ -1323,21 +1322,6 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
       && (Object.keys(currentCapturedLists).length > 0 || Object.keys(previousCapturedLists).length > 0)
       ? { current: currentCapturedLists, previous: previousCapturedLists }
       : null;
-    const screenshotNames = isExtract
-      ? Object.keys(run.binaryOutput || {}).filter((name) => !name.endsWith('-diff'))
-      : ['screenshot-visible', 'screenshot-fullpage'];
-    const screenshotFormats = screenshotNames.reduce((result, format) => {
-      const current = run.binaryOutput?.[format];
-      if (!current) return result;
-      result[format] = {
-        current,
-        previous: previousRun.binaryOutput?.[format] || null,
-        diff: screenshotMetadata[format]?.diff || run.binaryOutput?.[`${format}-diff`] || null,
-        metadata: screenshotMetadata[format] || null,
-      };
-      return result;
-    }, {} as Record<string, any>);
-
     return res.json({
       currentRunId: run.runId,
       previousRunId: previousRun.runId,
@@ -1346,7 +1330,6 @@ router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, re
       formats,
       capturedText,
       capturedLists,
-      screenshots: screenshotFormats,
       changedFormats: currentOutput?._comparison?.changedFormats || [],
     });
   } catch (e) {
