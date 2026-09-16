@@ -750,7 +750,11 @@ export const BrowserWindow = () => {
         const content = candidate.field.data.trim().replace(/\s+/g, " ").toLowerCase();
         const columnSignature = getColumnSignature?.(candidate.field);
 
-        if (!seenContent.has(content) && (!columnSignature || !seenColumns.has(columnSignature))) {
+        const isDuplicate = columnSignature
+          ? seenColumns.has(columnSignature)
+          : seenContent.has(content);
+
+        if (!isDuplicate) {
           seenContent.add(content);
           if (columnSignature) {
             seenColumns.add(columnSignature);

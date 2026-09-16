@@ -339,7 +339,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         });
       }
     }
-  }, [fieldsString, currentListStep?.listSelector, getList, extractDataClientSide]);
+  }, [fieldsString, currentListStep?.id, currentListStep?.listSelector, getList, extractDataClientSide]);
 
   const handleStartGetText = () => {
     const newActionId = `text-${generateUUID()}`;

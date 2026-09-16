@@ -4036,7 +4036,22 @@ class ClientSelectorGenerator {
           `contains(@class, ${this.wrapXPathValue(className)})`
         )
         .join(" and ");
-      return `//table[${classPredicate}]/${sectionStep}/tr`;
+      const matchingTables = Array.from(
+        table.ownerDocument.querySelectorAll("table")
+      ).filter((candidate) =>
+        tableClasses
+          .slice(0, 3)
+          .every((className) => candidate.classList.contains(className))
+      );
+
+      if (matchingTables.length === 1) {
+        return `//table[${classPredicate}]/${sectionStep}/tr`;
+      }
+
+      const classMatchIndex = matchingTables.indexOf(table) + 1;
+      if (classMatchIndex > 0) {
+        return `(//table[${classPredicate}])[${classMatchIndex}]/${sectionStep}/tr`;
+      }
     }
 
     const tableIndex =
