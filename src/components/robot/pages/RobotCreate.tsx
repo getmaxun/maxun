@@ -1660,7 +1660,23 @@ const RobotCreate: React.FC = () => {
                     <Select
                       value={searchTimeRange}
                       label="Time Range"
-                      onChange={(e) => setSearchTimeRange(e.target.value as 'day' | 'week' | 'month' | 'year' | '')}
+                      displayEmpty
+                      renderValue={(value) => {
+                        if (!value) {
+                          return 'All Time';
+                        }
+                        return {
+                          day: 'Past 24 Hours',
+                          week: 'Past Week',
+                          month: 'Past Month',
+                          year: 'Past Year',
+                        }[value];
+                      }}
+                      onChange={(e) =>
+                        setSearchTimeRange(
+                          e.target.value as 'day' | 'week' | 'month' | 'year' | ''
+                        )
+                      }
                     >
                       <MenuItem value="">All Time</MenuItem>
                       <MenuItem value="day">Past 24 Hours</MenuItem>

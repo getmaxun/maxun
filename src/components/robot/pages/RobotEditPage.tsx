@@ -1215,10 +1215,34 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
           <Select
             value={searchConfig.filters?.timeRange || ''}
             label="Time Range"
-            onChange={(e) => setSearchConfig((prev) => ({
-              ...prev,
-              filters: { ...prev.filters, timeRange: e.target.value as '' | 'day' | 'week' | 'month' | 'year' || undefined }
-            }))}
+            displayEmpty
+            renderValue={(value) => {
+              if (!value) {
+                return 'All Time';
+              }
+              const timeRange = value as 'day' | 'week' | 'month' | 'year';
+              return {
+                day: 'Past 24 Hours',
+                week: 'Past Week',
+                month: 'Past Month',
+                year: 'Past Year',
+              }[timeRange];
+            }}
+            onChange={(e) =>
+              setSearchConfig((prev) => ({
+                ...prev,
+                filters: {
+                  ...prev.filters,
+                  timeRange: e.target.value as
+                    | ''
+                    | 'day'
+                    | 'week'
+                    | 'month'
+                    | 'year'
+                    | undefined,
+                },
+              }))
+            }
           >
             <MenuItem value="">All Time</MenuItem>
             <MenuItem value="day">Past 24 Hours</MenuItem>
