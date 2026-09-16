@@ -335,7 +335,14 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           }
 
           const finishedAt = new Date().toLocaleString();
-          await run.update({ status: 'success', finishedAt, log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput, hasChanges: false });
+          const [stillRunningCount] = await Run.update(
+            { log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, hasChanges: false },
+            { where: { id: run.id, status: 'running' } },
+          );
+          if (stillRunningCount === 0) {
+            logger.log('info', `Run ${data.runId} left running state before results could be finalized`);
+            return;
+          }
 
           let hasChanges = false;
           const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
@@ -348,9 +355,8 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
                 changedFormats: comparison.changedFormats,
               };
 
-              if (comparison.previousRun) {
-                await run.update({ hasChanges, serializableOutput });
-                if (hasChanges) logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
+              if (comparison.previousRun && hasChanges) {
+                logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
               }
             } catch (compareError: any) {
               logger.log('warn', `Run comparison failed for run ${data.runId}: ${compareError.message}`);
@@ -360,7 +366,20 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           let uploadedBinaryOutput: Record<string, string> = {};
           if (Object.keys(binaryOutput).length > 0) {
             uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
-            await run.update({ binaryOutput: uploadedBinaryOutput });
+          }
+
+          const [finalizedCount] = await Run.update({
+            status: 'success',
+            finishedAt,
+            hasChanges,
+            serializableOutput: { ...serializableOutput },
+            binaryOutput: uploadedBinaryOutput,
+          }, {
+            where: { id: run.id, status: 'running' },
+          });
+          if (finalizedCount === 0) {
+            logger.log('info', `Run ${data.runId} left running state while results were being finalized; success was not published`);
+            return;
           }
 
           try {
@@ -501,14 +520,21 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
         return;
       }
 
-      await run.update({
+      const finishedAt = new Date().toLocaleString();
+      const [finalizedCount] = await Run.update({
         status: 'success',
-        finishedAt: new Date().toLocaleString(),
+        finishedAt,
         log: interpretationInfo.log.join('\n'),
         binaryOutput: uploadedBinaryOutput,
         serializableOutput: finalSerializableOutput,
         hasChanges,
+      }, {
+        where: { id: run.id, status: 'running' },
       });
+      if (finalizedCount === 0) {
+        logger.log('info', `Run ${data.runId} left running state while results were being finalized; success was not published`);
+        return;
+      }
 
       let totalSchemaItemsExtracted = 0;
       let totalListItemsExtracted = 0;
@@ -518,7 +544,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
       capture('maxun-oss-run-created', { runId: data.runId, user_id: data.userId, created_at: new Date().toISOString(), status: 'success', totalRowsExtracted: totalSchemaItemsExtracted + totalListItemsExtracted, schemaItemsExtracted: totalSchemaItemsExtracted, listItemsExtracted: totalListItemsExtracted, extractedScreenshotsCount: Object.keys(uploadedBinaryOutput).length, is_llm: (recording.recording_meta as any).isLLM, source: 'manual' });
 
       try {
-        const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString(), hasChanges };
+        const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt, hasChanges };
         serverIo.of(browserId).emit('run-completed', completionData);
         serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', completionData);
       } catch (socketError: any) {

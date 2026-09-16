@@ -473,14 +473,16 @@ async function executeRun(id: string, userId: string) {
           }
         }
         
-        await run.update({
-          status: 'success',
-          finishedAt: new Date().toLocaleString(),
+        const [stillRunningCount] = await Run.update({
           log: `${formats.join(', ')} conversion completed successfully`,
-          serializableOutput,
-          binaryOutput,
           hasChanges: false,
+        }, {
+          where: { id: run.id, status: 'running' },
         });
+        if (stillRunningCount === 0) {
+          logger.log('info', `Scheduled run ${plainRun.runId} left running state before results could be finalized`);
+          return false;
+        }
 
         let hasChanges = false;
         const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
@@ -493,9 +495,8 @@ async function executeRun(id: string, userId: string) {
               changedFormats: comparison.changedFormats,
             };
 
-            if (comparison.previousRun) {
-              await run.update({ hasChanges, serializableOutput });
-              if (hasChanges) logger.log('info', `Scheduled run ${plainRun.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
+            if (comparison.previousRun && hasChanges) {
+              logger.log('info', `Scheduled run ${plainRun.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
             }
           } catch (compareError: any) {
             logger.log('warn', `Run comparison failed for scheduled run ${plainRun.runId}: ${compareError.message}`);
@@ -505,7 +506,21 @@ async function executeRun(id: string, userId: string) {
         let uploadedBinaryOutput: Record<string, string> = {};
         if (Object.keys(binaryOutput).length > 0) {
           uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
-          await run.update({ binaryOutput: uploadedBinaryOutput });
+        }
+
+        const finishedAt = new Date().toLocaleString();
+        const [finalizedCount] = await Run.update({
+          status: 'success',
+          finishedAt,
+          hasChanges,
+          serializableOutput: { ...serializableOutput },
+          binaryOutput: uploadedBinaryOutput,
+        }, {
+          where: { id: run.id, status: 'running' },
+        });
+        if (finalizedCount === 0) {
+          logger.log('info', `Scheduled run ${plainRun.runId} left running state while results were being finalized; success was not published`);
+          return false;
         }
 
         logger.log('info', `Markdown robot execution completed for scheduled run ${id}`);
@@ -517,7 +532,7 @@ async function executeRun(id: string, userId: string) {
             robotMetaId: plainRun.robotMetaId,
             robotName: recording.recording_meta.name,
             status: 'success',
-            finishedAt: new Date().toLocaleString(),
+            finishedAt,
             hasChanges,
           };
 
@@ -730,14 +745,21 @@ async function executeRun(id: string, userId: string) {
 
     await destroyRemoteBrowser(plainRun.browserId, userId);
 
-    await run.update({
+    const finishedAt = new Date().toLocaleString();
+    const [finalizedCount] = await Run.update({
       status: 'success',
-      finishedAt: new Date().toLocaleString(),
+      finishedAt,
       log: interpretationInfo.log.join('\n'),
       binaryOutput: uploadedBinaryOutput,
       serializableOutput: finalSerializableOutput,
       hasChanges,
+    }, {
+      where: { id: run.id, status: 'running' },
     });
+    if (finalizedCount === 0) {
+      logger.log('info', `Scheduled run ${plainRun.runId} left running state while results were being finalized; success was not published`);
+      return false;
+    }
 
     // Get metrics from persisted data for analytics and webhooks
     let totalSchemaItemsExtracted = 0;
@@ -787,7 +809,7 @@ async function executeRun(id: string, userId: string) {
         robotMetaId: plainRun.robotMetaId,
         robotName: recording.recording_meta.name,
         status: 'success',
-        finishedAt: new Date().toLocaleString(),
+        finishedAt,
         hasChanges,
       };
 
