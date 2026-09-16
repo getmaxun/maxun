@@ -1488,7 +1488,7 @@ const RobotCreate: React.FC = () => {
                 </Box>
 
                 <Collapse in={showCrawlAdvanced}>
-                  <Box sx={{ mt: 4, mb: 2 }}>
+                  <Box sx={{ mt: 2, mb: 2 }}>
                     <FormControl fullWidth sx={{ mb: 2 }}>
                       <InputLabel>Crawl Scope</InputLabel>
                       <Select
