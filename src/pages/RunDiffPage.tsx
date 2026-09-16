@@ -30,7 +30,7 @@ export const RunDiffPage: React.FC = () => {
           <ArrowBack />
         </IconButton>
         <Typography variant="h6">
-          {t('runs_table.run_diff.title', { defaultValue: 'Run Comparison' })}
+          {t('runs_table.run_diff.title', { defaultValue: 'Monitoring' })}
         </Typography>
       </Box>
 
