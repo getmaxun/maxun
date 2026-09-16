@@ -4,6 +4,16 @@ import CssBaseline from '@mui/material/CssBaseline';
 import i18n, { isRtlLanguage } from '../i18n';
 
 const sharedInputOverrides = {
+  MuiButtonBase: {
+    defaultProps: {
+      disableRipple: true,
+    },
+  },
+  MuiCheckbox: {
+    defaultProps: {
+      disableRipple: true,
+    },
+  },
   MuiInputLabel: {
     defaultProps: {
       shrink: true,
