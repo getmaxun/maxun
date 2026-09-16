@@ -33,6 +33,14 @@ import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInte
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
 import { normalizeDocumentMimeType, PDF_MIME_TYPE } from '../utils/document/documentFile';
+import { diffLines } from 'diff';
+import {
+    compareExtractRunWithPrevious,
+    compareRunOutputsWithPrevious,
+    findPreviousSuccessfulRun,
+    serializeCapturedLists,
+    serializeCapturedText,
+} from '../utils/run-comparison';
 
 const router = Router();
 
@@ -676,7 +684,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
             throw new Error('Failed to start robot execution');
         }
 
-        const run = await waitForRunCompletion(runId, user.id.toString());
+        const run = await waitForRunCompletion(runId);
 
         let listData: any[] = [];
         if (run.serializableOutput?.scrapeList) {
@@ -892,6 +900,77 @@ router.get("/sdk/robots/:id/runs/:runId", requireAPIKey, async (req: Authenticat
             error: "Failed to get run",
             message: error.message
         });
+    }
+});
+
+/**
+ * Get the stored monitoring diff for a run.
+ * GET /api/sdk/robots/:id/runs/:runId/diff
+ */
+router.get("/sdk/robots/:id/runs/:runId/diff", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id } });
+        if (!robot) return res.status(404).json({ error: "Robot not found" });
+
+        const run = await Run.findOne({
+            where: { runId: req.params.runId, robotMetaId: robot.recording_meta.id }
+        });
+        if (!run) return res.status(404).json({ error: "Run not found" });
+
+        const previousRun = await findPreviousSuccessfulRun(run);
+        if (!previousRun) {
+            return res.status(200).json({
+                data: { runId: run.runId, previousRunId: null, hasChanges: false, changedFormats: [], diffs: [] }
+            });
+        }
+
+        let changedFormats = ((run.serializableOutput as any)?._comparison?.changedFormats || []) as string[];
+        // Runs completed by older workers may have hasChanges persisted before
+        // their comparison metadata. Recompute it so their diffs remain usable.
+        if (run.hasChanges && changedFormats.length === 0) {
+            const robotType = (robot.recording_meta as any).type || (robot.recording_meta as any).robotType;
+            const comparison = robotType === 'extract'
+                ? await compareExtractRunWithPrevious(run, run.serializableOutput || {})
+                : await compareRunOutputsWithPrevious(run, run.serializableOutput || {});
+            changedFormats = comparison.changedFormats;
+            if (changedFormats.length > 0) {
+                await run.update({
+                    serializableOutput: {
+                        ...(run.serializableOutput || {}),
+                        _comparison: { changedFormats },
+                    },
+                });
+            }
+        }
+        const requestedFormat = typeof req.query.format === 'string' ? req.query.format : undefined;
+        const formats = requestedFormat ? changedFormats.filter((format) => format === requestedFormat) : changedFormats;
+        const content = (output: Record<string, any>, format: string): string => {
+            if (format === 'captured-text') return serializeCapturedText(output?.scrapeSchema);
+            if (format === 'captured-list') return JSON.stringify(JSON.parse(serializeCapturedLists(output?.scrapeList)), null, 2);
+            const value = output?.[format]?.[0]?.content;
+            return typeof value === 'string' ? value : '';
+        };
+
+        const diffs = formats.map((format) => ({
+            format,
+            changes: diffLines(
+                content(previousRun.serializableOutput || {}, format),
+                content(run.serializableOutput || {}, format),
+            ).map(({ value, added, removed }) => ({ value, added: Boolean(added), removed: Boolean(removed) })),
+        }));
+
+        return res.status(200).json({
+            data: {
+                runId: run.runId,
+                previousRunId: previousRun.runId,
+                hasChanges: Boolean(run.hasChanges),
+                changedFormats,
+                diffs,
+            }
+        });
+    } catch (error: any) {
+        logger.error("[SDK] Error getting run monitoring diff:", error);
+        return res.status(500).json({ error: "Failed to get run monitoring diff", message: error.message });
     }
 });
 

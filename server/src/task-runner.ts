@@ -335,7 +335,9 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           }
 
           const finishedAt = new Date().toLocaleString();
-          await run.update({ status: 'success', finishedAt, log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput, hasChanges: false });
+          // Persist the captured output first, but do not expose a successful
+          // terminal state until monitoring and binary uploads are complete.
+          await run.update({ finishedAt, log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, hasChanges: false });
 
           let hasChanges = false;
           const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
@@ -360,8 +362,14 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           let uploadedBinaryOutput: Record<string, string> = {};
           if (Object.keys(binaryOutput).length > 0) {
             uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
-            await run.update({ binaryOutput: uploadedBinaryOutput });
           }
+
+          await run.update({
+            status: 'success',
+            hasChanges,
+            serializableOutput: { ...serializableOutput },
+            binaryOutput: uploadedBinaryOutput,
+          });
 
           try {
             const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt, hasChanges };

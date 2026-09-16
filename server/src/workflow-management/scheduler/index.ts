@@ -474,11 +474,8 @@ async function executeRun(id: string, userId: string) {
         }
         
         await run.update({
-          status: 'success',
           finishedAt: new Date().toLocaleString(),
           log: `${formats.join(', ')} conversion completed successfully`,
-          serializableOutput,
-          binaryOutput,
           hasChanges: false,
         });
 
@@ -505,8 +502,14 @@ async function executeRun(id: string, userId: string) {
         let uploadedBinaryOutput: Record<string, string> = {};
         if (Object.keys(binaryOutput).length > 0) {
           uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
-          await run.update({ binaryOutput: uploadedBinaryOutput });
         }
+
+        await run.update({
+          status: 'success',
+          hasChanges,
+          serializableOutput: { ...serializableOutput },
+          binaryOutput: uploadedBinaryOutput,
+        });
 
         logger.log('info', `Markdown robot execution completed for scheduled run ${id}`);
 
