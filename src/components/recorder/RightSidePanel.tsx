@@ -305,15 +305,21 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         }
       }
     },
-    [isDOMMode, updateListStepData, socket, notify, currentWorkflowActionsState]
+    [isDOMMode, updateListStepData, notify]
   );
+
+  const currentListStep = React.useMemo(() =>
+    browserSteps.find(
+      step => step.type === 'list' && step.actionId === currentListActionId
+    ) as (BrowserStep & { type: 'list'; listSelector?: string; fields?: Record<string, any> }) | undefined
+  , [browserSteps, currentListActionId]);
+
+  const fieldsString = React.useMemo(() =>
+    JSON.stringify(currentListStep?.fields || {})
+  , [currentListStep?.fields]);
 
   useEffect(() => {
     if (!getList) return;
-
-    const currentListStep = browserSteps.find(
-      step => step.type === 'list' && step.actionId === currentListActionId
-    ) as (BrowserStep & { type: 'list'; listSelector?: string; fields?: Record<string, any> }) | undefined;
 
     if (!currentListStep || !currentListStep.listSelector || !currentListStep.fields) return;
 
@@ -326,12 +332,14 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
         currentListStep.id
       );
 
-      setCurrentWorkflowActionsState({
-        ...currentWorkflowActionsState,
-        hasScrapeListAction: true
-      });
+      if (!currentWorkflowActionsState.hasScrapeListAction) {
+        setCurrentWorkflowActionsState({
+          ...currentWorkflowActionsState,
+          hasScrapeListAction: true
+        });
+      }
     }
-  }, [browserSteps, currentListActionId, getList, extractDataClientSide, setCurrentWorkflowActionsState, currentWorkflowActionsState]);
+  }, [fieldsString, currentListStep?.listSelector, getList, extractDataClientSide]);
 
   const handleStartGetText = () => {
     const newActionId = `text-${generateUUID()}`;

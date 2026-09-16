@@ -164,6 +164,18 @@ class ClientSelectorGenerator {
     };
   }
 
+  private wrapXPathValue(value: string): string {
+    if (!value.includes("'")) {
+      return `'${value}'`;
+    }
+    if (!value.includes('"')) {
+      return `"${value}"`;
+    }
+
+    const parts = value.split("'");
+    return "concat(" + parts.map((part) => `'${part}'`).join(", \"'\", ") + ")";
+  }
+
   /**
    * Normalize class names by removing dynamic/unique parts
    */
@@ -433,23 +445,52 @@ class ClientSelectorGenerator {
         return rect.width > 0 && rect.height > 0;
       }) as HTMLElement[];
   
-      // If the table has enough rows, force them into a single group.
-      if (rows.length >= this.groupingConfig.minGroupSize) {
-        const representativeFingerprint = this.getStructuralFingerprint(rows[0]);
-        if (!representativeFingerprint) return;
+      const rowBuckets = new Map<string, {
+        rows: HTMLElement[];
+        fingerprint: ElementFingerprint;
+      }>();
+
+      rows.forEach((row) => {
+        const fingerprint = this.getStructuralFingerprint(row);
+        if (!fingerprint) return;
+
+        const cellStructure = Array.from(row.children)
+          .map((cell) =>
+            `${cell.tagName.toLowerCase()}:${cell.getAttribute("colspan") || "1"}`
+          )
+          .join("|");
+        const structuralKey = [
+          fingerprint.tagName,
+          fingerprint.childrenCount,
+          cellStructure,
+        ].join("::");
+        const bucket = rowBuckets.get(structuralKey);
+
+        if (bucket) {
+          bucket.rows.push(row);
+        } else {
+          rowBuckets.set(structuralKey, {
+            rows: [row],
+            fingerprint,
+          });
+        }
+      });
+
+      rowBuckets.forEach(({ rows: groupedRows, fingerprint }) => {
+        if (groupedRows.length < this.groupingConfig.minGroupSize) return;
 
         const group: ElementGroup = {
-          elements: rows,
-          fingerprint: representativeFingerprint,
-          representative: rows[0],
+          elements: groupedRows,
+          fingerprint,
+          representative: groupedRows[0],
         };
-  
-        rows.forEach(row => {
+
+        groupedRows.forEach(row => {
           this.elementGroups.set(row, group);
           this.groupedElements.add(row);
           processedInTables.add(row);
         });
-      }
+      });
     });
   
     // 2. Group all other elements, excluding table rows that were already grouped.
@@ -3904,7 +3945,7 @@ class ClientSelectorGenerator {
       throw new Error("Inconsistent tag names in group.");
     }
 
-    let xpath = `//${tagName}`;
+    let xpath = this.getTableRowGroupXPathBase(elements) || `//${tagName}`;
     const predicates: string[] = [];
 
     // 2. Get common classes
@@ -3915,7 +3956,9 @@ class ClientSelectorGenerator {
     );
     if (commonClasses.length > 0) {
       predicates.push(
-        ...commonClasses.map((cls) => `contains(@class, '${cls}')`)
+        ...commonClasses.map((cls) =>
+          `contains(@class, ${this.wrapXPathValue(cls)})`
+        )
       );
     }
 
@@ -3941,6 +3984,67 @@ class ClientSelectorGenerator {
     }
 
     return xpath;
+  }
+
+  /**
+   * Scope table-row groups to the table section they came from. A generic
+   * //tr selector can otherwise match a structurally similar thead row even
+   * though only tbody rows were highlighted and selected.
+   */
+  private getTableRowGroupXPathBase(elements: HTMLElement[]): string | null {
+    const firstElement = elements[0];
+    if (!firstElement || firstElement.tagName !== "TR") return null;
+
+    const section = firstElement.parentElement;
+    if (
+      !section ||
+      !["TBODY", "THEAD", "TFOOT"].includes(section.tagName) ||
+      !elements.every((element) => element.parentElement === section)
+    ) {
+      return null;
+    }
+
+    const table = section.closest("table") as HTMLTableElement | null;
+    const sectionTag = section.tagName.toLowerCase();
+    let sectionStep = sectionTag;
+
+    if (table) {
+      const matchingSections = Array.from(table.children).filter(
+        (child) => child.tagName === section.tagName
+      );
+      if (matchingSections.length > 1) {
+        sectionStep = `${sectionTag}[${matchingSections.indexOf(section) + 1}]`;
+      }
+    }
+
+    if (!table || !elements.every((element) => element.closest("table") === table)) {
+      return `//${sectionStep}/tr`;
+    }
+
+    const id = table.getAttribute("id");
+    if (id && !/^\d/.test(id)) {
+      return `//table[@id=${this.wrapXPathValue(id)}]/${sectionStep}/tr`;
+    }
+
+    const tableClasses = this.normalizeClasses(table.classList)
+      .split(" ")
+      .filter(Boolean);
+    if (tableClasses.length > 0) {
+      const classPredicate = tableClasses
+        .slice(0, 3)
+        .map((className) =>
+          `contains(@class, ${this.wrapXPathValue(className)})`
+        )
+        .join(" and ");
+      return `//table[${classPredicate}]/${sectionStep}/tr`;
+    }
+
+    const tableIndex =
+      Array.from(table.ownerDocument.querySelectorAll("table")).indexOf(table) + 1;
+
+    return tableIndex > 0
+      ? `(//table)[${tableIndex}]/${sectionStep}/tr`
+      : `//${sectionStep}/tr`;
   }
 
   // Returns intersection of strings

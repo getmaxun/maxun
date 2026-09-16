@@ -220,7 +220,7 @@ export const BrowserWindow = () => {
           "#dom-browser-iframe"
         ) as HTMLIFrameElement;
 
-        if (!iframeElement?.contentDocument) return {};
+        if (!iframeElement?.contentDocument) return { fields: {}, signatures: {} };
 
         const candidateFields: Array<{
           id: number;
@@ -279,6 +279,47 @@ export const BrowserWindow = () => {
           } catch (error) {
             return false;
           }
+        };
+
+        const normalizeFieldValue = (value: string | null | undefined): string =>
+          (value || "").trim().replace(/\s+/g, " ").toLowerCase();
+
+        const getFieldElementValue = (
+          element: HTMLElement,
+          attribute?: string
+        ): string => {
+          if (attribute === "href") return element.getAttribute("href") || "";
+          if (attribute === "src") return element.getAttribute("src") || "";
+          return (element.textContent || "").trim();
+        };
+
+        const getColumnSignature = (
+          field: TextStep,
+          listElements: Element[]
+        ): string => {
+          const selector = field.selectorObj?.selector;
+          const attribute = field.selectorObj?.attribute || "innerText";
+          const tag = field.selectorObj?.tag || "";
+
+          if (!selector) {
+            return `${tag}|${attribute}|${normalizeFieldValue(field.data)}`;
+          }
+
+          const matches = evaluateXPathAllWithShadowSupport(
+            iframeElement.contentDocument!,
+            selector,
+            selector.includes(">>") || selector.startsWith("//")
+          );
+          const values = listElements.slice(0, 10).map((listElement) => {
+            const element = matches.find((match) =>
+              listElement.contains(match as Node)
+            ) as HTMLElement | undefined;
+            return normalizeFieldValue(
+              element ? getFieldElementValue(element, attribute) : ""
+            );
+          });
+
+          return `${tag}|${attribute}|${values.join("|")}`;
         };
 
         const createFieldData = (element: HTMLElement, selector: string, forceAttribute?: string) => {
@@ -396,13 +437,21 @@ export const BrowserWindow = () => {
               }
             }
 
-            const firstListElement = listElements[0];
-
-            const elements = evaluateXPathAllWithShadowSupport(
+            const selectorMatches = evaluateXPathAllWithShadowSupport(
               iframeElement.contentDocument!,
               selector,
               selector.includes(">>") || selector.startsWith("//")
-            ).filter(el => firstListElement.contains(el as Node));
+            );
+
+            const representativeListElement = listElements.find((listElement) =>
+              selectorMatches.some((match) => listElement.contains(match as Node))
+            );
+
+            if (!representativeListElement) return;
+
+            const elements = selectorMatches.filter(el =>
+              representativeListElement.contains(el as Node)
+            );
 
             if (elements.length === 0) return;
 
@@ -554,16 +603,14 @@ export const BrowserWindow = () => {
           }
         });
 
-        // Sort candidates by visual position (top-to-bottom, then left-to-right)
         candidateFields.sort((a, b) => {
           const yDiff = a.position.y - b.position.y;
 
-          // If elements are roughly on the same horizontal line (within 5px tolerance)
           if (Math.abs(yDiff) <= 5) {
-            return a.position.x - b.position.x; // Sort by x-position (left to right)
+            return a.position.x - b.position.x;
           }
 
-          return yDiff; // Sort by y-position (top to bottom)
+          return yDiff;
         });
 
         const filteredCandidates = removeParentChildDuplicates(candidateFields);
@@ -608,9 +655,15 @@ export const BrowserWindow = () => {
           return !(hasMultipleChildTexts && highCoverage);
         });
 
-        const finalFields = removeDuplicateContent(cleanedCandidates);
+        const listElementsForSignature = evaluateXPathAllWithShadowSupport(
+          iframeElement.contentDocument!,
+          listSelector,
+          listSelector.includes(">>") || listSelector.startsWith("//")
+        );
 
-        return finalFields;
+        return removeDuplicateContent(cleanedCandidates, (field) =>
+          getColumnSignature(field, listElementsForSignature)
+        );
       },
       []
     );
@@ -684,17 +737,25 @@ export const BrowserWindow = () => {
         isLeaf: boolean;
         depth: number;
         position: { x: number; y: number };
-      }>
-    ): Record<string, TextStep> => {
+      }>,
+      getColumnSignature?: (field: TextStep) => string
+    ): { fields: Record<string, TextStep>; signatures: Record<string, string> } => {
       const finalFields: Record<string, TextStep> = {};
+      const signatures: Record<string, string> = {};
       const seenContent = new Set<string>();
+      const seenColumns = new Set<string>();
       let labelCounter = 1;
 
       for (const candidate of candidates) {
-        const content = candidate.field.data.trim().toLowerCase();
+        const content = candidate.field.data.trim().replace(/\s+/g, " ").toLowerCase();
+        const columnSignature = getColumnSignature?.(candidate.field);
 
-        if (!seenContent.has(content)) {
+        if (!seenContent.has(content) && (!columnSignature || !seenColumns.has(columnSignature))) {
           seenContent.add(content);
+          if (columnSignature) {
+            seenColumns.add(columnSignature);
+            signatures[candidate.id] = columnSignature;
+          }
           finalFields[candidate.id] = {
             ...candidate.field,
             label: `Label ${labelCounter++}`,
@@ -702,7 +763,7 @@ export const BrowserWindow = () => {
         }
       }
 
-      return finalFields;
+      return { fields: finalFields, signatures };
     };
 
     useEffect(() => {
@@ -737,7 +798,7 @@ export const BrowserWindow = () => {
 
                 setCachedChildSelectors(childSelectors);
 
-                const autoFields = createFieldsFromChildSelectors(
+                const { fields: autoFields } = createFieldsFromChildSelectors(
                   childSelectors,
                   listSelector
                 );
