@@ -1220,7 +1220,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               filters: { ...prev.filters, timeRange: e.target.value as '' | 'day' | 'week' | 'month' | 'year' || undefined }
             }))}
           >
-            <MenuItem value="">No Filter</MenuItem>
+            <MenuItem value="">All Time</MenuItem>
             <MenuItem value="day">Past 24 Hours</MenuItem>
             <MenuItem value="week">Past Week</MenuItem>
             <MenuItem value="month">Past Month</MenuItem>
