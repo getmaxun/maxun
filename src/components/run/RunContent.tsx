@@ -1,3 +1,4 @@
+import * as React from "react";
 import {
   Box,
   Typography,
@@ -10,34 +11,24 @@ import {
   Link,
   Tooltip,
   IconButton,
-  Tabs,
-  Tab
+  Menu,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
-import * as React from "react";
 import { Data } from "./RunsTable";
 import { TabPanel, TabContext } from "@mui/lab";
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ImageIcon from '@mui/icons-material/Image';
-import CodeIcon from '@mui/icons-material/Code';
-import DescriptionIcon from '@mui/icons-material/Description';
-import SubjectIcon from '@mui/icons-material/Subject';
+import {
+  ExpandMore, Image, Code, Description, Subject, InfoOutlined, TextFields, ViewList, TravelExplore, Search,
+  Psychology, Storage, ContentCopy, Check, ChevronLeft, ChevronRight, Download
+} from '@mui/icons-material';
 import LinkIcon from '@mui/icons-material/Link';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
-import ViewListIcon from '@mui/icons-material/ViewList';
-import TravelExploreIcon from '@mui/icons-material/TravelExplore';
-import SearchIcon from '@mui/icons-material/Search';
-import PsychologyIcon from '@mui/icons-material/Psychology';
-import StorageIcon from '@mui/icons-material/Storage';
-import { ContentCopy, Check, ChevronLeft, ChevronRight } from "@mui/icons-material";
 import { useEffect, useState, useRef, useCallback } from "react";
 import JSZip from "jszip";
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../../context/theme-provider";
 
@@ -61,6 +52,88 @@ interface RunContentProps {
   } | null,
 }
 
+// ---------------------------------------------------------------------------
+// Reusable download control: renders a single icon button if there's one
+// download action, or an icon button + dropdown menu if there are several
+// (e.g. "Download JSON" + "Download as CSV"). Always stops propagation so
+// clicking it doesn't also toggle the parent Accordion open/closed.
+// ---------------------------------------------------------------------------
+const DownloadMenuButton: React.FC<{ actions: { label: string; onClick: () => void }[] }> = ({ actions }) => {
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  if (!actions || actions.length === 0) return null;
+
+  if (actions.length === 1) {
+    return (
+      <Tooltip title="Download" placement="left">
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            actions[0].onClick();
+          }}
+          aria-label={actions[0].label}
+        >
+          <Download fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <>
+      <Tooltip title="Download" placement="left">
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setAnchorEl(e.currentTarget);
+          }}
+          aria-label="Download options"
+        >
+          <Download fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Menu
+        anchorEl={anchorEl}
+        open={!!anchorEl}
+        onClose={() => setAnchorEl(null)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {actions.map((action, idx) => (
+          <MenuItem
+            key={idx}
+            onClick={() => {
+              action.onClick();
+              setAnchorEl(null);
+            }}
+          >
+            {action.label}
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Reusable AccordionSummary content: icon + title on the left, optional
+// download action(s) on the right, right before the expand chevron.
+// ---------------------------------------------------------------------------
+const AccordionHeader: React.FC<{
+  icon: React.ReactNode;
+  title: React.ReactNode;
+  actions?: { label: string; onClick: () => void }[];
+}> = ({ icon, title, actions }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 1 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      {icon}
+      <Typography variant='subtitle1'>{title}</Typography>
+    </Box>
+    {actions && actions.length > 0 && <DownloadMenuButton actions={actions} />}
+  </Box>
+);
+
 const ScreenshotTabs: React.FC<ScreenshotTabsProps> = ({ screenshotVisible, screenshotFullpage, binaryOutput, darkMode }) => {
   const [activeTab, setActiveTab] = React.useState(0);
 
@@ -83,24 +156,41 @@ const ScreenshotTabs: React.FC<ScreenshotTabsProps> = ({ screenshotVisible, scre
     return val.length > 50 ? `data:image/png;base64,${val}` : '';
   };
 
+  const handleDownload = () => {
+    const src = getImageSrc(tabs[activeTab].value);
+    const link = document.createElement('a');
+    link.href = src;
+    link.download = `${tabs[activeTab].label}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <>
-      <Box sx={{ display: 'flex', borderBottom: '1px solid', borderColor: darkMode ? '#2a3441' : '#dee2e6', mb: 2 }}>
-        {tabs.map((tab, idx) => (
-          <Box
-            key={tab.key}
-            onClick={() => tabs.length > 1 && setActiveTab(idx)}
-            sx={{
-              px: 3, py: 1,
-              cursor: tabs.length > 1 ? 'pointer' : 'default',
-              backgroundColor: activeTab === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
-              borderBottom: activeTab === idx ? '3px solid #FF00C3' : 'none',
-              color: darkMode ? '#fff' : '#000',
-            }}
-          >
-            {tab.label}
-          </Box>
-        ))}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Box sx={{ display: 'flex', borderBottom: '1px solid', borderColor: darkMode ? '#2a3441' : '#dee2e6', flexGrow: 1 }}>
+          {tabs.map((tab, idx) => (
+            <Box
+              key={tab.key}
+              onClick={() => tabs.length > 1 && setActiveTab(idx)}
+              sx={{
+                px: 3, py: 1,
+                cursor: tabs.length > 1 ? 'pointer' : 'default',
+                backgroundColor: activeTab === idx ? (darkMode ? '#121111ff' : '#e9ecef') : 'transparent',
+                borderBottom: activeTab === idx ? '3px solid #FF00C3' : 'none',
+                color: darkMode ? '#fff' : '#000',
+              }}
+            >
+              {tab.label}
+            </Box>
+          ))}
+        </Box>
+        <Tooltip title="Download" placement="left">
+          <IconButton size="small" onClick={handleDownload} sx={{ ml: 1 }} aria-label="Download screenshot">
+            <Download fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
       <Box>
         <img
@@ -108,22 +198,6 @@ const ScreenshotTabs: React.FC<ScreenshotTabsProps> = ({ screenshotVisible, scre
           alt={tabs[activeTab].label}
           style={{ maxWidth: '100%', borderRadius: '4px', border: '1px solid rgba(0,0,0,0.1)' }}
         />
-      </Box>
-      <Box sx={{ mt: 1 }}>
-        <Button
-          onClick={() => {
-            const src = getImageSrc(tabs[activeTab].value);
-            const link = document.createElement('a');
-            link.href = src;
-            link.download = `${tabs[activeTab].label}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }}
-          sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-        >
-          Download Screenshot
-        </Button>
       </Box>
     </>
   );
@@ -1072,6 +1146,10 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     }
   };
 
+  // ---------------------------------------------------------------------
+  // "Captured Screenshots" accordion (used as the standalone/global one).
+  // Download action now lives in the header instead of the bottom of the body.
+  // ---------------------------------------------------------------------
   const renderCapturedScreenshotsAccordion = (
     title: string,
     tabs: { key: string; label: string; value: string }[],
@@ -1085,55 +1163,55 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
     const activeTab = tabs[activeIdx >= 0 ? activeIdx : 0];
     const activeSrc = resolveScreenshotSrc(activeTab?.value);
 
-    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-      setIndex(newValue);
-    };
-
     return (
       <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <ImageIcon sx={{ mr: 1 }} />
-            <Typography variant='subtitle1'>{title}</Typography>
-          </Box>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <AccordionHeader
+            icon={<Image sx={{ mr: 1 }} />}
+            title={title}
+            actions={activeTab ? [{ label: 'Download Screenshot', onClick: () => downloadScreenshot(activeTab.label, activeTab.value) }] : []}
+          />
         </AccordionSummary>
         <AccordionDetails>
           {tabs.length > 1 && (
-            <Tabs
-              value={activeIdx}
-              onChange={handleTabChange}
-              variant="scrollable"
-              scrollButtons="auto"
+            <Box
               sx={{
+                display: 'flex',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
                 mb: 2,
-                '& .MuiTabs-indicator': {
-                  backgroundColor: '#FF00C3',
-                  height: '3px',
-                },
-                '& .MuiTab-root': {
-                  textTransform: 'none',
-                  minWidth: 'auto',
-                  px: 3,
-                  color: darkMode ? '#fff' : '#000',
-                  '&.Mui-selected': {
-                    backgroundColor: darkMode ? '#121111ff' : '#e9ecef',
-                  },
-                  '&:hover': {
-                    backgroundColor: darkMode ? 'rgba(255, 0, 195, 0.1)' : 'rgba(255, 0, 195, 0.05)',
-                  },
-                },
+                overflowX: 'auto',
               }}
+              role="tablist"
               aria-label={`${title} tabs`}
             >
-              {tabs.map((tab) => (
-                <Tab
+              {tabs.map((tab, idx) => (
+                <Box
                   key={tab.key}
-                  label={tab.label}
+                  role="tab"
                   id={`screenshot-tab-${idPrefix}-${tab.key}`}
                   aria-controls={`screenshot-tabpanel-${idPrefix}-${tab.key}`}
-                />
+                  aria-selected={activeIdx === idx}
+                  onClick={() => setIndex(idx)}
+                  sx={{
+                    px: 3,
+                    py: 1,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    backgroundColor:
+                      activeIdx === idx
+                        ? darkMode
+                          ? '#121111ff'
+                          : '#e9ecef'
+                        : 'transparent',
+                    borderBottom: activeIdx === idx ? '3px solid #FF00C3' : 'none',
+                    color: darkMode ? '#fff' : '#000',
+                  }}
+                >
+                  {tab.label}
+                </Box>
               ))}
-            </Tabs>
+            </Box>
           )}
           <Box
             role="tabpanel"
@@ -1154,19 +1232,18 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               />
             )}
           </Box>
-          <Box sx={{ mt: 2 }}>
-            <Button
-              onClick={() => activeTab && downloadScreenshot(activeTab.label, activeTab.value)}
-              sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-            >
-              Download Screenshot
-            </Button>
-          </Box>
         </AccordionDetails>
       </Accordion>
     );
   };
 
+  // ---------------------------------------------------------------------
+  // Data table renderer. Download actions (JSON/CSV) now live in the
+  // accordion header (title case) via a menu, instead of below the table.
+  // For the title === '' case (used inline inside a parent-owned accordion,
+  // e.g. Captured Texts/Lists tabs), we no longer render download buttons
+  // here at all — the caller supplies them in its own accordion header.
+  // ---------------------------------------------------------------------
   const renderDataTable = (
     data: any[],
     columns: string[],
@@ -1181,151 +1258,111 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
     if (!title || title.trim() === '') {
       return (
-        <>
-          <Box sx={{ width: 0, minWidth: '100%' }}>
-            <TableContainer component={Paper} sx={{ maxHeight: 320, overflowX: 'auto' }}>
-              <Table
-                stickyHeader
-                aria-label="sticky table"
-                sx={{
-                  tableLayout: 'fixed',
-                  width: 'max-content',
-                  minWidth: `${Math.max(
-                    (shouldShowAsKeyValue ? 2 : columns.length) * 160,
-                    100
-                  )}px`,
-                }}
-              >
-                <TableHead>
-                  <TableRow>
-                    {shouldShowAsKeyValue ? (
-                      <>
-                        <TableCell sx={{ backgroundColor: darkMode ? '#11111' : '#f8f9fa', width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Label
-                        </TableCell>
-                        <TableCell sx={{ backgroundColor: darkMode ? '#11111' : '#f8f9fa', width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Value
-                        </TableCell>
-                      </>
-                    ) : (
-                      columns.map((column) => (
-                        <TableCell
-                          key={column}
-                          sx={{
-                            backgroundColor: darkMode ? '#11111' : '#f8f9fa',
-                            width: 160,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                          title={column}
-                        >
-                          {column}
-                        </TableCell>
-                      ))
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+        <Box sx={{ width: 0, minWidth: '100%' }}>
+          <TableContainer component={Paper} sx={{ maxHeight: 320, overflowX: 'auto' }}>
+            <Table
+              stickyHeader
+              aria-label="sticky table"
+              sx={{
+                tableLayout: 'fixed',
+                width: 'max-content',
+                minWidth: `${Math.max(
+                  (shouldShowAsKeyValue ? 2 : columns.length) * 160,
+                  100
+                )}px`,
+              }}
+            >
+              <TableHead>
+                <TableRow>
                   {shouldShowAsKeyValue ? (
-                    columns.map((column) => {
-                      const val =
-                        data[0][column] === undefined || data[0][column] === ''
-                          ? '-'
-                          : typeof data[0][column] === 'object'
-                            ? JSON.stringify(data[0][column])
-                            : String(data[0][column]);
-                      return (
-                        <TableRow key={column}>
-                          <TableCell sx={{ fontWeight: 500, width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={column}>
-                            {column}
-                          </TableCell>
-                          <TableCell sx={{ width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
-                            {val}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
+                    <>
+                      <TableCell sx={{ backgroundColor: darkMode ? '#11111' : '#f8f9fa', width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Label
+                      </TableCell>
+                      <TableCell sx={{ backgroundColor: darkMode ? '#11111' : '#f8f9fa', width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Value
+                      </TableCell>
+                    </>
                   ) : (
-                    data.map((row, index) => (
-                      <TableRow key={index}>
-                        {columns.map((column) => {
-                          const val =
-                            row[column] === undefined || row[column] === ''
-                              ? '-'
-                              : typeof row[column] === 'object'
-                                ? JSON.stringify(row[column])
-                                : String(row[column]);
-                          return (
-                            <TableCell key={column} sx={{ width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
-                              {val}
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
+                    columns.map((column) => (
+                      <TableCell
+                        key={column}
+                        sx={{
+                          backgroundColor: darkMode ? '#11111' : '#f8f9fa',
+                          width: 160,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                        title={column}
+                      >
+                        {column}
+                      </TableCell>
                     ))
                   )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Box>
-              <Button
-                component="a"
-                onClick={() => downloadJSON(data, jsonFilename)}
-                sx={{
-                  color: '#FF00C3',
-                  textTransform: 'none',
-                  mr: 2,
-                  p: 0,
-                  minWidth: 'auto',
-                  backgroundColor: 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'transparent',
-                    textDecoration: 'underline'
-                  }
-                }}
-              >
-                {t('run_content.captured_data.download_json', 'Download JSON')}
-              </Button>
-
-              <Button
-                component="a"
-                onClick={() => downloadCSV(data, columns, csvFilename, isSchemaData, isSchemaTabular)}
-                sx={{
-                  color: '#FF00C3',
-                  textTransform: 'none',
-                  p: 0,
-                  minWidth: 'auto',
-                  backgroundColor: 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'transparent',
-                    textDecoration: 'underline'
-                  }
-                }}
-              >
-                {t('run_content.captured_data.download_csv', 'Download as CSV')}
-              </Button>
-            </Box>
-          </Box>
-        </>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {shouldShowAsKeyValue ? (
+                  columns.map((column) => {
+                    const val =
+                      data[0][column] === undefined || data[0][column] === ''
+                        ? '-'
+                        : typeof data[0][column] === 'object'
+                          ? JSON.stringify(data[0][column])
+                          : String(data[0][column]);
+                    return (
+                      <TableRow key={column}>
+                        <TableCell sx={{ fontWeight: 500, width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={column}>
+                          {column}
+                        </TableCell>
+                        <TableCell sx={{ width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
+                          {val}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  data.map((row, index) => (
+                    <TableRow key={index}>
+                      {columns.map((column) => {
+                        const val =
+                          row[column] === undefined || row[column] === ''
+                            ? '-'
+                            : typeof row[column] === 'object'
+                              ? JSON.stringify(row[column])
+                              : String(row[column]);
+                        return (
+                          <TableCell key={column} sx={{ width: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
+                            {val}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       );
     }
 
     return (
       <Accordion defaultExpanded sx={{ width: '100%', m: 0, mb: 2, boxSizing: 'border-box' }}>
         <AccordionSummary
-          expandIcon={<ExpandMoreIcon />}
+          expandIcon={<ExpandMore />}
           aria-controls={`${title.toLowerCase()}-content`}
           id={`${title.toLowerCase()}-header`}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <StorageIcon sx={{ mr: 1 }} />
-            <Typography variant='subtitle1'>
-              {title}
-            </Typography>
-          </Box>
+          <AccordionHeader
+            icon={<Storage sx={{ mr: 1 }} />}
+            title={title}
+            actions={[
+              { label: t('run_content.captured_data.download_json', 'Download JSON'), onClick: () => downloadJSON(data, jsonFilename) },
+              { label: t('run_content.captured_data.download_csv', 'Download as CSV'), onClick: () => downloadCSV(data, columns, csvFilename, isSchemaData, isSchemaTabular) },
+            ]}
+          />
         </AccordionSummary>
         <AccordionDetails>
           <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
@@ -1399,45 +1436,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
               </TableBody>
             </Table>
           </TableContainer>
-
-          <Box sx={{ mt: 2 }}>
-            <Button
-              component="a"
-              onClick={() => downloadJSON(data, jsonFilename)}
-              sx={{
-                color: '#FF00C3',
-                textTransform: 'none',
-                mr: 2,
-                p: 0,
-                minWidth: 'auto',
-                backgroundColor: 'transparent',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  textDecoration: 'underline'
-                }
-              }}
-            >
-              {t('run_content.captured_data.download_json', 'Download JSON')}
-            </Button>
-
-            <Button
-              component="a"
-              onClick={() => downloadCSV(data, columns, csvFilename, isSchemaData, isSchemaTabular)}
-              sx={{
-                color: '#FF00C3',
-                textTransform: 'none',
-                p: 0,
-                minWidth: 'auto',
-                backgroundColor: 'transparent',
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  textDecoration: 'underline'
-                }
-              }}
-            >
-              {t('run_content.captured_data.download_csv', 'Download as CSV')}
-            </Button>
-          </Box>
         </AccordionDetails>
       </Accordion>
     );
@@ -1513,11 +1511,15 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {hasTextFormat && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <SubjectIcon sx={{ mr: 1 }} />
-                      <Typography variant='subtitle1'>Text Content</Typography>
-                    </Box>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <AccordionHeader
+                      icon={<Subject sx={{ mr: 1 }} />}
+                      title="Text Content"
+                      actions={[{
+                        label: 'Download Text',
+                        onClick: () => downloadText(textContent, `${row.name || 'content'}.txt`),
+                      }]}
+                    />
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box sx={{ position: 'relative' }}>
@@ -1528,35 +1530,21 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       </Paper>
                       <CopyButton content={textContent} darkMode={darkMode} />
                     </Box>
-                    <Box sx={{ mt: 2 }}>
-                      <Button
-                        onClick={() => {
-                          const blob = new Blob([textContent], { type: 'text/plain' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${row.name || 'content'}.txt`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                        }}
-                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                      >
-                        Download Text
-                      </Button>
-                    </Box>
                   </AccordionDetails>
                 </Accordion>
               )}
 
               {hasHTML && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <CodeIcon sx={{ mr: 1 }} />
-                      <Typography variant='subtitle1'>HTML</Typography>
-                    </Box>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <AccordionHeader
+                      icon={<Code sx={{ mr: 1 }} />}
+                      title="HTML"
+                      actions={[{
+                        label: 'Download HTML',
+                        onClick: () => downloadHTML(htmlContent, `${row.name || 'content'}.html`),
+                      }]}
+                    />
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box sx={{ position: 'relative' }}>
@@ -1567,35 +1555,21 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       </Paper>
                       <CopyButton content={htmlContent} darkMode={darkMode} />
                     </Box>
-                    <Box sx={{ mt: 2 }}>
-                      <Button
-                        onClick={() => {
-                          const blob = new Blob([htmlContent], { type: 'text/html' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${row.name || 'content'}.html`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                        }}
-                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                      >
-                        Download HTML
-                      </Button>
-                    </Box>
                   </AccordionDetails>
                 </Accordion>
               )}
 
               {hasMarkdown && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <DescriptionIcon sx={{ mr: 1 }} />
-                      <Typography variant='subtitle1'>Markdown</Typography>
-                    </Box>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <AccordionHeader
+                      icon={<Description sx={{ mr: 1 }} />}
+                      title="Markdown"
+                      actions={[{
+                        label: 'Download Markdown',
+                        onClick: () => downloadMarkdown(markdownContent, `${row.name || 'content'}.md`),
+                      }]}
+                    />
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box sx={{ position: 'relative' }}>
@@ -1606,25 +1580,21 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       </Paper>
                       <CopyButton content={markdownContent} darkMode={darkMode} />
                     </Box>
-                    <Box sx={{ mt: 2 }}>
-                      <Button
-                        onClick={() => downloadMarkdown(markdownContent, `${row.name || 'content'}.md`)}
-                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                      >
-                        Download Markdown
-                      </Button>
-                    </Box>
                   </AccordionDetails>
                 </Accordion>
               )}
 
               {hasLinks && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <LinkIcon sx={{ mr: 1 }} />
-                      <Typography variant='subtitle1'>Links ({linksContent.length})</Typography>
-                    </Box>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <AccordionHeader
+                      icon={<LinkIcon sx={{ mr: 1 }} />}
+                      title={`Links (${linksContent.length})`}
+                      actions={[{
+                        label: 'Download Links',
+                        onClick: () => downloadText(Array.from(new Set(linksContent)).join('\n'), `${row.name || 'links'}.txt`),
+                      }]}
+                    />
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box sx={{ position: 'relative' }}>
@@ -1639,36 +1609,21 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       </Paper>
                       <CopyButton content={Array.from(new Set(linksContent)).join('\n')} darkMode={darkMode} />
                     </Box>
-                    <Box sx={{ mt: 1 }}>
-                      <Button
-                        onClick={() => {
-                          const uniqueLinks = Array.from(new Set(linksContent));
-                          const blob = new Blob([uniqueLinks.join('\n')], { type: 'text/plain' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${row.name || 'links'}.txt`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                        }}
-                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                      >
-                        Download Links
-                      </Button>
-                    </Box>
                   </AccordionDetails>
                 </Accordion>
               )}
 
               {hasSummary && crawlData.length === 0 && searchData.length === 0 && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <PsychologyIcon sx={{ mr: 1 }} />
-                      <Typography variant='subtitle1'>Summary</Typography>
-                    </Box>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <AccordionHeader
+                      icon={<Psychology sx={{ mr: 1 }} />}
+                      title="Summary"
+                      actions={[{
+                        label: 'Download Summary',
+                        onClick: () => downloadMarkdown(summaryContent, `${row.name || 'summary'}.md`),
+                      }]}
+                    />
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box sx={{ position: 'relative' }}>
@@ -1679,25 +1634,24 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                       </Paper>
                       <CopyButton content={summaryContent} darkMode={darkMode} />
                     </Box>
-                    <Box sx={{ mt: 2 }}>
-                      <Button
-                        onClick={() => downloadMarkdown(summaryContent, `${row.name || 'summary'}.md`)}
-                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                      >
-                        Download Summary
-                      </Button>
-                    </Box>
                   </AccordionDetails>
                 </Accordion>
               )}
 
               {hasPromptResult && promptResultData && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <PsychologyIcon sx={{ mr: 1 }} />
-                      <Typography variant='subtitle1'>Smart Queries</Typography>
-                    </Box>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <AccordionHeader
+                      icon={<Psychology sx={{ mr: 1 }} />}
+                      title="Smart Queries"
+                      actions={[{
+                        label: 'Download Result',
+                        onClick: () => {
+                          const text = formatAgentResultText(promptResultData);
+                          downloadText(text, `${row.name || 'agent'}-result.txt`);
+                        },
+                      }]}
+                    />
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box sx={{ position: 'relative' }}>
@@ -1705,25 +1659,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         <AgentResultView content={promptResultData} darkMode={darkMode} />
                       </Paper>
                       <CopyButton content={formatAgentResultText(promptResultData)} darkMode={darkMode} />
-                    </Box>
-                    <Box sx={{ mt: 2 }}>
-                      <Button
-                        onClick={() => {
-                          const text = formatAgentResultText(promptResultData);
-                          const blob = new Blob([text], { type: 'text/plain' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${row.name || 'agent'}-result.txt`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                        }}
-                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                      >
-                        Download Result
-                      </Button>
                     </Box>
                   </AccordionDetails>
                 </Accordion>
@@ -1745,13 +1680,30 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     <>
                       {schemaData.length > 0 && (
                         <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <TextFieldsIcon sx={{ mr: 1 }} />
-                              <Typography variant='subtitle1'>
-                                {t('run_content.captured_data.schema_title', 'Captured Texts')}
-                              </Typography>
-                            </Box>
+                          <AccordionSummary expandIcon={<ExpandMore />}>
+                            <AccordionHeader
+                              icon={<TextFields sx={{ mr: 1 }} />}
+                              title={t('run_content.captured_data.schema_title', 'Captured Texts')}
+                              actions={[
+                                {
+                                  label: t('run_content.captured_data.download_json', 'Download JSON'),
+                                  onClick: () => downloadJSON(
+                                    schemaDataByKey[schemaKeys[currentSchemaIndex]] || schemaData,
+                                    `${schemaKeys[currentSchemaIndex] || 'schema_data'}.json`
+                                  ),
+                                },
+                                {
+                                  label: t('run_content.captured_data.download_csv', 'Download as CSV'),
+                                  onClick: () => downloadCSV(
+                                    schemaDataByKey[schemaKeys[currentSchemaIndex]] || schemaData,
+                                    schemaColumnsByKey[schemaKeys[currentSchemaIndex]] || schemaColumns,
+                                    `${schemaKeys[currentSchemaIndex] || 'schema_data'}.csv`,
+                                    true,
+                                    isSchemaTabular
+                                  ),
+                                },
+                              ]}
+                            />
                           </AccordionSummary>
                           <AccordionDetails>
                             {schemaKeys.length > 0 && (
@@ -1801,13 +1753,30 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                       {listData.length > 0 && (
                         <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <ViewListIcon sx={{ mr: 1 }} />
-                              <Typography variant='subtitle1'>
-                                {t('run_content.captured_data.list_title', 'Captured Lists')}
-                              </Typography>
-                            </Box>
+                          <AccordionSummary expandIcon={<ExpandMore />}>
+                            <AccordionHeader
+                              icon={<ViewList sx={{ mr: 1 }} />}
+                              title={t('run_content.captured_data.list_title', 'Captured Lists')}
+                              actions={[
+                                {
+                                  label: t('run_content.captured_data.download_json', 'Download JSON'),
+                                  onClick: () => downloadJSON(
+                                    listData[currentListIndex],
+                                    `${listKeys[currentListIndex] || 'list_data'}.json`
+                                  ),
+                                },
+                                {
+                                  label: t('run_content.captured_data.download_csv', 'Download as CSV'),
+                                  onClick: () => downloadCSV(
+                                    listData[currentListIndex],
+                                    listColumns[currentListIndex] || [],
+                                    `${listKeys[currentListIndex] || 'list_data'}.csv`,
+                                    false,
+                                    false
+                                  ),
+                                },
+                              ]}
+                            />
                           </AccordionSummary>
                           <AccordionDetails>
                             <Box
@@ -1909,68 +1878,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Table>
                               </TableContainer>
                             </Box>
-
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                mb: 2,
-                                mt: 2
-                              }}
-                            >
-                              <Box>
-                                <Button
-                                  component="a"
-                                  onClick={() =>
-                                    downloadJSON(
-                                      listData[currentListIndex],
-                                      `${listKeys[currentListIndex] || 'list_data'}.json`
-                                    )
-                                  }
-                                  sx={{
-                                    color: '#FF00C3',
-                                    textTransform: 'none',
-                                    mr: 2,
-                                    p: 0,
-                                    minWidth: 'auto',
-                                    backgroundColor: 'transparent',
-                                    '&:hover': {
-                                      backgroundColor: 'transparent',
-                                      textDecoration: 'underline',
-                                    },
-                                  }}
-                                >
-                                  {t('run_content.captured_data.download_json', 'Download JSON')}
-                                </Button>
-
-                                <Button
-                                  component="a"
-                                  onClick={() =>
-                                    downloadCSV(
-                                      listData[currentListIndex],
-                                      listColumns[currentListIndex] || [],
-                                      `${listKeys[currentListIndex] || 'list_data'}.csv`,
-                                      false,
-                                      false
-                                    )
-                                  }
-                                  sx={{
-                                    color: '#FF00C3',
-                                    textTransform: 'none',
-                                    p: 0,
-                                    minWidth: 'auto',
-                                    backgroundColor: 'transparent',
-                                    '&:hover': {
-                                      backgroundColor: 'transparent',
-                                      textDecoration: 'underline',
-                                    },
-                                  }}
-                                >
-                                  {t('run_content.captured_data.download_csv', 'Download as CSV')}
-                                </Button>
-                              </Box>
-                            </Box>
                           </AccordionDetails>
                         </Accordion>
                       )}
@@ -1981,13 +1888,34 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {crawlData.length > 0 && crawlData[0] && crawlData[0].length > 0 && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <TravelExploreIcon sx={{ mr: 1 }} />
-                      <Typography variant='subtitle1'>
-                        Crawl Results
-                      </Typography>
-                    </Box>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <AccordionHeader
+                      icon={<TravelExplore sx={{ mr: 1 }} />}
+                      title="Crawl Results"
+                      actions={[
+                        {
+                          label: 'Download This Page',
+                          onClick: () => {
+                            const item = crawlData[0][currentCrawlIndex];
+                            const pageUrl = item?.metadata?.url || item?.url || '';
+                            const baseFilename = pageUrl
+                              ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
+                              : `page_${currentCrawlIndex + 1}`;
+                            downloadAllCrawlsAsZip([item], `${baseFilename}_bundle.zip`);
+                          },
+                        },
+                        {
+                          label: 'Download All Pages',
+                          onClick: () => {
+                            const firstUrl = crawlData[0][0]?.metadata?.url || crawlData[0][0]?.url || '';
+                            const baseFilename = firstUrl
+                              ? firstUrl.replace(/^https?:\/\//, '').split('/')[0].replace(/[^a-zA-Z0-9_.-]/g, '_')
+                              : 'crawl';
+                            downloadAllCrawlsAsZip(crawlData[0], `${baseFilename}_all_urls.zip`);
+                          },
+                        },
+                      ]}
+                    />
                   </AccordionSummary>
                   <AccordionDetails>
                     <Box sx={{ width: 0, minWidth: '100%', display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
@@ -2050,12 +1978,19 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                     {crawlData[0][currentCrawlIndex] && (
                       <>
                         <Accordion defaultExpanded sx={{ mb: 2 }}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Typography variant='subtitle1'>
-                                <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
-                              </Typography>
-                            </Box>
+                          <AccordionSummary expandIcon={<ExpandMore />}>
+                            <AccordionHeader
+                              icon={<InfoOutlined sx={{ mr: 1 }} />}
+                              title="Metadata"
+                              actions={[{
+                                label: 'Download Metadata',
+                                onClick: () => {
+                                  const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                  const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                  downloadJSON(crawlData[0][currentCrawlIndex].metadata, `${baseFilename}_metadata.json`);
+                                },
+                              }]}
+                            />
                           </AccordionSummary>
                           <AccordionDetails>
                             <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
@@ -2080,29 +2015,25 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </TableBody>
                               </Table>
                             </TableContainer>
-                            <Box sx={{ mt: 1 }}>
-                              <Button
-                                onClick={() => {
-                                  const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
-                                  const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
-                                  downloadJSON(crawlData[0][currentCrawlIndex].metadata, `${baseFilename}_metadata.json`);
-                                }}
-                                sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                              >
-                                Download Metadata
-                              </Button>
-                            </Box>
                           </AccordionDetails>
                         </Accordion>
 
                         {crawlData[0][currentCrawlIndex].text && (
                           <Accordion defaultExpanded sx={{ mb: 2 }}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='subtitle1'>
-                                  <SubjectIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Text Content
-                                </Typography>
-                              </Box>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                              <AccordionHeader
+                                icon={<Subject sx={{ mr: 1 }} />}
+                                title="Text Content"
+                                actions={[{
+                                  label: 'Download Text Content',
+                                  onClick: () => {
+                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                    const content = typeof crawlData[0][currentCrawlIndex].text === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].text, null, 2) : crawlData[0][currentCrawlIndex].text;
+                                    downloadText(content, `${baseFilename}_text.txt`);
+                                  },
+                                }]}
+                              />
                             </AccordionSummary>
                             <AccordionDetails>
                               <Box sx={{ position: 'relative' }}>
@@ -2132,31 +2063,26 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Paper>
                                 <CopyButton content={typeof crawlData[0][currentCrawlIndex].text === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].text, null, 2) : crawlData[0][currentCrawlIndex].text} darkMode={darkMode} />
                               </Box>
-                              <Box sx={{ mt: 1 }}>
-                                <Button
-                                  onClick={() => {
-                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
-                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
-                                    const content = typeof crawlData[0][currentCrawlIndex].text === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].text, null, 2) : crawlData[0][currentCrawlIndex].text;
-                                    downloadText(content, `${baseFilename}_text.txt`);
-                                  }}
-                                  sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                >
-                                  Download Text Content
-                                </Button>
-                              </Box>
                             </AccordionDetails>
                           </Accordion>
                         )}
 
                         {crawlData[0][currentCrawlIndex].html && (
                           <Accordion defaultExpanded sx={{ mb: 2 }}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='subtitle1'>
-                                  <CodeIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> HTML
-                                </Typography>
-                              </Box>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                              <AccordionHeader
+                                icon={<Code sx={{ mr: 1 }} />}
+                                title="HTML"
+                                actions={[{
+                                  label: 'Download HTML',
+                                  onClick: () => {
+                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                    const content = typeof crawlData[0][currentCrawlIndex].html === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].html, null, 2) : crawlData[0][currentCrawlIndex].html;
+                                    downloadHTML(content, `${baseFilename}.html`);
+                                  },
+                                }]}
+                              />
                             </AccordionSummary>
                             <AccordionDetails>
                               <Box sx={{ position: 'relative' }}>
@@ -2186,31 +2112,26 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Paper>
                                 <CopyButton content={typeof crawlData[0][currentCrawlIndex].html === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].html, null, 2) : crawlData[0][currentCrawlIndex].html} darkMode={darkMode} />
                               </Box>
-                              <Box sx={{ mt: 1 }}>
-                                <Button
-                                  onClick={() => {
-                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
-                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
-                                    const content = typeof crawlData[0][currentCrawlIndex].html === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].html, null, 2) : crawlData[0][currentCrawlIndex].html;
-                                    downloadHTML(content, `${baseFilename}.html`);
-                                  }}
-                                  sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                >
-                                  Download HTML
-                                </Button>
-                              </Box>
                             </AccordionDetails>
                           </Accordion>
                         )}
 
                         {crawlData[0][currentCrawlIndex].markdown && (
                           <Accordion sx={{ mb: 2 }}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='subtitle1'>
-                                  <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Markdown
-                                </Typography>
-                              </Box>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                              <AccordionHeader
+                                icon={<Description sx={{ mr: 1 }} />}
+                                title="Markdown"
+                                actions={[{
+                                  label: 'Download Markdown',
+                                  onClick: () => {
+                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                    const content = typeof crawlData[0][currentCrawlIndex].markdown === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].markdown, null, 2) : crawlData[0][currentCrawlIndex].markdown;
+                                    downloadMarkdown(content, `${baseFilename}.md`);
+                                  },
+                                }]}
+                              />
                             </AccordionSummary>
                             <AccordionDetails>
                               <Box sx={{ position: 'relative' }}>
@@ -2240,19 +2161,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Paper>
                                 <CopyButton content={typeof crawlData[0][currentCrawlIndex].markdown === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].markdown, null, 2) : crawlData[0][currentCrawlIndex].markdown} darkMode={darkMode} />
                               </Box>
-                              <Box sx={{ mt: 1 }}>
-                                <Button
-                                  onClick={() => {
-                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
-                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
-                                    const content = typeof crawlData[0][currentCrawlIndex].markdown === 'object' ? JSON.stringify(crawlData[0][currentCrawlIndex].markdown, null, 2) : crawlData[0][currentCrawlIndex].markdown;
-                                    downloadMarkdown(content, `${baseFilename}.md`);
-                                  }}
-                                  sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                >
-                                  Download Markdown
-                                </Button>
-                              </Box>
                             </AccordionDetails>
                           </Accordion>
                         )}
@@ -2264,12 +2172,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                           return validLinks.length > 0 && (
                             <Accordion sx={{ mb: 2 }}>
-                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <Typography variant='subtitle1'>
-                                    <LinkIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Links ({validLinks.length})
-                                  </Typography>
-                                </Box>
+                              <AccordionSummary expandIcon={<ExpandMore />}>
+                                <AccordionHeader
+                                  icon={<LinkIcon sx={{ mr: 1 }} />}
+                                  title={`Links (${validLinks.length})`}
+                                  actions={[{
+                                    label: 'Download Links',
+                                    onClick: () => {
+                                      const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
+                                      const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                      const uniqueLinks = Array.from(new Set(validLinks));
+                                      downloadText(uniqueLinks.join('\n'), `${baseFilename}_links.txt`);
+                                    },
+                                  }]}
+                                />
                               </AccordionSummary>
                               <AccordionDetails>
                                 <Box sx={{ position: 'relative' }}>
@@ -2284,20 +2200,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                   </Paper>
                                   <CopyButton content={(Array.from(new Set(validLinks)) as string[]).join('\n')} darkMode={darkMode} />
                                 </Box>
-                                <Box sx={{ mt: 1 }}>
-                                  <Button
-                                    onClick={() => {
-                                      const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || crawlData[0][currentCrawlIndex]?.url || '';
-                                      const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
-                                      const uniqueLinks = Array.from(new Set(validLinks));
-                                      const content = uniqueLinks.join('\n');
-                                      downloadText(content, `${baseFilename}_links.txt`);
-                                    }}
-                                    sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                  >
-                                    Download Links
-                                  </Button>
-                                </Box>
                               </AccordionDetails>
                             </Accordion>
                           );
@@ -2305,12 +2207,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                         {crawlData[0][currentCrawlIndex].summary && (
                           <Accordion>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='subtitle1'>
-                                  <PsychologyIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Summary
-                                </Typography>
-                              </Box>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                              <AccordionHeader
+                                icon={<Psychology sx={{ mr: 1 }} />}
+                                title="Summary"
+                                actions={[{
+                                  label: 'Download Summary',
+                                  onClick: () => {
+                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || '';
+                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
+                                    const content = typeof crawlData[0][currentCrawlIndex].summary === 'string' ? crawlData[0][currentCrawlIndex].summary : crawlData[0][currentCrawlIndex].summary?.content || '';
+                                    downloadMarkdown(content, `${baseFilename}_summary.md`);
+                                  },
+                                }]}
+                              />
                             </AccordionSummary>
                             <AccordionDetails>
                               <Box sx={{ position: 'relative' }}>
@@ -2323,31 +2233,17 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </Paper>
                                 <CopyButton content={typeof crawlData[0][currentCrawlIndex].summary === 'string' ? crawlData[0][currentCrawlIndex].summary : crawlData[0][currentCrawlIndex].summary?.content || ''} darkMode={darkMode} />
                               </Box>
-                              <Box sx={{ mt: 1 }}>
-                                <Button
-                                  onClick={() => {
-                                    const pageUrl = crawlData[0][currentCrawlIndex]?.metadata?.url || '';
-                                    const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `page_${currentCrawlIndex + 1}`;
-                                    const content = typeof crawlData[0][currentCrawlIndex].summary === 'string' ? crawlData[0][currentCrawlIndex].summary : crawlData[0][currentCrawlIndex].summary?.content || '';
-                                    downloadMarkdown(content, `${baseFilename}_summary.md`);
-                                  }}
-                                  sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                >
-                                  Download Summary
-                                </Button>
-                              </Box>
                             </AccordionDetails>
                           </Accordion>
                         )}
 
                         {(crawlData[0][currentCrawlIndex].screenshotVisible || crawlData[0][currentCrawlIndex].screenshotFullpage) && (
                           <Accordion>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant='subtitle1'>
-                                  <ImageIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> {t('run_content.screenshot.title', 'Screenshots')}
-                                </Typography>
-                              </Box>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                              <AccordionHeader
+                                icon={<Image sx={{ mr: 1 }} />}
+                                title={t('run_content.screenshot.title', 'Screenshots')}
+                              />
                             </AccordionSummary>
                             <AccordionDetails>
                               <ScreenshotTabs
@@ -2359,42 +2255,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                             </AccordionDetails>
                           </Accordion>
                         )}
-
-                        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                          <Button
-                            onClick={() => {
-                              const item = crawlData[0][currentCrawlIndex];
-                              const pageUrl = item?.metadata?.url || item?.url || '';
-                              const baseFilename = pageUrl
-                                ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
-                                : `page_${currentCrawlIndex + 1}`;
-
-                              downloadAllCrawlsAsZip(
-                                [item],
-                                `${baseFilename}_bundle.zip`
-                              );
-                            }}
-                            sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                          >
-                            Download This Page
-                          </Button>
-
-                          <Button
-                            onClick={() => {
-                              const firstUrl = crawlData[0][0]?.metadata?.url || crawlData[0][0]?.url || '';
-                              const baseFilename = firstUrl
-                                ? firstUrl.replace(/^https?:\/\//, '').split('/')[0].replace(/[^a-zA-Z0-9_.-]/g, '_')
-                                : 'crawl';
-                              downloadAllCrawlsAsZip(
-                                crawlData[0],
-                                `${baseFilename}_all_urls.zip`
-                              );
-                            }}
-                            sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                          >
-                            Download All Pages
-                          </Button>
-                        </Box>
                       </>
                     )}
                   </AccordionDetails>
@@ -2403,13 +2263,41 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
               {searchData.length > 0 && (
                 <Accordion defaultExpanded sx={{ width: '100%', m: 0, boxSizing: 'border-box' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <SearchIcon sx={{ mr: 1 }} />
-                      <Typography variant='subtitle1'>
-                        Search Results
-                      </Typography>
-                    </Box>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <AccordionHeader
+                      icon={<Search sx={{ mr: 1 }} />}
+                      title="Search Results"
+                      actions={
+                        searchMode === 'scrape'
+                          ? [
+                            {
+                              label: 'Download This Page',
+                              onClick: () => {
+                                const item = searchData[currentSearchIndex];
+                                const pageUrl = item?.metadata?.url || item?.url || '';
+                                const baseFilename = pageUrl
+                                  ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
+                                  : `search_result_${currentSearchIndex + 1}`;
+                                downloadAllCrawlsAsZip([item], `${baseFilename}_bundle.zip`);
+                              },
+                            },
+                            {
+                              label: 'Download All Results',
+                              onClick: () => {
+                                const firstUrl = searchData[0]?.metadata?.url || searchData[0]?.url || '';
+                                const baseFilename = firstUrl
+                                  ? firstUrl.replace(/^https?:\/\//, '').split('/')[0].replace(/[^a-zA-Z0-9_.-]/g, '_')
+                                  : 'search_results';
+                                downloadAllCrawlsAsZip(searchData, `${baseFilename}_all_results.zip`);
+                              },
+                            },
+                          ]
+                          : [
+                            { label: 'Download as JSON', onClick: () => downloadJSON(searchData, 'search_results.json') },
+                            { label: 'Download as CSV', onClick: () => downloadCSV(searchData, ['title', 'url', 'description'], 'search_results.csv') },
+                          ]
+                      }
+                    />
                   </AccordionSummary>
                   <AccordionDetails>
                     {searchMode === 'scrape' && searchData.length > 0 ? (
@@ -2467,12 +2355,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                         {searchData[currentSearchIndex] && (
                           <>
                             <Accordion defaultExpanded sx={{ mb: 2 }}>
-                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <Typography variant='subtitle1'>
-                                    <InfoOutlinedIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Metadata
-                                  </Typography>
-                                </Box>
+                              <AccordionSummary expandIcon={<ExpandMore />}>
+                                <AccordionHeader
+                                  icon={<InfoOutlined sx={{ mr: 1 }} />}
+                                  title="Metadata"
+                                  actions={[{
+                                    label: 'Download Metadata',
+                                    onClick: () => {
+                                      const res = searchData[currentSearchIndex];
+                                      const pageUrl = res.metadata?.url || res.url || '';
+                                      const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                      downloadJSON(res.metadata, `${baseFilename}_metadata.json`);
+                                    },
+                                  }]}
+                                />
                               </AccordionSummary>
                               <AccordionDetails>
                                 <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
@@ -2497,30 +2393,26 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     </TableBody>
                                   </Table>
                                 </TableContainer>
-                                <Box sx={{ mt: 1 }}>
-                                  <Button
-                                    onClick={() => {
-                                      const res = searchData[currentSearchIndex];
-                                      const pageUrl = res.metadata?.url || res.url || '';
-                                      const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
-                                      downloadJSON(res.metadata, `${baseFilename}_metadata.json`);
-                                    }}
-                                    sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                  >
-                                    Download Metadata
-                                  </Button>
-                                </Box>
                               </AccordionDetails>
                             </Accordion>
 
                             {searchData[currentSearchIndex].text && (
                               <Accordion defaultExpanded sx={{ mb: 2 }}>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='subtitle1'>
-                                      <SubjectIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Text Content
-                                    </Typography>
-                                  </Box>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
+                                  <AccordionHeader
+                                    icon={<Subject sx={{ mr: 1 }} />}
+                                    title="Text Content"
+                                    actions={[{
+                                      label: 'Download Text Content',
+                                      onClick: () => {
+                                        const res = searchData[currentSearchIndex];
+                                        const pageUrl = res.metadata?.url || res.url || '';
+                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                        const content = typeof res.text === 'object' ? JSON.stringify(res.text, null, 2) : res.text;
+                                        downloadText(content, `${baseFilename}_text.txt`);
+                                      },
+                                    }]}
+                                  />
                                 </AccordionSummary>
                                 <AccordionDetails>
                                   <Box sx={{ position: 'relative' }}>
@@ -2548,32 +2440,27 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     </Paper>
                                     <CopyButton content={typeof searchData[currentSearchIndex].text === 'object' ? JSON.stringify(searchData[currentSearchIndex].text, null, 2) : searchData[currentSearchIndex].text} darkMode={darkMode} />
                                   </Box>
-                                  <Box sx={{ mt: 1 }}>
-                                    <Button
-                                      onClick={() => {
-                                        const res = searchData[currentSearchIndex];
-                                        const pageUrl = res.metadata?.url || res.url || '';
-                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
-                                        const content = typeof res.text === 'object' ? JSON.stringify(res.text, null, 2) : res.text;
-                                        downloadText(content, `${baseFilename}_text.txt`);
-                                      }}
-                                      sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                    >
-                                      Download Text Content
-                                    </Button>
-                                  </Box>
                                 </AccordionDetails>
                               </Accordion>
                             )}
 
                             {searchData[currentSearchIndex].html && (
                               <Accordion defaultExpanded sx={{ mb: 2 }}>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='subtitle1'>
-                                      <CodeIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> HTML
-                                    </Typography>
-                                  </Box>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
+                                  <AccordionHeader
+                                    icon={<Code sx={{ mr: 1 }} />}
+                                    title="HTML"
+                                    actions={[{
+                                      label: 'Download HTML',
+                                      onClick: () => {
+                                        const res = searchData[currentSearchIndex];
+                                        const pageUrl = res.metadata?.url || res.url || '';
+                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                        const content = typeof res.html === 'object' ? JSON.stringify(res.html, null, 2) : res.html;
+                                        downloadHTML(content, `${baseFilename}.html`);
+                                      },
+                                    }]}
+                                  />
                                 </AccordionSummary>
                                 <AccordionDetails>
                                   <Box sx={{ position: 'relative' }}>
@@ -2603,32 +2490,27 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     </Paper>
                                     <CopyButton content={typeof searchData[currentSearchIndex].html === 'object' ? JSON.stringify(searchData[currentSearchIndex].html, null, 2) : searchData[currentSearchIndex].html} darkMode={darkMode} />
                                   </Box>
-                                  <Box sx={{ mt: 1 }}>
-                                    <Button
-                                      onClick={() => {
-                                        const res = searchData[currentSearchIndex];
-                                        const pageUrl = res.metadata?.url || res.url || '';
-                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
-                                        const content = typeof res.html === 'object' ? JSON.stringify(res.html, null, 2) : res.html;
-                                        downloadHTML(content, `${baseFilename}.html`);
-                                      }}
-                                      sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                    >
-                                      Download HTML
-                                    </Button>
-                                  </Box>
                                 </AccordionDetails>
                               </Accordion>
                             )}
 
                             {searchData[currentSearchIndex].markdown && (
                               <Accordion sx={{ mb: 2 }}>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='subtitle1'>
-                                      <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Markdown
-                                    </Typography>
-                                  </Box>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
+                                  <AccordionHeader
+                                    icon={<Description sx={{ mr: 1 }} />}
+                                    title="Markdown"
+                                    actions={[{
+                                      label: 'Download Markdown',
+                                      onClick: () => {
+                                        const res = searchData[currentSearchIndex];
+                                        const pageUrl = res.metadata?.url || res.url || '';
+                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                        const content = typeof res.markdown === 'object' ? JSON.stringify(res.markdown, null, 2) : res.markdown;
+                                        downloadMarkdown(content, `${baseFilename}.md`);
+                                      },
+                                    }]}
+                                  />
                                 </AccordionSummary>
                                 <AccordionDetails>
                                   <Box sx={{ position: 'relative' }}>
@@ -2658,20 +2540,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                     </Paper>
                                     <CopyButton content={typeof searchData[currentSearchIndex].markdown === 'object' ? JSON.stringify(searchData[currentSearchIndex].markdown, null, 2) : searchData[currentSearchIndex].markdown} darkMode={darkMode} />
                                   </Box>
-                                  <Box sx={{ mt: 1 }}>
-                                    <Button
-                                      onClick={() => {
-                                        const res = searchData[currentSearchIndex];
-                                        const pageUrl = res.metadata?.url || res.url || '';
-                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
-                                        const content = typeof res.markdown === 'object' ? JSON.stringify(res.markdown, null, 2) : res.markdown;
-                                        downloadMarkdown(content, `${baseFilename}.md`);
-                                      }}
-                                      sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                    >
-                                      Download Markdown
-                                    </Button>
-                                  </Box>
                                 </AccordionDetails>
                               </Accordion>
                             )}
@@ -2683,12 +2551,21 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                               return validLinks.length > 0 && (
                                 <Accordion sx={{ mb: 2 }}>
-                                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                      <Typography variant='subtitle1'>
-                                        <LinkIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Links ({validLinks.length})
-                                      </Typography>
-                                    </Box>
+                                  <AccordionSummary expandIcon={<ExpandMore />}>
+                                    <AccordionHeader
+                                      icon={<LinkIcon sx={{ mr: 1 }} />}
+                                      title={`Links (${validLinks.length})`}
+                                      actions={[{
+                                        label: 'Download Links',
+                                        onClick: () => {
+                                          const res = searchData[currentSearchIndex];
+                                          const pageUrl = res.metadata?.url || res.url || '';
+                                          const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
+                                          const uniqueLinks = Array.from(new Set(validLinks)) as string[];
+                                          downloadText(uniqueLinks.join('\n'), `${baseFilename}_links.txt`);
+                                        },
+                                      }]}
+                                    />
                                   </AccordionSummary>
                                   <AccordionDetails>
                                     <Box sx={{ position: 'relative' }}>
@@ -2703,21 +2580,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                       </Paper>
                                       <CopyButton content={(Array.from(new Set(validLinks)) as string[]).join('\n')} darkMode={darkMode} />
                                     </Box>
-                                    <Box sx={{ mt: 1 }}>
-                                      <Button
-                                        onClick={() => {
-                                          const res = searchData[currentSearchIndex];
-                                          const pageUrl = res.metadata?.url || res.url || '';
-                                          const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `search_result_${currentSearchIndex + 1}`;
-                                          const uniqueLinks = Array.from(new Set(validLinks)) as string[];
-                                          const content = uniqueLinks.join('\n');
-                                          downloadText(content, `${baseFilename}_links.txt`);
-                                        }}
-                                        sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                      >
-                                        Download Links
-                                      </Button>
-                                    </Box>
                                   </AccordionDetails>
                                 </Accordion>
                               );
@@ -2725,12 +2587,20 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
 
                             {searchData[currentSearchIndex]?.summary && (
                               <Accordion>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='subtitle1'>
-                                      <PsychologyIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> Summary
-                                    </Typography>
-                                  </Box>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
+                                  <AccordionHeader
+                                    icon={<Psychology sx={{ mr: 1 }} />}
+                                    title="Summary"
+                                    actions={[{
+                                      label: 'Download Summary',
+                                      onClick: () => {
+                                        const pageUrl = searchData[currentSearchIndex]?.url || searchData[currentSearchIndex]?.metadata?.url || '';
+                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `result_${currentSearchIndex + 1}`;
+                                        const content = typeof searchData[currentSearchIndex].summary === 'string' ? searchData[currentSearchIndex].summary : searchData[currentSearchIndex].summary?.content || '';
+                                        downloadMarkdown(content, `${baseFilename}_summary.md`);
+                                      },
+                                    }]}
+                                  />
                                 </AccordionSummary>
                                 <AccordionDetails>
                                   <Box sx={{ position: 'relative' }}>
@@ -2746,31 +2616,17 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                       darkMode={darkMode}
                                     />
                                   </Box>
-                                  <Box sx={{ mt: 1 }}>
-                                    <Button
-                                      onClick={() => {
-                                        const pageUrl = searchData[currentSearchIndex]?.url || searchData[currentSearchIndex]?.metadata?.url || '';
-                                        const baseFilename = pageUrl ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_') : `result_${currentSearchIndex + 1}`;
-                                        const content = typeof searchData[currentSearchIndex].summary === 'string' ? searchData[currentSearchIndex].summary : searchData[currentSearchIndex].summary?.content || '';
-                                        downloadMarkdown(content, `${baseFilename}_summary.md`);
-                                      }}
-                                      sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                                    >
-                                      Download Summary
-                                    </Button>
-                                  </Box>
                                 </AccordionDetails>
                               </Accordion>
                             )}
 
                             {(searchData[currentSearchIndex].screenshotVisible || searchData[currentSearchIndex].screenshotFullpage) && (
                               <Accordion>
-                                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant='subtitle1'>
-                                      <ImageIcon sx={{ mr: 1, verticalAlign: 'middle', mb: '3px' }} /> {t('run_content.screenshot.title', 'Screenshots')}
-                                    </Typography>
-                                  </Box>
+                                <AccordionSummary expandIcon={<ExpandMore />}>
+                                  <AccordionHeader
+                                    icon={<Image sx={{ mr: 1 }} />}
+                                    title={t('run_content.screenshot.title', 'Screenshots')}
+                                  />
                                 </AccordionSummary>
                                 <AccordionDetails>
                                   <ScreenshotTabs
@@ -2782,125 +2638,69 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 </AccordionDetails>
                               </Accordion>
                             )}
-
-                            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                              <Button
-                                onClick={() => {
-                                  const item = searchData[currentSearchIndex];
-                                  const pageUrl = item?.metadata?.url || item?.url || '';
-                                  const baseFilename = pageUrl
-                                    ? pageUrl.replace(/^https?:\/\//, '').replace(/\//g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_')
-                                    : `search_result_${currentSearchIndex + 1}`;
-                                  downloadAllCrawlsAsZip(
-                                    [item],
-                                    `${baseFilename}_bundle.zip`
-                                  );
-                                }}
-                                sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                              >
-                                Download This Page
-                              </Button>
-
-                              <Button
-                                onClick={() => {
-                                  const firstUrl = searchData[0]?.metadata?.url || searchData[0]?.url || '';
-                                  const baseFilename = firstUrl
-                                    ? firstUrl.replace(/^https?:\/\//, '').split('/')[0].replace(/[^a-zA-Z0-9_.-]/g, '_')
-                                    : 'search_results';
-                                  downloadAllCrawlsAsZip(
-                                    searchData,
-                                    `${baseFilename}_all_results.zip`
-                                  );
-                                }}
-                                sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                              >
-                                Download All Results
-                              </Button>
-                            </Box>
                           </>
                         )}
                       </>
                     ) : (
-                      <>
-                        <TableContainer component={Paper}>
-                          <Table stickyHeader>
-                            <TableHead>
-                              <TableRow>
-                                <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>Title</TableCell>
-                                <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>URL</TableCell>
-                                <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>Description</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {searchData.map((r: any, i: number) => (
-                                <TableRow key={i}>
-                                  <TableCell sx={{ minWidth: 200 }}>{r.title || '-'}</TableCell>
-                                  <TableCell sx={{ minWidth: 250 }}>
-                                    {r.url && r.url !== '-' ? (
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Tooltip title={r.url}>
-                                          <Link
-                                            href={r.url}
-                                            target="_blank"
-                                            rel="noopener"
-                                            sx={{
-                                              color: '#FF00C3',
-                                              textDecoration: 'none',
-                                              '&:hover': { textDecoration: 'underline' },
-                                              maxWidth: '200px',
-                                              overflow: 'hidden',
-                                              textOverflow: 'ellipsis',
-                                              whiteSpace: 'nowrap',
-                                              display: 'block'
-                                            }}
-                                          >
-                                            {r.url.length > 35 ? r.url.substring(0, 35) + '...' : r.url}
-                                          </Link>
-                                        </Tooltip>
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(r.url);
-                                          }}
+                      <TableContainer component={Paper}>
+                        <Table stickyHeader>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>Title</TableCell>
+                              <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>URL</TableCell>
+                              <TableCell sx={{ backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', whiteSpace: 'nowrap' }}>Description</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {searchData.map((r: any, i: number) => (
+                              <TableRow key={i}>
+                                <TableCell sx={{ minWidth: 200 }}>{r.title || '-'}</TableCell>
+                                <TableCell sx={{ minWidth: 250 }}>
+                                  {r.url && r.url !== '-' ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Tooltip title={r.url}>
+                                        <Link
+                                          href={r.url}
+                                          target="_blank"
+                                          rel="noopener"
                                           sx={{
-                                            color: '#6c757d',
-                                            '&:hover': { color: '#FF00C3' },
-                                            p: 0.5
+                                            color: '#FF00C3',
+                                            textDecoration: 'none',
+                                            '&:hover': { textDecoration: 'underline' },
+                                            maxWidth: '200px',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            display: 'block'
                                           }}
                                         >
-                                          <ContentCopy sx={{ fontSize: '0.9rem' }} />
-                                        </IconButton>
-                                      </Box>
-                                    ) : (
-                                      '-'
-                                    )}
-                                  </TableCell>
-                                  <TableCell sx={{ minWidth: 300 }}>{r.description || '-'}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-
-                        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                          <Button
-                            onClick={() => {
-                              downloadJSON(searchData, 'search_results.json');
-                            }}
-                            sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                          >
-                            Download as JSON
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              downloadCSV(searchData, ['title', 'url', 'description'], 'search_results.csv');
-                            }}
-                            sx={{ color: '#FF00C3', textTransform: 'none', p: 0, minWidth: 'auto', backgroundColor: 'transparent', '&:hover': { textDecoration: 'underline', backgroundColor: 'transparent' } }}
-                          >
-                            Download as CSV
-                          </Button>
-                        </Box>
-                      </>
+                                          {r.url.length > 35 ? r.url.substring(0, 35) + '...' : r.url}
+                                        </Link>
+                                      </Tooltip>
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(r.url);
+                                        }}
+                                        sx={{
+                                          color: '#6c757d',
+                                          '&:hover': { color: '#FF00C3' },
+                                          p: 0.5
+                                        }}
+                                      >
+                                        <ContentCopy sx={{ fontSize: '0.9rem' }} />
+                                      </IconButton>
+                                    </Box>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </TableCell>
+                                <TableCell sx={{ minWidth: 300 }}>{r.description || '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
                     )}
                   </AccordionDetails>
                 </Accordion>

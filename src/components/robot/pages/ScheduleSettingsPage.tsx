@@ -160,15 +160,13 @@ export const ScheduleSettingsPage = ({
   };
 
   const textStyle = {
+    mt: 1,
     width: "150px",
-    height: "52px",
     marginRight: "10px",
   };
 
   const dropDownStyle = {
-    marginTop: "2px",
     width: "150px",
-    height: "59px",
     marginRight: "10px",
   };
 
