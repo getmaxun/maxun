@@ -1,0 +1,657 @@
+{
+  "login": {
+    "title": "Maxun-a xoş gəlmisiniz",
+    "email": "İş e-poçtunuzu daxil edin",
+    "password": "Parol",
+    "button": "Daxil ol",
+    "loading": "Yüklənir",
+    "register_prompt": "Hesabınız yoxdur?",
+    "register_link": "Qeydiyyatdan keç",
+    "welcome_notification": "Maxun-a xoş gəlmisiniz!",
+    "validation": {
+      "required_fields": "E-poçt və parol tələb olunur",
+      "password_length": "Parol ən azı 6 simvoldan ibarət olmalıdır"
+    },
+    "error": {
+      "user_not_found": "İstifadəçi mövcud deyil",
+      "invalid_credentials": "E-poçt və ya parol yanlışdır",
+      "server_error": "Daxil olmaq mümkün olmadı. Daha sonra yenidən cəhd edin",
+      "generic": "Xəta baş verdi. Yenidən cəhd edin"
+    }
+  },
+  "register": {
+    "title": "Hesab yarat",
+    "email": "İş e-poçtunuzu daxil edin",
+    "password": "Parol",
+    "button": "Qeydiyyatdan keç",
+    "loading": "Yüklənir",
+    "register_prompt": "Artıq hesabınız var?",
+    "login_link": "Daxil ol",
+    "welcome_notification": "Maxun-a xoş gəlmisiniz!",
+    "validation": {
+      "email_required": "E-poçt tələb olunur",
+      "password_requirements": "Parol ən azı 6 simvoldan ibarət olmalıdır"
+    },
+    "error": {
+      "user_exists": "Bu e-poçt ünvanı ilə istifadəçi artıq mövcuddur",
+      "creation_failed": "Hesab yaratmaq mümkün olmadı",
+      "server_error": "Server xətası baş verdi",
+      "generic": "Qeydiyyat uğursuz oldu. Yenidən cəhd edin"
+    }
+  },
+  "recordingtable": {
+    "run": "İşə sal",
+    "name": "Ad",
+    "schedule": "Cədvəl",
+    "integrate": "İnteqrasiya et",
+    "settings": "Parametrlər",
+    "options": "Seçimlər",
+    "heading": "Robotlarım",
+    "new": "Robot yarat",
+    "search_criteria": "Axtarış meyarlarınızı dəyişməyə çalışın",
+    "placeholder": {
+      "title": "Başlamaq üçün hər şey hazırdır",
+      "body": "Yaratdığınız robotlar burada görünəcək. Başlamaq üçün \"Robot yarat\" düyməsinə klikləyin!",
+      "search": "Axtarışınıza uyğun robot yoxdur"
+    },
+    "modal": {
+      "title": "URL daxil edin",
+      "login_title": "Bu veb-saytda hesaba daxil olmaq tələb olunur?",
+      "label": "URL",
+      "button": "Qeydə başla"
+    },
+    "warning_modal": {
+      "title": "Aktiv brauzer aşkarlandı",
+      "message": "Brauzerdə artıq qeyd sessiyası davam edir. Onu ləğv edib yeni qeyd yaratmaq istəyirsiniz?",
+      "discard_and_create": "Ləğv et və yenisini yarat",
+      "cancel": "Ləğv et"
+    },
+    "retrain": "Yenidən öyrət",
+    "edit": "Redaktə et",
+    "delete": "Sil",
+    "duplicate": "Surətini yarat",
+    "search": "Robot axtarışı...",
+    "notifications": {
+      "delete_warning": "Robota aid icralar var. Robotu silmək üçün əvvəlcə icraları silin",
+      "delete_success": "Robot uğurla silindi",
+      "auth_success": "Robotun kimliyi uğurla təsdiqləndi",
+      "browser_limit_warning": "Uzaq brauzerlər hazırda məşğuldur. Bir neçə dəqiqə gözləyin və yenidən cəhd edin"
+    }
+  },
+  "mainmenu": {
+    "recordings": "Robotlar",
+    "runs": "İcralar",
+    "proxy": "Proksi",
+    "apikey": "API açarı",
+    "feedback": "Maxun Cloud-a qoşul",
+    "apidocs": "Veb-saytdan API-yə"
+  },
+  "runstable": {
+    "runs": "Bütün icralar",
+    "runStatus": "Vəziyyət",
+    "runName": "Ad",
+    "name": "Ad",
+    "startedAt": "Başlama vaxtı",
+    "finishedAt": "Bitmə vaxtı",
+    "delete": "Sil",
+    "settings": "Parametrlər",
+    "search": "İcra axtarışı...",
+    "sort_tooltip": "Sıralamaq üçün klikləyin",
+    "placeholder": {
+      "title": "İcra tapılmadı",
+      "body": "Robotlarınızın bütün icraları burada görünəcək. Robot işə salındıqdan sonra icraları burada qeydə alınacaq.",
+      "search": "Axtarışınıza uyğun icra yoxdur"
+    },
+    "notifications": {
+      "no_runs": "İcra tapılmadı. Yenidən cəhd edin.",
+      "delete_success": "İcra uğurla silindi"
+    }
+  },
+  "proxy": {
+    "title": "Proksi parametrləri",
+    "tab_standard": "Standart proksi",
+    "tab_rotation": "Proksilərin avtomatik növbələnməsi",
+    "server_url": "Proksi serverinin URL ünvanı",
+    "server_url_helper": "Bütün robotlar üçün istifadə ediləcək proksi. HTTP və SOCKS proksiləri dəstəklənir. Məsələn: http://myproxy.com:3128 və ya socks5://myproxy.com:3128. Qısa myproxy.com:3128 forması HTTP proksisi hesab olunur.",
+    "requires_auth": "Kimliyin təsdiqlənməsi tələb olunur?",
+    "username": "İstifadəçi adı",
+    "password": "Parol",
+    "add_proxy": "Proksi əlavə et",
+    "test_proxy": "Proksini yoxla",
+    "remove_proxy": "Proksini sil",
+    "table": {
+      "proxy_url": "Proksi URL ünvanı",
+      "requires_auth": "Kimliyin təsdiqlənməsi tələb olunur"
+    },
+    "coming_soon": "Tezliklə — açıq mənbəli versiyada (sadə növbələnmə) və bulud versiyasında (təkmil növbələnmə). İnfrastrukturu idarə etmək istəmirsinizsə, erkən giriş əldə etmək üçün bulud xidmətimizin gözləmə siyahısına qoşulun.",
+    "join_waitlist": "Maxun Cloud gözləmə siyahısına qoşul",
+    "alert": {
+      "title": "Proksiniz istifadəçi adı və parol tələb edirsə, onları həmişə proksi URL ünvanından ayrı daxil edin.",
+      "right_way": "Düzgün üsul",
+      "wrong_way": "Yanlış üsul",
+      "proxy_url": "Proksi URL ünvanı:",
+      "username": "İstifadəçi adı:",
+      "password": "Parol:"
+    },
+    "notifications": {
+      "config_success": "Proksi parametrləri uğurla göndərildi",
+      "config_error": "Proksi parametrlərini göndərmək mümkün olmadı. Yenidən cəhd edin.",
+      "test_success": "Proksi parametrləri işləyir",
+      "test_error": "Proksi parametrlərini yoxlamaq mümkün olmadı. Yenidən cəhd edin.",
+      "fetch_success": "Proksi parametrləri uğurla alındı",
+      "remove_success": "Proksi parametrləri uğurla silindi",
+      "remove_error": "Proksi parametrlərini silmək mümkün olmadı. Yenidən cəhd edin."
+    }
+  },
+  "apikey": {
+    "title": "API açarınızı idarə edin",
+    "default_name": "Maxun API açarı",
+    "table": {
+      "name": "API açarının adı",
+      "key": "API açarı",
+      "actions": "Əməliyyatlar"
+    },
+    "actions": {
+      "copy": "Kopyala",
+      "show": "Göstər",
+      "hide": "Gizlət",
+      "delete": "Sil"
+    },
+    "no_key_message": "Hələ API açarı yaratmamısınız.",
+    "generate_button": "API açarı yarat",
+    "notifications": {
+      "fetch_error": "API açarını almaq mümkün olmadı - {{error}}",
+      "generate_success": "API açarı uğurla yaradıldı",
+      "generate_error": "API açarı yaratmaq mümkün olmadı - {{error}}",
+      "delete_success": "API açarı uğurla silindi",
+      "delete_error": "API açarını silmək mümkün olmadı - {{error}}",
+      "copy_success": "API açarı uğurla kopyalandı"
+    }
+  },
+  "action_description": {
+    "text": {
+      "title": "Mətni çıxar",
+      "description": "Göstəricini çıxarmaq istədiyiniz mətnlərin üzərinə gətirin və onları seçmək üçün klikləyin"
+    },
+    "screenshot": {
+      "title": "Ekran görüntüsü çək",
+      "description": "Cari səhifənin bir hissəsinin və ya bütün səhifənin ekran görüntüsünü çəkin."
+    },
+    "list": {
+      "title": "Siyahını çıxar",
+      "description": "Göstəricini çıxarmaq istədiyiniz siyahının üzərinə gətirin. Siyahını seçdikdən sonra göstəricini onun daxilindəki bütün mətnlərin üzərinə gətirə bilərsiniz. Onları seçmək üçün klikləyin."
+    },
+    "default": {
+      "title": "Hansı məlumatları çıxarmaq istəyirsiniz?",
+      "description": "Robot bir və ya bir neçə əməliyyat yerinə yetirə bilər. Aşağıdakı seçimlərdən birini seçin."
+    },
+    "list_stages": {
+      "initial": "Çıxarmaq istədiyiniz siyahını daxilindəki mətnlərlə birlikdə seçin",
+      "pagination": "Robotun siyahının qalan hissəsini necə çıxaracağını seçin",
+      "limit": "Çıxarılacaq elementlərin sayını seçin",
+      "complete": "Çıxarma tamamlandı"
+    },
+    "actions": {
+      "text": "Mətni çıxar",
+      "list": "Siyahını çıxar",
+      "screenshot": "Ekran görüntüsü çək"
+    }
+  },
+  "right_panel": {
+    "buttons": {
+      "capture_list": "Siyahını çıxar",
+      "capture_text": "Mətni çıxar",
+      "capture_screenshot": "Ekran görüntüsü çək",
+      "confirm": "Təsdiqlə",
+      "discard": "Ləğv et",
+      "confirm_capture": "Çıxarmanı təsdiqlə",
+      "confirm_pagination": "Təsdiqlə",
+      "confirm_limit": "Təsdiqlə",
+      "confirm_reset": "Təsdiqlə",
+      "finish_capture": "Çıxarmanı tamamla",
+      "back": "Geri",
+      "reset": "Qeydə yenidən başla",
+      "finish": "Tamamla",
+      "cancel": "Ləğv et",
+      "delete": "Sil"
+    },
+    "screenshot": {
+      "capture_fullpage": "Bütün səhifənin ekran görüntüsünü çək",
+      "capture_visible": "Görünən hissənin ekran görüntüsünü çək",
+      "display_fullpage": "Bütün səhifənin ekran görüntüsünü çək",
+      "display_visible": "Görünən hissənin ekran görüntüsünü çək"
+    },
+    "pagination": {
+      "title": "Səhifədə siyahının növbəti elementini necə tapa bilərik?",
+      "click_next": "Növbəti səhifəyə keçmək üçün növbəti səhifə düyməsinə klikləyin",
+      "click_load_more": "Daha çox element yükləmək üçün daha çox yükləmə düyməsinə klikləyin",
+      "scroll_down": "Daha çox element yükləmək üçün aşağı sürüşdürün",
+      "scroll_up": "Daha çox element yükləmək üçün yuxarı sürüşdürün",
+      "none": "Yüklənəcək başqa element yoxdur"
+    },
+    "limit": {
+      "title": "Ən çox neçə sətir çıxarmaq istəyirsiniz?",
+      "custom": "Fərdi",
+      "enter_number": "Ədəd daxil edin"
+    },
+    "fields": {
+      "label": "Etiket",
+      "data": "Məlumatlar",
+      "field_label": "Sahənin etiketi",
+      "field_data": "Sahənin məlumatları"
+    },
+    "messages": {
+      "list_selected": "Siyahı uğurla seçildi",
+      "list_empty": "Siyahı seçildi. Siyahının daxilindəki sahələri seçin."
+    },
+    "errors": {
+      "select_pagination": "Səhifələmə növünü seçin.",
+      "select_pagination_element": "Əvvəlcə səhifələmə elementini seçin.",
+      "select_limit": "Limit seçin və ya fərdi limit daxil edin.",
+      "invalid_limit": "Düzgün limit daxil edin.",
+      "confirm_text_fields": "Bütün mətn sahələrini təsdiqləyin",
+      "unable_create_settings": "Siyahı parametrlərini yaratmaq mümkün deyil. Siyahı üçün sahə təyin etdiyinizə əmin olun.",
+      "capture_text_discarded": "Mətn çıxarma ləğv edildi",
+      "capture_list_discarded": "Siyahı çıxarma ləğv edildi",
+      "label_required": "Etiket boş ola bilməz",
+      "duplicate_label": "Bu etiket artıq mövcuddur. Fərqli etiketdən istifadə edin.",
+      "no_text_captured": "Təsdiqləməzdən əvvəl mətn elementlərini vurğulayın və seçin.",
+      "capture_list_first": "Əvvəlcə göstəricini siyahının üzərinə gətirin və daxilindəki mətn sahələrini seçin",
+      "confirm_all_list_fields": "Davam etməzdən əvvəl siyahıdan çıxarılan bütün sahələri təsdiqləyin"
+    },
+    "tooltips": {
+      "capture_list_first": "Əvvəlcə göstəricini siyahının üzərinə gətirin və daxilindəki mətn sahələrini seçin",
+      "confirm_all_list_fields": "Davam etməzdən əvvəl siyahıdan çıxarılan bütün sahələri təsdiqləyin"
+    }
+  },
+  "save_recording": {
+    "title": "Robotu yadda saxla",
+    "robot_name": "Ad",
+    "buttons": {
+      "save": "Yadda saxla",
+      "confirm": "Təsdiqlə"
+    },
+    "notifications": {
+      "save_success": "Robot uğurla yadda saxlanıldı",
+      "retrain_success": "Robot uğurla yenidən öyrədildi",
+      "save_error": "Robotu yadda saxlayarkən xəta baş verdi"
+    },
+    "errors": {
+      "user_not_logged": "İstifadəçi hesaba daxil olmayıb. Qeydi yadda saxlamaq mümkün deyil.",
+      "exists_warning": "Bu adda robot artıq mövcuddur. Mövcud robotun üzərinə yazılmasını təsdiqləyin.",
+      "name_exists": "Bu adda robot artıq mövcuddur. Başqa ad seçin.",
+      "no_actions_performed": "Robotu yadda saxlamaq mümkün deyil. Yadda saxlamazdan əvvəl ən azı bir çıxarma əməliyyatı yerinə yetirin."
+    },
+    "tooltips": {
+      "saving": "İş axını optimallaşdırılır və yadda saxlanılır"
+    }
+  },
+  "browser_recording": {
+    "modal": {
+      "confirm_discard": "Qeydi ləğv etmək istədiyinizə əminsiniz?",
+      "confirm_reset": "Qeydə yenidən başlamaq istədiyinizə əminsiniz?",
+      "reset_warning": "Bu, cari sessiyada əvvəlki bütün çıxarma nəticələrini təmizləyəcək. Qeyd sessiyası eyni veb-sayt üçün yenidən başlayacaq."
+    },
+    "notifications": {
+      "terminated": "Cari qeyd dayandırıldı",
+      "environment_reset": "Brauzer mühiti ilkin vəziyyətinə qaytarıldı",
+      "reset_successful": "Bütün çıxarma nəticələri uğurla təmizləndi və ilkin vəziyyət bərpa edildi",
+      "timeout_discarded": "Qeyd sessiyasının vaxtı 10 dəqiqədən sonra bitdi və sessiya avtomatik ləğv edildi."
+    }
+  },
+  "interpretation_log": {
+    "titles": {
+      "output_preview": "Çıxış məlumatlarına önbaxış",
+      "screenshot": "Ekran görüntüsü"
+    },
+    "messages": {
+      "additional_rows": "Qeydi tamamladıqdan sonra əlavə məlumat sətirləri çıxarılacaq.",
+      "successful_training": "Robota əməliyyatları yerinə yetirməyi uğurla öyrətdiniz! Robotunuzun çıxaracağı məlumatlara önbaxış üçün aşağıdakı düyməyə klikləyin.",
+      "no_selection": "Görünür, çıxarmaq üçün hələ heç nə seçməmisiniz. Seçim etdikdən sonra robot seçimlərinizin önbaxışını burada göstərəcək."
+    },
+    "data_sections": {
+      "binary_received": "---------- İkilik çıxış məlumatları alındı ----------",
+      "serializable_received": "---------- Seriallaşdırıla bilən çıxış məlumatları alındı ----------",
+      "mimetype": "MIME növü: ",
+      "image_below": "Şəkil aşağıda göstərilir:",
+      "separator": "--------------------------------------------------"
+    },
+    "notifications": {
+      "reset_success": "Çıxış məlumatlarına önbaxış uğurla sıfırlandı"
+    }
+  },
+  "interpretation_buttons": {
+    "buttons": {
+      "preview": "Çıxış məlumatlarına önbaxışı göstər",
+      "reset": "Sıfırla",
+      "yes": "Bəli",
+      "no": "Xeyr"
+    },
+    "messages": {
+      "extracting": "Məlumatlar çıxarılır... gözləyin",
+      "restart_required": "Qeydi yenilədikdən sonra icranı yenidən işə salın",
+      "run_finished": "İcra tamamlandı",
+      "run_failed": "İcranı başlatmaq mümkün olmadı"
+    },
+    "modal": {
+      "use_previous": "Əvvəlki seçiminizdən bu əməliyyatı yerinə yetirmək üçün şərt kimi istifadə etmək istəyirsiniz?",
+      "previous_action": "Əvvəlki əməliyyatınız: ",
+      "element_text": "bu mətni daşıyan element üzərində: "
+    },
+    "notifications": {
+      "reset_success": "Çıxış məlumatlarına önbaxış uğurla sıfırlandı"
+    }
+  },
+  "recording_page": {
+    "loader": {
+      "browser_startup": "Brauzer işə salınır... gözləyin"
+    }
+  },
+  "integration_settings": {
+    "title": "İnteqrasiya parametrləri",
+    "descriptions": {
+      "authenticated_as": "Kimliyi təsdiqlənmiş hesab: {{email}}"
+    },
+    "buttons": {
+      "submit": "Göndər",
+      "remove_integration": "İnteqrasiyanı sil"
+    },
+    "google": {
+      "title": "Google Sheet ilə inteqrasiya et",
+      "descriptions": {
+        "sync_info": "Bu seçimi aktivləşdirsəniz, robot hər dəfə tapşırığı uğurla icra etdikdə çıxardığı məlumatlar Google Sheet cədvəlinizə əlavə olunacaq.",
+        "authenticated_as": "Kimliyi təsdiqlənmiş hesab: {{email}}"
+      },
+      "alerts": {
+        "success": {
+          "title": "Google Sheet uğurla inteqrasiya edildi.",
+          "content": "Bu robotun hər uğurlu icrasından sonra çıxardığı məlumatlar {{sheetName}} adlı Google Sheet cədvəlinizə əlavə olunur. Məlumat yeniləmələrini yoxlaya bilərsiniz",
+          "here": "burada",
+          "note": "Qeyd:",
+          "sync_limitation": "Google Sheets ilə inteqrasiyadan əvvəl çıxarılan məlumatlar Google Sheet cədvəlində sinxronlaşdırılmayacaq. Yalnız inteqrasiyadan sonra çıxarılan məlumatlar sinxronlaşdırılacaq."
+        }
+      },
+      "buttons": {
+        "authenticate": "Google ilə kimliyi təsdiqlə",
+        "fetch_sheets": "Google cədvəllərini al",
+        "remove_integration": "İnteqrasiyanı sil",
+        "submit": "Göndər"
+      },
+      "fields": {
+        "select_sheet": "Google Sheet cədvəlini seç",
+        "selected_sheet": "Seçilmiş cədvəl: {{name}} (ID: {{id}})"
+      },
+      "errors": {
+        "auth_error": "Google ilə kimliyi təsdiqləyərkən xəta baş verdi",
+        "fetch_error": "Cədvəl fayllarını alarkən xəta baş verdi: {{message}}",
+        "update_error": "Google Sheet cədvəlinin identifikatorunu yeniləyərkən xəta baş verdi: {{message}}",
+        "remove_error": "Google Sheets inteqrasiyasını silərkən xəta baş verdi: {{message}}"
+      },
+      "notifications": {
+        "sheet_selected": "Google Sheet uğurla seçildi",
+        "integration_removed": "Google Sheets inteqrasiyası uğurla silindi"
+      }
+    },
+    "airtable": {
+      "title": "Airtable ilə inteqrasiya et",
+      "descriptions": {
+        "sync_info": "Bu seçimi aktivləşdirsəniz, robot hər dəfə tapşırığı uğurla icra etdikdə çıxardığı məlumatlar Airtable verilənlər bazanıza əlavə olunacaq.",
+        "authenticated_as": "Airtable ilə kimlik uğurla təsdiqləndi. İndi inteqrasiya üçün verilənlər bazasını və cədvəli seçə bilərsiniz."
+      },
+      "alerts": {
+        "success": {
+          "title": "Airtable verilənlər bazası uğurla inteqrasiya edildi",
+          "content": "Bu robotun hər uğurlu icrasından sonra çıxardığı məlumatlar {{baseName}} adlı verilənlər bazanızın {{tableName}} cədvəlinə əlavə olunur. Yeniləmələri yoxlaya bilərsiniz",
+          "here": "burada",
+          "note": "Qeyd:",
+          "sync_limitation": "Yalnız inteqrasiyadan sonra çıxarılan məlumatlar Airtable ilə sinxronlaşdırılacaq."
+        }
+      },
+      "buttons": {
+        "authenticate": "Airtable xidmətinə qoşul",
+        "fetch_bases": "Airtable verilənlər bazalarını al",
+        "fetch_tables": "Airtable cədvəllərini al",
+        "remove_integration": "İnteqrasiyanı sil",
+        "submit": "Verilənlər bazasını və cədvəli seç"
+      },
+      "fields": {
+        "select_base": "Airtable verilənlər bazasını seç",
+        "select_table": "Airtable cədvəlini seç",
+        "selected_base": "Seçilmiş verilənlər bazası: {{name}}",
+        "selected_table": "Seçilmiş cədvəl: {{name}}"
+      },
+      "errors": {
+        "auth_error": "Airtable ilə kimliyi təsdiqləyərkən xəta baş verdi",
+        "fetch_error": "Airtable verilənlər bazalarını alarkən xəta baş verdi: {{message}}",
+        "fetch_tables_error": "Airtable cədvəllərini alarkən xəta baş verdi: {{message}}",
+        "update_error": "Airtable verilənlər bazasını yeniləyərkən xəta baş verdi: {{message}}",
+        "remove_error": "Airtable inteqrasiyasını silərkən xəta baş verdi: {{message}}"
+      },
+      "notifications": {
+        "base_selected": "Airtable verilənlər bazası uğurla seçildi",
+        "table_selected": "Airtable cədvəli uğurla seçildi",
+        "integration_removed": "Airtable inteqrasiyası uğurla silindi"
+      }
+    }
+  },
+  "robot_duplication": {
+    "title": "Robotun surətini yarat",
+    "descriptions": {
+      "purpose": "Robotun surətini yaratmaq eyni quruluşlu səhifələrdən məlumat çıxarmaq üçün faydalıdır.",
+      "example": "Məsələn: <0>{{url1}}</0> üçün robot yaratmısınızsa, robotu sıfırdan öyrətmədən <1>{{url2}}</1> kimi oxşar səhifələrdən məlumat çıxarmaq üçün onun surətini yarada bilərsiniz.",
+      "warning": "⚠️ Yeni səhifənin ilkin səhifə ilə eyni quruluşa malik olduğuna əmin olun."
+    },
+    "fields": {
+      "target_url": "Hədəf URL ünvanı",
+      "new_name": "Robotun adı"
+    },
+    "buttons": {
+      "duplicate": "Robotun surətini yarat",
+      "cancel": "Ləğv et"
+    },
+    "notifications": {
+      "robot_not_found": "Robotun təfərrüatlarını tapmaq mümkün olmadı. Yenidən cəhd edin.",
+      "url_required": "Hədəf URL ünvanı tələb olunur.",
+      "name_required": "Robotun adı tələb olunur.",
+      "duplicate_success": "Robotun surəti uğurla yaradıldı.",
+      "duplicate_error": "Hədəf URL ünvanını yeniləmək mümkün olmadı. Yenidən cəhd edin.",
+      "unknown_error": "Hədəf URL ünvanını yeniləyərkən xəta baş verdi."
+    }
+  },
+  "robot_settings": {
+    "title": "Robot parametrləri",
+    "target_url": "Hədəf URL ünvanı",
+    "robot_id": "Robotun identifikatoru",
+    "robot_limit": "Robotun limiti",
+    "created_by_user": "Yaradan istifadəçi",
+    "created_at": "Robotun yaradılma vaxtı",
+    "compare_runs": "Son icranı əvvəlki icra ilə müqayisə et",
+    "errors": {
+      "robot_not_found": "Robotun təfərrüatlarını tapmaq mümkün olmadı. Yenidən cəhd edin."
+    },
+    "buttons": {
+      "close": "Bağla"
+    }
+  },
+  "robot_edit": {
+    "title": "Robotu redaktə et",
+    "change_name": "Ad",
+    "robot_limit": "Robotun limiti",
+    "save": "Dəyişiklikləri yadda saxla",
+    "cancel": "Ləğv et",
+    "notifications": {
+      "update_success": "Robot uğurla yeniləndi.",
+      "update_failed": "Robotu yeniləmək mümkün olmadı. Yenidən cəhd edin.",
+      "update_error": "Robotu yeniləyərkən xəta baş verdi."
+    }
+  },
+  "schedule_settings": {
+    "title": "Cədvəl parametrləri",
+    "run_every": "İcra aralığı",
+    "start_from": "Başlama vaxtı",
+    "on_day": "Gün",
+    "at_around": "Təxmini saat",
+    "timezone": "Saat qurşağı",
+    "buttons": {
+      "delete_schedule": "Cədvəli sil",
+      "save_schedule": "Cədvəli yadda saxla",
+      "cancel": "Ləğv et"
+    },
+    "labels": {
+      "in_between": "Aralıq",
+      "run_once_every": "İcra aralığı",
+      "start_from_label": "Başlama vaxtı",
+      "on_day_of_month": "Ayın günü",
+      "on_day": {
+        "st": " tarixində",
+        "nd": " tarixində",
+        "rd": " tarixində",
+        "th": " tarixində"
+      }
+    }
+  },
+  "main_page": {
+    "notifications": {
+      "interpretation_success": "{{name}} robotunun icrası uğurla tamamlandı",
+      "interpretation_failed": "{{name}} robotunu icra etmək mümkün olmadı",
+      "run_started": "Robot işə salınır: {{name}}",
+      "run_start_failed": "Robotu işə salmaq mümkün olmadı: {{name}}",
+      "schedule_success": "{{name}} robotu üçün cədvəl uğurla quruldu",
+      "schedule_failed": "{{name}} robotu üçün cədvəl qurmaq mümkün olmadı",
+      "abort_success": "{{name}} robotunun icrası uğurla dayandırıldı",
+      "abort_failed": "{{name}} robotunun icrasını dayandırmaq mümkün olmadı",
+      "abort_initiated": "{{name}} robotunun icrası dayandırılır"
+    },
+    "menu": {
+      "recordings": "Robotlar",
+      "runs": "İcralar",
+      "proxy": "Proksi",
+      "apikey": "API açarı"
+    }
+  },
+  "browser_window": {
+    "attribute_modal": {
+      "title": "Atribut seç",
+      "notifications": {
+        "list_select_success": "Siyahı uğurla seçildi. Çıxarılacaq mətn məlumatlarını seçin.",
+        "pagination_select_success": "Səhifələmə elementi uğurla seçildi."
+      }
+    },
+    "attribute_options": {
+      "anchor": {
+        "text": "Mətn: {{text}}",
+        "url": "URL: {{url}}"
+      },
+      "image": {
+        "alt_text": "Alternativ mətn: {{altText}}",
+        "image_url": "Şəklin URL ünvanı: {{imageUrl}}"
+      },
+      "default": {
+        "text": "Mətn: {{text}}"
+      }
+    }
+  },
+  "runs_table": {
+    "run_type_chips": {
+      "manual_run": "Əl ilə",
+      "scheduled_run": "Cədvəl üzrə",
+      "api": "API",
+      "sdk": "SDK",
+      "mcp": "MCP",
+      "cli": "CLI",
+      "unknown_run_type": "Naməlum icra növü"
+    },
+    "run_status_chips": {
+      "success": "Uğurlu",
+      "running": "İcra olunur",
+      "scheduled": "Cədvəl üzrə planlaşdırılıb",
+      "queued": "Növbədədir",
+      "failed": "Uğursuz",
+      "aborted": "Dayandırılıb"
+    },
+    "run_settings_modal": {
+      "title": "İcra parametrləri",
+      "labels": {
+        "run_id": "İcranın identifikatoru",
+        "run_by_user": "İşə salan istifadəçi",
+        "run_by_schedule": "İşə salan cədvəlin identifikatoru",
+        "run_by_api": "API vasitəsilə icra",
+        "run_type": "İcra növü"
+      }
+    }
+  },
+  "run_content": {
+    "tabs": {
+      "output_data": "Çıxış məlumatları",
+      "log": "Jurnal"
+    },
+    "buttons": {
+      "stop": "Dayandır"
+    },
+    "loading": "Məlumatlar çıxarılır...",
+    "empty_output": "Çıxış məlumatları yoxdur",
+    "captured_data": {
+      "title": "Çıxarılmış məlumatlar",
+      "download_csv": "CSV faylını endir",
+      "view_full": "Bütün məlumatları göstər",
+      "items": "element",
+      "schema_title": "Çıxarılmış mətnlər",
+      "list_title": "Çıxarılmış siyahılar"
+    },
+    "captured_screenshot": {
+      "title": "Çəkilmiş ekran görüntüləri",
+      "download": "Endir",
+      "render_failed": "Ekran görüntüsünü göstərmək mümkün olmadı"
+    }
+  },
+  "navbar": {
+    "project_name": "Maxun",
+    "notifications": {
+      "success": {
+        "logout": "Hesabdan uğurla çıxıldı"
+      },
+      "errors": {
+        "logout": {
+          "unauthorized": "Bu əməliyyatı yerinə yetirmək səlahiyyətiniz yoxdur",
+          "server": "Hesabdan çıxarkən server xətası baş verdi",
+          "network": "Hesabdan çıxarkən şəbəkə xətası baş verdi",
+          "unknown": "Hesabdan çıxarkən gözlənilməz xəta baş verdi"
+        }
+      }
+    },
+    "upgrade": {
+      "button": "Yenilə",
+      "modal": {
+        "up_to_date": "🎉 Ən son versiyadan istifadə edirsiniz!",
+        "new_version_available": "Yeni versiya mövcuddur: {{version}}. Xəta düzəlişləri, təkmilləşdirmələr və yeni imkanlar üçün ən son versiyaya yeniləyin!",
+        "view_updates": "Bütün yeniləmələrə baxın",
+        "view_updates_link": "burada",
+        "tabs": {
+          "manual_setup": "Əl ilə quraşdırılmış versiyanı yenilə",
+          "docker_setup": "Docker Compose ilə quraşdırılmış versiyanı yenilə"
+        }
+      }
+    },
+    "menu_items": {
+      "logout": "Hesabdan çıx",
+      "discord": "Discord",
+      "youtube": "YouTube",
+      "twitter": "Twitter (X)",
+      "language": "Dil"
+    },
+    "recording": {
+      "discard": "Ləğv et"
+    }
+  },
+  "language_menu": {
+    "en": "İngilis dili",
+    "es": "İspan dili",
+    "ja": "Yapon dili",
+    "zh": "Çin dili",
+    "de": "Alman dili",
+    "tr": "Türk dili",
+    "ko": "Koreya dili",
+    "he": "İvrit dili",
+    "az": "Azərbaycan dili"
+  }
+}
