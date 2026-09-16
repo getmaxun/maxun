@@ -347,6 +347,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
           let hasChanges = false;
           const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
           if ((recording.recording_meta as any).compareRuns) {
+            capture('maxun-oss-monitoring-used', { robotType: 'scrape', source: 'manual' });
             try {
               const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
               hasChanges = comparison.hasChanges;
@@ -506,6 +507,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
       let hasChanges = false;
       const binarySvc = new BinaryOutputService('maxun-run-screenshots');
       if (robotType === 'extract' && (recording.recording_meta as any).compareRuns) {
+        capture('maxun-oss-monitoring-used', { robotType: 'extract', source: 'manual' });
         const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput);
         hasChanges = comparison.hasChanges;
         finalSerializableOutput._comparison = {
