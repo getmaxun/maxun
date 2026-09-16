@@ -26,11 +26,26 @@ export const RunDiffPage: React.FC = () => {
   return (
     <Box sx={{ minHeight: '100vh', width: '100%', minWidth: 0, overflowX: 'hidden', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 3, py: 2 }}>
-        <IconButton onClick={() => navigate(-1)} aria-label="back">
+        <IconButton onClick={() => navigate(-1)} aria-label="back" sx={{
+          color: theme.palette.text.primary,
+          backgroundColor: 'transparent !important',
+          '&:hover': {
+            backgroundColor: 'transparent !important',
+          },
+          '&:active': {
+            backgroundColor: 'transparent !important',
+          },
+          '&:focus': {
+            backgroundColor: 'transparent !important',
+          },
+          '&:focus-visible': {
+            backgroundColor: 'transparent !important',
+          },
+        }}>
           <ArrowBack />
         </IconButton>
         <Typography variant="h6">
-          {t('runs_table.run_diff.title', { defaultValue: 'Run Comparison' })}
+          {t('runs_table.run_diff.title', { defaultValue: 'Monitoring' })}
         </Typography>
       </Box>
 
