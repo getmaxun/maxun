@@ -24,6 +24,7 @@ import { processRobotOutputFormats } from '../utils/output-post-processor';
 import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
 import { computeNextRun, buildCronExpression, ScheduleValidationError } from '../utils/schedule';
+import { compareExtractRunWithPrevious, compareRunOutputsWithPrevious } from '../utils/run-comparison';
 
 const router = Router();
 
@@ -392,6 +393,8 @@ function formatRunResponse(run: any) {
         runBySDK: run.runBySDK,
         runByMCP: run.runByMCP,
         runByCLI: run.runByCLI,
+        hasChanges: !!run.hasChanges,
+        changedFormats: run.serializableOutput?._comparison?.changedFormats || [],
         data: {
             textData: {},
             listData: {},
@@ -954,20 +957,33 @@ async function executeRun(id: string, userId: string) {
                     }
                 }
 
-                await run.update({
-                    status: 'success',
-                    finishedAt: new Date().toLocaleString(),
-                    log: `${formats.join(', ')} conversion completed successfully`,
-                    serializableOutput,
-                    binaryOutput,
-                });
-
+                const finishedAt = new Date().toLocaleString();
+                let hasChanges = false;
+                const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+                if ((recording.recording_meta as any).compareRuns) {
+                    try {
+                        const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
+                        hasChanges = comparison.hasChanges;
+                        serializableOutput._comparison = {
+                            changedFormats: comparison.changedFormats,
+                        };
+                    } catch (comparisonError: any) {
+                        logger.warn(`Monitoring comparison failed for API scrape run ${plainRun.runId}: ${comparisonError.message}`);
+                    }
+                }
                 let uploadedBinaryOutput: Record<string, string> = {};
                 if (Object.keys(binaryOutput).length > 0) {
-                    const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
                     uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
-                    await run.update({ binaryOutput: uploadedBinaryOutput });
                 }
+
+                await run.update({
+                    status: 'success',
+                    finishedAt,
+                    log: `${formats.join(', ')} conversion completed successfully`,
+                    serializableOutput,
+                    binaryOutput: uploadedBinaryOutput,
+                    hasChanges,
+                });
 
                 logger.log('info', `Markdown robot execution completed for API run ${id}`);
 
@@ -977,7 +993,8 @@ async function executeRun(id: string, userId: string) {
                         robotMetaId: plainRun.robotMetaId,
                         robotName: recording.recording_meta.name,
                         status: 'success',
-                        finishedAt: new Date().toLocaleString()
+                        finishedAt,
+                        hasChanges,
                     };
 
                     serverIo
@@ -1166,7 +1183,25 @@ async function executeRun(id: string, userId: string) {
             }
         }
 
+        const finalSerializableOutput: any = {
+            ...(finalRun?.serializableOutput || {}),
+            crawl: categorizedOutput.crawl,
+            search: categorizedOutput.search,
+        };
+
         const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+        let hasChanges = false;
+        if (robotType === 'extract' && (recording.recording_meta as any).compareRuns) {
+            try {
+                const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput);
+                hasChanges = comparison.hasChanges;
+                finalSerializableOutput._comparison = {
+                    changedFormats: comparison.changedFormats,
+                };
+            } catch (comparisonError: any) {
+                logger.warn(`Monitoring comparison failed for API extract run ${plainRun.runId}: ${comparisonError.message}`);
+            }
+        }
         const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, postBinaryOutput);
 
         if (browser && browser.interpreter) {
@@ -1179,6 +1214,8 @@ async function executeRun(id: string, userId: string) {
             finishedAt: new Date().toLocaleString(),
             log: interpretationInfo.log.join('\n'),
             binaryOutput: uploadedBinaryOutput,
+            serializableOutput: finalSerializableOutput,
+            hasChanges,
         });
 
         try {
@@ -1191,6 +1228,7 @@ async function executeRun(id: string, userId: string) {
                 runByUserId: plainRun.runByUserId,
                 runByScheduleId: plainRun.runByScheduleId,
                 runByAPI: plainRun.runByAPI || false,
+                hasChanges,
                 browserId: plainRun.browserId
             };
 
