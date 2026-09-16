@@ -307,7 +307,7 @@ const RobotCreate: React.FC = () => {
   const [documentPrompt, setDocumentPrompt] = useState('');
   const [documentRobotName, setDocumentRobotName] = useState('');
   const [documentMode, setDocumentMode] = useState<'extract' | 'parse'>('extract');
-  const [documentParseFormats, setDocumentParseFormats] = useState<OutputFormats[]>([]);
+  const [documentParseFormats, setDocumentParseFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [documentLlmProvider, setDocumentLlmProvider] = useState<LlmProvider>('ollama');
   const [documentOpenAICompatiblePreset, setDocumentOpenAICompatiblePreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
   const [documentLlmModel, setDocumentLlmModel] = useState('');
