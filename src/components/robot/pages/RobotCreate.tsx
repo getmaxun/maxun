@@ -674,7 +674,6 @@ const RobotCreate: React.FC = () => {
                 backgroundColor: 'transparent !important',
               },
             }}
-            disableRipple
             aria-label="Go back"
           >
             <ArrowBack />
@@ -1481,7 +1480,6 @@ const RobotCreate: React.FC = () => {
                         color: 'inherit',
                       },
                     }}
-                    disableRipple
                   >
                     {showCrawlAdvanced ? 'Hide Crawl Settings' : 'Crawl Settings'}
                   </Button>

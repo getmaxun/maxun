@@ -1023,7 +1023,6 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               color: 'inherit',
             },
           }}
-          disableRipple
         >
           {showCrawlAdvanced ? 'Hide Crawl Settings' : 'Crawl Settings'}
         </Button>

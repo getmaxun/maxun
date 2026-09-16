@@ -94,7 +94,6 @@ export const RobotConfigPage: React.FC<RobotConfigPageProps> = ({
               backgroundColor: 'transparent !important',
             },
           }}
-          disableRipple
         >
           <ArrowBack />
         </IconButton>

@@ -165,31 +165,26 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               label={t('mainmenu.recordings')}
               icon={<AutoAwesome />}
               iconPosition="start"
-              disableRipple={true}
               onClick={handleRobotsClick} />
             <Tab value="runs"
               label={t('mainmenu.runs')}
               icon={<PlayArrow />}
               iconPosition="start"
-              disableRipple={true}
             />
             <Tab value="proxy"
               label={t('mainmenu.proxy')}
               icon={<Usb />}
               iconPosition="start"
-              disableRipple={true}
             />
             <Tab value="apikey"
               label={t('mainmenu.apikey')}
               icon={<VpnKey />}
               iconPosition="start"
-              disableRipple={true}
             />
           </Tabs>
           <Divider sx={{ borderColor: theme.palette.mode === 'dark' ? "#080808ff" : "" }} />
           <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
             <Button
-              disableRipple
               onClick={() => setDocModalOpen(true)}
               sx={buttonStyles}
               startIcon={<Description />}
@@ -235,7 +230,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               </DialogContent>
             </Dialog>
             <Button
-              disableRipple
               href='https://app.maxun.dev/'
               target="_blank"
               rel="noopener noreferrer"
@@ -243,7 +237,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               Join Maxun Cloud
             </Button>
             <Button
-              disableRipple
               href='https://docs.maxun.dev/category/sdk'
               target="_blank"
               rel="noopener noreferrer"
@@ -251,14 +244,13 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               SDK
             </Button>
             <Button
-              disableRipple
               href='https://docs.maxun.dev/category/mcp'
               target="_blank"
               rel="noopener noreferrer"
               sx={buttonStyles} startIcon={<CloseFullscreen />}>
               MCP
             </Button>
-            <Button disableRipple onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
+            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
               Sponsor Us
             </Button>
           </Box>
