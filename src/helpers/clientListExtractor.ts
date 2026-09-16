@@ -23,6 +23,16 @@ interface Field {
 }
 
 class ClientListExtractor {
+  private isXPathSelector = (selector: string): boolean => {
+    const trimmedSelector = selector.trim();
+
+    return (
+      trimmedSelector.startsWith("/") ||
+      trimmedSelector.startsWith("./") ||
+      trimmedSelector.startsWith("(")
+    );
+  };
+
   private evaluateXPath = (
     rootElement: Element | Document,
     xpath: string
@@ -91,11 +101,7 @@ class ClientListExtractor {
   ): Element | null => {
     if (!selector.includes(">>") && !selector.includes(":>>")) {
       // Check if it's an XPath selector (starts with // or / or ./)
-      if (
-        selector.startsWith("//") ||
-        selector.startsWith("/") ||
-        selector.startsWith("./")
-      ) {
+      if (this.isXPathSelector(selector)) {
         return this.evaluateXPath(rootElement, selector);
       } else {
         return rootElement.querySelector(selector);
@@ -122,11 +128,7 @@ class ClientListExtractor {
           if (!frameDoc) return null;
 
           // Handle XPath in iframe context
-          if (
-            parts[i].startsWith("//") ||
-            parts[i].startsWith("/") ||
-            parts[i].startsWith("./")
-          ) {
+          if (this.isXPathSelector(parts[i])) {
             currentElement = this.evaluateXPath(frameDoc, parts[i]);
           } else {
             currentElement = frameDoc.querySelector(parts[i]);
@@ -147,11 +149,7 @@ class ClientListExtractor {
 
       if ("querySelector" in currentElement) {
         // Handle XPath vs CSS selector
-        if (
-          parts[i].startsWith("//") ||
-          parts[i].startsWith("/") ||
-          parts[i].startsWith("./")
-        ) {
+        if (this.isXPathSelector(parts[i])) {
           nextElement = this.evaluateXPath(currentElement, parts[i]);
         } else {
           nextElement = currentElement.querySelector(parts[i]);
@@ -170,7 +168,7 @@ class ClientListExtractor {
   ): Element[] => {
     if (!selector.includes(">>") && !selector.includes(":>>")) {
       // Check if it's an XPath selector (starts with // or /)
-      if (selector.startsWith("//") || selector.startsWith("/")) {
+      if (this.isXPathSelector(selector)) {
         return this.evaluateXPathAll(rootElement, selector);
       } else {
         return Array.from(rootElement.querySelectorAll(selector));
@@ -197,7 +195,7 @@ class ClientListExtractor {
               frameElement.contentWindow?.document;
             if (frameDoc) {
               // Handle XPath in iframe context
-              if (part.startsWith("//") || part.startsWith("/")) {
+              if (this.isXPathSelector(part)) {
                 nextElements.push(...this.evaluateXPathAll(frameDoc, part));
               } else {
                 nextElements.push(
@@ -217,7 +215,7 @@ class ClientListExtractor {
         } else {
           if ("querySelectorAll" in element) {
             // Handle XPath vs CSS selector
-            if (part.startsWith("//") || part.startsWith("/")) {
+            if (this.isXPathSelector(part)) {
               nextElements.push(...this.evaluateXPathAll(element, part));
             } else {
               nextElements.push(...Array.from(element.querySelectorAll(part)));
@@ -365,7 +363,7 @@ class ClientListExtractor {
         )) {
           let element: Element | null = null;
 
-          if (selector.startsWith("//")) {
+          if (this.isXPathSelector(selector)) {
             const indexedSelector = this.createIndexedXPath(
               selector,
               listSelector,
@@ -416,6 +414,12 @@ class ClientListExtractor {
     listSelector: string,
     containerIndex: number
   ): string {
+    if (childSelector.startsWith(listSelector)) {
+      return `(${listSelector})[${containerIndex}]${childSelector.slice(
+        listSelector.length
+      )}`;
+    }
+
     if (childSelector.includes(listSelector.replace("//", ""))) {
       const listPattern = listSelector.replace("//", "");
       const indexedListSelector = `(${listSelector})[${containerIndex}]`;
