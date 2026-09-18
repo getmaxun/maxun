@@ -42,12 +42,12 @@ Webshare gives you instant access to a proxy pool of 80M+ ethically-sourced IPs 
 
 <tr>
 <td width="32%" align="center" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=maxun">
+<a href="https://www.thordata.com/?ls=github&lk=getmaxun">
   <img src="https://github.com/user-attachments/assets/74ba8f9e-a8a8-4c6a-b06c-cd048a118117" alt="Thordata" width="260" height="150">
 </a>
 </td>
 <td width="68%" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=maxun"><strong>Thordata – Reliable Proxies for Web Scraping & AI Data Collection </strong></a><br>
+<a href="https://www.thordata.com/?ls=github&lk=getmaxun"><strong>Thordata – Reliable Proxies for Web Scraping & AI Data Collection </strong></a><br>
 <ul style="margin-top: 0; margin-bottom: 0;">
   <li>Residential, Mobile, ISP & Datacenter Proxies</li>
   <li>190+ countries with city-level targeting</li>
