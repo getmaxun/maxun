@@ -33,6 +33,7 @@ import { createDocumentParseRobotRecord } from '../utils/document/createDocument
 import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
 import { normalizeDocumentMimeType } from '../utils/document/documentFile';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig } from '../utils/llm-config-validation';
+import { findPreviousSuccessfulRun, serializeCapturedText } from '../utils/run-comparison';
 
 export const router = Router();
 
@@ -51,12 +52,26 @@ const documentUpload = multer({
     if (normalizeDocumentMimeType(file.mimetype, file.originalname)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF, DOCX, XLSX, and CSV files are allowed'));
+      cb(new Error('Only PDF, DOCX, XLSX, CSV, JPG, and PNG files are allowed'));
     }
   },
 });
 
+const uploadDocument = (req: any, res: any, next: any) => {
+  documentUpload.single('file')(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        const maxMb = Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024));
+        return res.status(400).json({ error: `File is too large. The maximum size is ${maxMb} MB.` });
+      }
+      return res.status(400).json({ error: err.message || 'Invalid file upload.' });
+    }
+    next();
+  });
+};
+
 //HELPER FUNCTION
+
 
 // const normalizeRobotUrl = (rawUrl: string): string => {
 //   let normalizedUrl: URL;
@@ -286,6 +301,7 @@ export function formatRunResponse(run: any) {
     id: run.id,
     status: run.status,
     isPartial: !!run.isPartial,
+    hasChanges: !!run.hasChanges,
     name: run.name,
     robotId: run.robotMetaId, // Renaming robotMetaId to robotId
     startedAt: run.startedAt,
@@ -402,11 +418,10 @@ function handleWorkflowActions(workflow: any[], credentials: Credentials) {
 router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, 
-      promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
+    const { name, limits, credentials, targetUrl, workflow: incomingWorkflow, formats, compareRuns, promptLlmProvider, promptLlmModel, promptLlmApiKey, promptLlmBaseUrl } = req.body;
 
     const hasLlmUpdate = 'promptLlmProvider' in req.body || 'promptLlmModel' in req.body || 'promptLlmApiKey' in req.body || 'promptLlmBaseUrl' in req.body;
-    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && !hasLlmUpdate) {
+    if (!name && !limits && !credentials && !targetUrl && !incomingWorkflow && formats === undefined && compareRuns === undefined && !hasLlmUpdate) {
       return res.status(400).json({ error: 'Either "name", "limits", "credentials", "target_url", "workflow", "formats" or LLM config must be provided.' });
     }
 
@@ -567,6 +582,10 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     const effectiveFormats = normalizedFormats ?? (robot.recording_meta?.formats || []);
     const robotType = robot.recording_meta?.type;
 
+    if (compareRuns !== undefined && typeof compareRuns !== 'boolean') {
+      return res.status(400).json({ error: 'compareRuns must be a boolean.' });
+    }
+
     if ((robotType === 'crawl' || robotType === 'search' || robotType === 'scrape') && formatsRequireLlm(effectiveFormats)) {
       const storedMeta = robot.recording_meta as any;
       const llmValidationError = validateRequiredLlmConfig(
@@ -587,6 +606,7 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     if (trimmedName) updatedMeta.name = trimmedName;
     if (targetUrl) updatedMeta.url = normalizeRobotUrl(targetUrl);
     if (normalizedFormats !== undefined) updatedMeta.formats = normalizedFormats;
+    if (compareRuns !== undefined) updatedMeta.compareRuns = compareRuns;
     if (promptLlmProvider !== undefined) updatedMeta.promptLlmProvider = promptLlmProvider || undefined;
     if (promptLlmModel !== undefined) updatedMeta.promptLlmModel = promptLlmModel || undefined;
     if ('promptLlmApiKey' in req.body) {
@@ -1258,6 +1278,78 @@ router.get('/runs/run/:id', requireSignIn, async (req, res) => {
     const { message } = e as Error;
     logger.log('error', `Error ${message} while reading a run with id: ${req.params.id}.json`);
     return res.send(null);
+  }
+});
+
+// Get endpoint to fetch text-based output diffs between a run and the previous successful run.
+router.get('/runs/:id/diff', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    const run = await Run.findOne({ where: { runId: req.params.id } });
+    if (!run) {
+      return res.status(404).json({ error: 'Run not found' });
+    }
+
+    const robot = await Robot.findOne({ where: { 'recording_meta.id': run.robotMetaId, userId: req.user.id } });
+    if (!robot) {
+      return res.status(404).json({ error: 'Run not found' });
+    }
+
+    const previousRun = await findPreviousSuccessfulRun(run);
+
+    if (!previousRun) {
+      return res.status(404).json({ error: 'No previous run to compare against' });
+    }
+
+    const currentOutput = run.serializableOutput as any;
+    const previousOutput = previousRun.serializableOutput as any;
+    const formats = ['text', 'markdown', 'html'].reduce((result, format) => {
+      const current = currentOutput?.[format]?.[0]?.content;
+      const previous = previousOutput?.[format]?.[0]?.content;
+      if (typeof current === 'string') {
+        result[format] = {
+          current: typeof current === 'string' ? current : '',
+          previous: typeof previous === 'string' ? previous : '',
+        };
+      }
+      return result;
+    }, {} as Record<string, { current: string; previous: string }>);
+
+    const currentText = formats.text?.current || '';
+    const previousText = formats.text?.previous || '';
+    const isExtract = robot.recording_meta.type === 'extract';
+    const currentCapturedText = currentOutput?.scrapeSchema || {};
+    const previousCapturedText = previousOutput?.scrapeSchema || {};
+    const capturedText = isExtract
+      && (Object.keys(currentCapturedText).length > 0 || Object.keys(previousCapturedText).length > 0)
+      ? {
+        current: serializeCapturedText(currentCapturedText),
+        previous: serializeCapturedText(previousCapturedText),
+      }
+      : null;
+    const currentCapturedLists = currentOutput?.scrapeList || {};
+    const previousCapturedLists = previousOutput?.scrapeList || {};
+    const capturedLists = isExtract
+      && (Object.keys(currentCapturedLists).length > 0 || Object.keys(previousCapturedLists).length > 0)
+      ? { current: currentCapturedLists, previous: previousCapturedLists }
+      : null;
+    return res.json({
+      currentRunId: run.runId,
+      previousRunId: previousRun.runId,
+      currentText,
+      previousText,
+      formats,
+      capturedText,
+      capturedLists,
+      changedFormats: currentOutput?._comparison?.changedFormats || [],
+    });
+  } catch (e) {
+    const { message } = e as Error;
+    logger.log('error', `Error fetching diff for run ${req.params.id}: ${message}`);
+    return res.status(500).json({ error: 'Failed to compute diff' });
   }
 });
 
@@ -2117,21 +2209,21 @@ router.post('/recordings/search', requireSignIn, async (req: AuthenticatedReques
 
 /**
  * POST endpoint for creating a document extraction robot (doc-extract).
- * Accepts a PDF or DOCX upload and an extraction prompt. Uses the configured LLM to generate
- * an extraction schema and stores the document in MinIO.
+ * Accepts a PDF, DOCX, XLSX, CSV, JPG, or PNG upload and an extraction prompt. 
+ * Uses the configured LLM to generate an extraction schema and stores the document in MinIO.
  */
 router.post(
   '/recordings/document',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const { prompt, name, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
       if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -2191,21 +2283,21 @@ router.post(
 
 /**
  * POST endpoint for creating a document parse robot (doc-parse).
- * Accepts a PDF or DOCX upload and output format list. Parses the document immediately and
- * stores both the document and parsed output in MinIO / database.
+ * Accepts a PDF, DOCX, XLSX, CSV, JPG, or PNG upload and output format list. 
+ * Parses the document immediately and stores both the document and parsed output in MinIO / database.
  */
 router.post(
   '/recordings/document-parse',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const { name, formats, llmProvider, llmModel, llmApiKey, llmBaseUrl } = req.body;
 
@@ -2218,7 +2310,7 @@ router.post(
         : DOC_PARSE_OUTPUT_FORMAT_OPTIONS.filter((f) => f !== 'summary');
 
       // Summaries need a working LLM. Ollama runs locally and needs no key, but the
-      // hosted providers do — fail early rather than parsing the PDF and then dying.
+      // hosted providers do — fail early rather than parsing the document and then dying.
       const summaryProvider = (llmProvider || 'ollama') as 'anthropic' | 'openai' | 'ollama';
       if (outputFormats.includes('summary') && summaryProvider !== 'ollama') {
         const envKey = summaryProvider === 'anthropic'
@@ -2386,15 +2478,15 @@ router.post('/runs/document-parse-run/:id', requireSignIn, async (req: Authentic
 router.put(
 '/recordings/:id/document',
   requireSignIn,
-  documentUpload.single('file'),
+  uploadDocument,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
       const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ error: 'A PDF or DOCX file is required.' });
+      if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required.' });
       const documentMimeType = normalizeDocumentMimeType(file.mimetype, file.originalname);
-      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF and DOCX files are allowed.' });
+      if (!documentMimeType) return res.status(400).json({ error: 'Only PDF, DOCX, XLSX, CSV, JPG, or PNG files are allowed.' });
 
       const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id } });
       if (!robot) return res.status(404).json({ error: 'Robot not found.' });

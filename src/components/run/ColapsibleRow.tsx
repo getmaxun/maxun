@@ -16,10 +16,10 @@ import { columns, Data } from "./RunsTable";
 import { RunContent } from "./RunContent";
 import { getUserById } from "../../api/auth";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@mui/material/styles";
+import { useNavigate } from "react-router-dom";
 import { getOrCreateBrowserSocket, releaseBrowserSocket } from "../../utils/browserSocket";
 
-interface RunTypeChipProps {
+interface RunTypeProps {
   runByUserId?: string;
   runByScheduledId?: string;
   runByAPI: boolean;
@@ -28,16 +28,24 @@ interface RunTypeChipProps {
   runByCLI?: boolean;
 }
 
-const RunTypeChip: React.FC<RunTypeChipProps> = ({ runByUserId, runByScheduledId, runByAPI, runBySDK, runByMCP, runByCLI }) => {
+const RunType = ({
+  runByUserId,
+  runByScheduledId,
+  runByAPI,
+  runBySDK,
+  runByMCP,
+  runByCLI,
+}: RunTypeProps) => {
   const { t } = useTranslation();
 
-  if (runByScheduledId) return <Chip label={t('runs_table.run_type_chips.scheduled_run')} color="primary" variant="outlined" />;
-  if (runByCLI) return <Chip label={t('runs_table.run_type_chips.cli')} color="primary" variant="outlined" />;
-  if (runByMCP) return <Chip label={t('runs_table.run_type_chips.mcp')} color="primary" variant="outlined" />;
-  if (runBySDK) return <Chip label={t('runs_table.run_type_chips.sdk')} color="primary" variant="outlined" />;
-  if (runByAPI) return <Chip label={t('runs_table.run_type_chips.api')} color="primary" variant="outlined" />;
-  if (runByUserId) return <Chip label={t('runs_table.run_type_chips.manual_run')} color="primary" variant="outlined" />;
-  return <Chip label={t('runs_table.run_type_chips.unknown_run_type')} color="primary" variant="outlined" />;
+  if (runByScheduledId) return t('runs_table.run_type_chips.scheduled_run');
+  if (runByCLI) return t('runs_table.run_type_chips.cli');
+  if (runByMCP) return t('runs_table.run_type_chips.mcp');
+  if (runBySDK) return t('runs_table.run_type_chips.sdk');
+  if (runByAPI) return t('runs_table.run_type_chips.api');
+  if (runByUserId) return t('runs_table.run_type_chips.manual_run');
+
+  return t('runs_table.run_type_chips.unknown_run_type');
 };
 
 interface CollapsibleRowProps {
@@ -52,12 +60,17 @@ interface CollapsibleRowProps {
 }
 export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, currentLog, abortRunHandler, runningRecordingName, urlRunId }: CollapsibleRowProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const navigate = useNavigate();
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [runDetails, setRunDetails] = useState<Data>(row);
   const [isLoadingRunDetails, setIsLoadingRunDetails] = useState(false);
+
+  const handleOpenDiff = () => {
+    navigate(`/runs/${row.runId}/diff`);
+  };
+
   const runByLabel = row.runByScheduleId
     ? `${row.runByScheduleId}`
     : row.runByUserId
@@ -198,6 +211,15 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                 return (
                   <TableCell key={column.id} align={column.align}>
                     {row.status === 'success' && <Chip label={t('runs_table.run_status_chips.success')} color="success" variant="outlined" />}
+                    {row.status === 'success' && row.hasChanges && (
+                      <Chip
+                        label={t('runs_table.run_diff.changed_chip', { defaultValue: 'Changed' })}
+                        color="info"
+                        variant="outlined"
+                        onClick={handleOpenDiff}
+                        sx={{ ml: 1, cursor: 'pointer' }}
+                      />
+                    )}
                     {row.status === 'running' && <Chip label={t('runs_table.run_status_chips.running')} color="warning" variant="outlined" />}
                     {row.status === 'scheduled' && <Chip label={t('runs_table.run_status_chips.scheduled')} variant="outlined" />}
                     {row.status === 'queued' && <Chip label={t('runs_table.run_status_chips.queued')} variant="outlined" />}
@@ -271,12 +293,12 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
                             fullWidth
                           />
 
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="body1">
                               {t('runs_table.run_settings_modal.labels.run_type')}:
                             </Typography>
 
-                            <RunTypeChip
+                            <RunType
                               runByUserId={row.runByUserId}
                               runByScheduledId={row.runByScheduleId}
                               runByAPI={row.runByAPI ?? false}
@@ -320,9 +342,6 @@ export const CollapsibleRow = ({ row, handleDelete, isOpen, onToggleExpanded, cu
         PaperProps={{
           sx: {
             p: 0,
-            backgroundColor: theme.palette.mode === 'dark'
-              ? theme.palette.grey[900]
-              : theme.palette.background.paper,
             borderRadius: 2,
             width: { xs: '90vw', sm: '460px', md: '420px' },
             maxWidth: '90vw',

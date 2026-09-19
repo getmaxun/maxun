@@ -466,6 +466,7 @@
     "robot_limit": "机器人限制",
     "created_by_user": "由用户创建",
     "created_at": "机器人创建时间",
+    "compare_runs": "Enable Monitoring",
     "errors": {
       "robot_not_found": "无法找到机器人详细信息。请重试。"
     },
@@ -651,6 +652,7 @@
     "de": "德语",
     "tr": "土耳其语",
     "ko": "韩语",
-    "he": "希伯来语"
+    "he": "希伯来语",
+    "az": "阿塞拜疆语"
   }
 }

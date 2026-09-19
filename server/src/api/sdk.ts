@@ -33,6 +33,14 @@ import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInte
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
 import { normalizeDocumentMimeType, PDF_MIME_TYPE } from '../utils/document/documentFile';
+import { diffLines } from 'diff';
+import {
+    compareExtractRunWithPrevious,
+    compareRunOutputsWithPrevious,
+    findPreviousSuccessfulRun,
+    serializeCapturedLists,
+    serializeCapturedText,
+} from '../utils/run-comparison';
 
 const router = Router();
 
@@ -168,6 +176,10 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
         }
 
         const rawFormats = (workflowFile.meta as any).formats;
+        const compareRuns = (workflowFile.meta as any).compareRuns;
+        if (compareRuns !== undefined && typeof compareRuns !== 'boolean') {
+            return res.status(400).json({ error: 'meta.compareRuns must be a boolean' });
+        }
         const { validFormats, invalidFormats } = parseOutputFormats(
             rawFormats,
             type === 'scrape' ? SCRAPE_OUTPUT_FORMAT_OPTIONS : undefined
@@ -207,8 +219,9 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             const sameFormats = type === 'scrape'
                 ? JSON.stringify([...(meta.formats || [])].sort()) === JSON.stringify([...((workflowFile.meta as any).formats || ['markdown'])].sort())
                 : true;
+            const sameMonitoring = Boolean(meta.compareRuns) === Boolean(compareRuns);
 
-            if (sameType && sameUrl && sameFormats) {
+            if (sameType && sameUrl && sameFormats && sameMonitoring) {
                 return res.status(200).json({
                     data: existingRobot,
                     message: "Existing robot returned",
@@ -250,6 +263,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             type,
             url: extractedUrl,
             formats: normalizedFormats,
+            ...(compareRuns !== undefined ? { compareRuns } : {}),
             isLLM: (workflowFile.meta as any).isLLM,
             ...(promptInstructionsForMeta ? { promptInstructions: promptInstructionsForMeta } : {}),
             ...toPromptLlmMeta(robotLlmConfig, encrypt),
@@ -383,6 +397,9 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
         let workflowTouched = Boolean(updates.workflow);
 
         if (updates.meta) {
+            if (updates.meta.compareRuns !== undefined && typeof updates.meta.compareRuns !== 'boolean') {
+                return res.status(400).json({ error: 'meta.compareRuns must be a boolean' });
+            }
             let normalizedMetaUrl: string | undefined;
             if (updates.meta.url) {
                 try {
@@ -667,7 +684,7 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
             throw new Error('Failed to start robot execution');
         }
 
-        const run = await waitForRunCompletion(runId, user.id.toString());
+        const run = await waitForRunCompletion(runId);
 
         let listData: any[] = [];
         if (run.serializableOutput?.scrapeList) {
@@ -749,6 +766,8 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
             data: {
                 runId: run.runId,
                 status: run.status,
+                hasChanges: !!run.hasChanges,
+                changedFormats: (run.serializableOutput as any)?._comparison?.changedFormats || [],
                 data: {
                     textData: run.serializableOutput?.scrapeSchema || {},
                     listData: listData,
@@ -881,6 +900,77 @@ router.get("/sdk/robots/:id/runs/:runId", requireAPIKey, async (req: Authenticat
             error: "Failed to get run",
             message: error.message
         });
+    }
+});
+
+/**
+ * Get the stored monitoring diff for a run.
+ * GET /api/sdk/robots/:id/runs/:runId/diff
+ */
+router.get("/sdk/robots/:id/runs/:runId/diff", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const robot = await Robot.findOne({ where: { 'recording_meta.id': req.params.id } });
+        if (!robot) return res.status(404).json({ error: "Robot not found" });
+
+        const run = await Run.findOne({
+            where: { runId: req.params.runId, robotMetaId: robot.recording_meta.id }
+        });
+        if (!run) return res.status(404).json({ error: "Run not found" });
+
+        const previousRun = await findPreviousSuccessfulRun(run);
+        if (!previousRun) {
+            return res.status(200).json({
+                data: { runId: run.runId, previousRunId: null, hasChanges: false, changedFormats: [], diffs: [] }
+            });
+        }
+
+        let changedFormats = ((run.serializableOutput as any)?._comparison?.changedFormats || []) as string[];
+        // Runs completed by older workers may have hasChanges persisted before
+        // their comparison metadata. Recompute it so their diffs remain usable.
+        if (run.hasChanges && changedFormats.length === 0) {
+            const robotType = (robot.recording_meta as any).type || (robot.recording_meta as any).robotType;
+            const comparison = robotType === 'extract'
+                ? await compareExtractRunWithPrevious(run, run.serializableOutput || {})
+                : await compareRunOutputsWithPrevious(run, run.serializableOutput || {});
+            changedFormats = comparison.changedFormats;
+            if (changedFormats.length > 0) {
+                await run.update({
+                    serializableOutput: {
+                        ...(run.serializableOutput || {}),
+                        _comparison: { changedFormats },
+                    },
+                });
+            }
+        }
+        const requestedFormat = typeof req.query.format === 'string' ? req.query.format : undefined;
+        const formats = requestedFormat ? changedFormats.filter((format) => format === requestedFormat) : changedFormats;
+        const content = (output: Record<string, any>, format: string): string => {
+            if (format === 'captured-text') return serializeCapturedText(output?.scrapeSchema);
+            if (format === 'captured-list') return JSON.stringify(JSON.parse(serializeCapturedLists(output?.scrapeList)), null, 2);
+            const value = output?.[format]?.[0]?.content;
+            return typeof value === 'string' ? value : '';
+        };
+
+        const diffs = formats.map((format) => ({
+            format,
+            changes: diffLines(
+                content(previousRun.serializableOutput || {}, format),
+                content(run.serializableOutput || {}, format),
+            ).map(({ value, added, removed }) => ({ value, added: Boolean(added), removed: Boolean(removed) })),
+        }));
+
+        return res.status(200).json({
+            data: {
+                runId: run.runId,
+                previousRunId: previousRun.runId,
+                hasChanges: Boolean(run.hasChanges),
+                changedFormats,
+                diffs,
+            }
+        });
+    } catch (error: any) {
+        logger.error("[SDK] Error getting run monitoring diff:", error);
+        return res.status(500).json({ error: "Failed to get run monitoring diff", message: error.message });
     }
 });
 
@@ -1344,7 +1434,10 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
 router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const user = req.user
-        const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
+        const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName, compareRuns } = req.body;
+        if (compareRuns !== undefined && typeof compareRuns !== 'boolean') {
+            return res.status(400).json({ error: 'compareRuns must be a boolean' });
+        }
 
         if (!prompt) {
             return res.status(400).json({
@@ -1410,7 +1503,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             const samePrompt = (meta.description || '') === prompt;
             const sameUrl = normalizeUrl(meta.url || '') === normalizeUrl(finalUrl);
 
-            if (samePrompt && sameUrl) {
+            if (samePrompt && sameUrl && Boolean(meta.compareRuns) === Boolean(compareRuns)) {
                 return res.status(200).json({
                     success: true,
                     data: {
@@ -1437,6 +1530,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             params: [],
             type: 'extract',
             url: finalUrl,
+            ...(compareRuns !== undefined ? { compareRuns } : {}),
             isLLM: true
         };
 
@@ -1485,14 +1579,18 @@ const documentUpload = multer({
     fileFilter: (_req, file, cb) => {
         const allowedMimeTypes = [
             'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'text/csv',
             'application/csv',
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
         ];
         if (allowedMimeTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Only PDF, XLSX, and CSV files are allowed'));
+            cb(new Error('Only PDF, DOCX, XLSX, CSV, JPG, and PNG files are allowed'));
         }
     },
 });
@@ -1509,7 +1607,7 @@ router.post("/sdk/robots/document", requireAPIKey, documentUpload.single('file')
         if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
         const file = (req as any).file as Express.Multer.File | undefined;
-        if (!file) return res.status(400).json({ error: 'A PDF file is required' });
+        if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required' });
 
         const prompt: string = (req.body.prompt || '').trim();
         if (!prompt) return res.status(400).json({ error: 'prompt is required' });
@@ -1583,7 +1681,7 @@ router.post("/sdk/robots/document-parse", requireAPIKey, documentUpload.single('
         if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
         const file = (req as any).file as Express.Multer.File | undefined;
-        if (!file) return res.status(400).json({ error: 'A PDF file is required' });
+        if (!file) return res.status(400).json({ error: 'A PDF, DOCX, XLSX, CSV, JPG, or PNG file is required' });
 
         const rawFormats = req.body['outputFormats[]'] ?? req.body.outputFormats ?? req.body.formats;
         const requestedFormats: string[] = Array.isArray(rawFormats)

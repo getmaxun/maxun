@@ -348,11 +348,6 @@ const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: st
         }
 
         if (url) {
-            // Only http(s) URLs are safe to navigate to. Reject any other
-            // scheme (file:, chrome:, about:, data:, javascript:, ftp:, ...)
-            // before touching the workflow generator or Playwright, so that a
-            // malicious recording client cannot read local files or reach
-            // internal services through the shared browser worker.
             const parsed = parseNavigationUrl(url);
             if (!parsed) {
                 logger.log(
@@ -425,7 +420,6 @@ const handleRefresh = async (activeBrowser: RemoteBrowser, page: Page) => {
             timeout: 30000,
         });
 
-        // small stabilization delay like changeUrl
         await page.waitForTimeout(500);
 
         logger.log("debug", `Page refreshed successfully.`);
@@ -515,7 +509,7 @@ const handleClickAction = async (
   page: Page,
   data: {
     selector: string;
-    url: string;
+    url?: string;
     userId: string;
     elementInfo?: any;
     coordinates?: { x: number; y: number };
@@ -528,7 +522,7 @@ const handleClickAction = async (
       return;
     }
 
-    const { selector, url, elementInfo, coordinates, isSPA = false } = data;
+    const { selector, elementInfo, coordinates, isSPA = false } = data;
 
     if (page.isClosed()) {
       logger.log("debug", "Page is closed, cannot remove target attribute");
@@ -589,7 +583,7 @@ const handleClickAction = async (
     }
 
     const generator = activeBrowser.generator;
-    await generator.onDOMClickAction(page, data);
+    await generator.onDOMClickAction(page, { ...data, url: currentUrl });
 
     logger.log("debug", `Click action processed: ${selector}`);
 

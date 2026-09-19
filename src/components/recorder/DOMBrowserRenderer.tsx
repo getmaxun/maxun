@@ -145,7 +145,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
   } | null>(null);
 
   const { socket } = useSocketStore();
-  const { setLastAction, lastAction } = useGlobalInfoStore();
+  const { setLastAction, lastAction, recordingUrl } = useGlobalInfoStore();
 
   const { state } = useContext(AuthContext);
   const { user } = state;
@@ -448,6 +448,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           if (selector && socket) {
             socket.emit("dom:click", {
               selector,
+              url: recordingUrl,
               userId: user?.id || "unknown",
               elementInfo,
               coordinates: undefined,
@@ -569,6 +570,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
 
             socket.emit("dom:click", {
               selector,
+              url: recordingUrl,
               userId: user?.id || "unknown",
               elementInfo,
               coordinates: { x: relativeX, y: relativeY },
@@ -577,6 +579,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           } else if (elementInfo?.tagName !== "SELECT") {
             socket.emit("dom:click", {
               selector,
+              url: recordingUrl,
               userId: user?.id || "unknown",
               elementInfo,
               coordinates: { x: iframeX, y: iframeY },
@@ -783,6 +786,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
       onElementSelect,
       isInCaptureMode,
       user?.id,
+      recordingUrl,
       onShowDatePicker,
       onShowDropdown,
       onShowTimePicker,

@@ -2,6 +2,7 @@
 1. Create a root folder for your project (e.g. 'maxun')
 2. Create a file named `.env` in the root folder of the project
 3. Example env file can be viewed [here](https://github.com/getmaxun/maxun/blob/master/ENVEXAMPLE). Copy all content of example env to your `.env` file.
+*OPTIONAL* Instead of copying the example by hand, you can generate a complete `.env` by running `bash docs/generate-env.sh` from the root of a cloned Maxun repo. It writes `.env` into the current directory.
 4. Choose your installation method below
 
 ### Docker Compose

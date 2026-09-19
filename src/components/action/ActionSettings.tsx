@@ -9,31 +9,31 @@ interface ActionSettingsProps {
   darkMode?: boolean;
 }
 
+const renderSettings = (action: string, ref: React.Ref<{ getSettings: () => object }>) => {
+  switch (action) {
+    case "screenshot":
+      return <Settings.ScreenshotSettings ref={ref} />;
+    case "scroll":
+      return <Settings.ScrollSettings ref={ref} />;
+    case "scrape":
+      return <Settings.ScrapeSettings ref={ref} />;
+    case "scrapeSchema":
+      return <Settings.ScrapeSchemaSettings ref={ref} />;
+    default:
+      return null;
+  }
+};
+
 export const ActionSettings = ({ action, darkMode = false }: ActionSettingsProps) => {
   const settingsRef = useRef<{ getSettings: () => object }>(null);
   const { socket } = useSocketStore();
-
-  const DisplaySettings = () => {
-    switch (action) {
-      case "screenshot":
-        return <Settings.ScreenshotSettings ref={settingsRef} />;
-      case 'scroll':
-        return <Settings.ScrollSettings ref={settingsRef} />;
-      case 'scrape':
-        return <Settings.ScrapeSettings ref={settingsRef} />;
-      case 'scrapeSchema':
-        return <Settings.ScrapeSchemaSettings ref={settingsRef} />;
-      default:
-        return null;
-    }
-  };
 
   const handleSubmit = (event: React.SyntheticEvent) => {
     event.preventDefault();
     const settings = settingsRef.current?.getSettings();
     socket?.emit(`action`, {
       action,
-      settings
+      settings,
     });
   };
 
@@ -41,7 +41,7 @@ export const ActionSettings = ({ action, darkMode = false }: ActionSettingsProps
     <div>
       <ActionSettingsWrapper action={action} darkMode={darkMode}>
         <form onSubmit={handleSubmit}>
-          <DisplaySettings />
+          {renderSettings(action, settingsRef)}
           <Button
             variant="outlined"
             type="submit"

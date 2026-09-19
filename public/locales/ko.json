@@ -465,6 +465,7 @@
     "robot_limit": "로봇 제한",
     "created_by_user": "생성한 사용자",
     "created_at": "로봇 생성 시각",
+    "compare_runs": "Enable Monitoring",
     "errors": {
       "robot_not_found": "로봇 정보를 찾을 수 없습니다. 다시 시도해 주세요."
     },
@@ -650,6 +651,7 @@
     "de": "독일어",
     "tr": "터키어",
     "ko": "한국어",
-    "he": "히브리어"
+    "he": "히브리어",
+    "az": "아제르바이잔어"
   }
 }

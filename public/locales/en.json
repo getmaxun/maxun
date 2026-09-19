@@ -1,7 +1,7 @@
 {
     "login": {
       "title": "Welcome to Maxun",
-      "email": "Enter Work Email",
+      "email": "Email",
       "password": "Password",
       "button": "Login",
       "loading": "Loading",
@@ -21,7 +21,7 @@
     },
     "register": {
       "title": "Create An Account",
-      "email": "Enter Work Email",
+      "email": "Email",
       "password": "Password",
       "button": "Register",
       "loading": "Loading",
@@ -459,12 +459,13 @@
       }
     },
     "robot_settings": {
-      "title": "Robot Settings",
+      "title": "Settings",
       "target_url": "Target URL",
       "robot_id": "Robot ID",
       "robot_limit": "Robot Limit",
       "created_by_user": "Created By User",
       "created_at": "Robot Created At",
+      "compare_runs": "Enable Monitoring",
       "errors": {
         "robot_not_found": "Could not find robot details. Please try again."
       },
@@ -650,6 +651,7 @@
       "de": "German",
       "tr": "Turkish",
       "ko": "Korean",
-      "he": "Hebrew"
+      "he": "Hebrew",
+      "az": "Azerbaijani"
     }
 }

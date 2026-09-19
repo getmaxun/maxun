@@ -7,7 +7,6 @@ import { v4 as uuid } from "uuid";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
 import logger from "../logger";
 import { browserPool, io as serverIo } from "../server";
-import { io, Socket } from "socket.io-client";
 import { BinaryOutputService } from "../storage/mino";
 import { AuthenticatedRequest } from "../routes/record"
 import {capture} from "../utils/analytics";
@@ -18,12 +17,14 @@ import { addAirtableUpdateTask, processAirtableUpdates } from "../workflow-manag
 import { sendWebhook } from "../routes/webhook";
 import { convertPageToHTML, convertPageToLinks, convertPageToMarkdown, convertPageToScreenshot, convertPageToText } from '../markdownify/scrape';
 import { safeDecrypt } from '../utils/auth';
+import { mintInternalSocketToken } from '../socket-connection/socketAuth';
 import { executeBrowserAgent } from '../sdk/browserAgent';
 import { OutputFormats } from '../constants/output-formats';
 import { processRobotOutputFormats } from '../utils/output-post-processor';
 import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
 import { computeNextRun, buildCronExpression, ScheduleValidationError } from '../utils/schedule';
+import { compareExtractRunWithPrevious, compareRunOutputsWithPrevious } from '../utils/run-comparison';
 
 const router = Router();
 
@@ -392,6 +393,8 @@ function formatRunResponse(run: any) {
         runBySDK: run.runBySDK,
         runByMCP: run.runByMCP,
         runByCLI: run.runByCLI,
+        hasChanges: !!run.hasChanges,
+        changedFormats: run.serializableOutput?._comparison?.changedFormats || [],
         data: {
             textData: {},
             listData: {},
@@ -618,12 +621,49 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
             logger.log('warn', `Failed to send run-started notification for API run ${plainRun.runId}: ${socketError.message}`);
         }
 
-        if (isDocRobot) {
+        try {
             await addJob(QUEUE_NAMES.EXECUTE_RUN, {
                 userId,
                 runId: plainRun.runId,
                 browserId,
-            }, { maxAttempts: 1 });
+            }, {
+                maxAttempts: 1,
+                jobKey: `${QUEUE_NAMES.EXECUTE_RUN}:${plainRun.runId}`,
+            });
+        } catch (queueError: any) {
+            const finishedAt = new Date().toLocaleString();
+            await run.update({
+                status: 'failed',
+                finishedAt,
+                log: `Failed to queue execution job: ${queueError.message}`,
+            });
+
+            try {
+                serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', {
+                    runId: plainRun.runId,
+                    robotMetaId: plainRun.robotMetaId,
+                    robotName: plainRun.name,
+                    status: 'failed',
+                    finishedAt,
+                    runByUserId: plainRun.runByUserId,
+                    runByScheduleId: plainRun.runByScheduleId,
+                    runByAPI: plainRun.runByAPI || false,
+                    browserId: plainRun.browserId,
+                    error: `Failed to queue execution job: ${queueError.message}`,
+                });
+            } catch (socketError: any) {
+                logger.log('warn', `Failed to emit queue failure for API run ${plainRun.runId}: ${socketError.message}`);
+            }
+
+            if (!isDocRobot) {
+                try {
+                    await destroyRemoteBrowser(browserId, userId);
+                } catch (cleanupError: any) {
+                    logger.log('warn', `Failed to clean up browser ${browserId} after queue error: ${cleanupError.message}`);
+                }
+            }
+
+            throw queueError;
         }
 
         return {
@@ -676,36 +716,6 @@ async function triggerIntegrationUpdates(runId: string, robotMetaId: string): Pr
   } catch (err: any) {
     logger.log('error', `Failed to update integrations for run: ${runId}: ${err.message}`);
   }
-}
-
-async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket) {
-    try {
-        const result = await executeRun(id, userId);
-
-        if (result && result.success) {
-            logger.log('info', `Interpretation of ${id} succeeded`);
-            resetRecordingState(browserId, id);
-            return result.interpretationInfo;
-        } else {
-            logger.log('error', `Interpretation of ${id} failed`);
-            await destroyRemoteBrowser(browserId, userId);
-            resetRecordingState(browserId, id);
-            return null;
-        }
-
-    } catch (error: any) {
-        logger.error(`Error during readyForRunHandler: ${error.message}`);
-        await destroyRemoteBrowser(browserId, userId);
-        return null;
-    } finally {
-        cleanupSocketConnection(socket, browserId, id);
-    }
-}
-
-
-function resetRecordingState(browserId: string, id: string) {
-    browserId = '';
-    id = '';
 }
 
 function AddGeneratedFlags(workflow: WorkflowFile) {
@@ -947,20 +957,34 @@ async function executeRun(id: string, userId: string) {
                     }
                 }
 
-                await run.update({
-                    status: 'success',
-                    finishedAt: new Date().toLocaleString(),
-                    log: `${formats.join(', ')} conversion completed successfully`,
-                    serializableOutput,
-                    binaryOutput,
-                });
-
+                const finishedAt = new Date().toLocaleString();
+                let hasChanges = false;
+                const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+                if ((recording.recording_meta as any).compareRuns) {
+                    capture('maxun-oss-monitoring-used', { robotType: 'scrape', source: 'api' });
+                    try {
+                        const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
+                        hasChanges = comparison.hasChanges;
+                        serializableOutput._comparison = {
+                            changedFormats: comparison.changedFormats,
+                        };
+                    } catch (comparisonError: any) {
+                        logger.warn(`Monitoring comparison failed for API scrape run ${plainRun.runId}: ${comparisonError.message}`);
+                    }
+                }
                 let uploadedBinaryOutput: Record<string, string> = {};
                 if (Object.keys(binaryOutput).length > 0) {
-                    const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
                     uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
-                    await run.update({ binaryOutput: uploadedBinaryOutput });
                 }
+
+                await run.update({
+                    status: 'success',
+                    finishedAt,
+                    log: `${formats.join(', ')} conversion completed successfully`,
+                    serializableOutput,
+                    binaryOutput: uploadedBinaryOutput,
+                    hasChanges,
+                });
 
                 logger.log('info', `Markdown robot execution completed for API run ${id}`);
 
@@ -970,7 +994,8 @@ async function executeRun(id: string, userId: string) {
                         robotMetaId: plainRun.robotMetaId,
                         robotName: recording.recording_meta.name,
                         status: 'success',
-                        finishedAt: new Date().toLocaleString()
+                        finishedAt,
+                        hasChanges,
                     };
 
                     serverIo
@@ -1159,7 +1184,26 @@ async function executeRun(id: string, userId: string) {
             }
         }
 
+        const finalSerializableOutput: any = {
+            ...(finalRun?.serializableOutput || {}),
+            crawl: categorizedOutput.crawl,
+            search: categorizedOutput.search,
+        };
+
         const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+        let hasChanges = false;
+        if (robotType === 'extract' && (recording.recording_meta as any).compareRuns) {
+            capture('maxun-oss-monitoring-used', { robotType: 'extract', source: 'api' });
+            try {
+                const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput);
+                hasChanges = comparison.hasChanges;
+                finalSerializableOutput._comparison = {
+                    changedFormats: comparison.changedFormats,
+                };
+            } catch (comparisonError: any) {
+                logger.warn(`Monitoring comparison failed for API extract run ${plainRun.runId}: ${comparisonError.message}`);
+            }
+        }
         const uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, postBinaryOutput);
 
         if (browser && browser.interpreter) {
@@ -1172,6 +1216,8 @@ async function executeRun(id: string, userId: string) {
             finishedAt: new Date().toLocaleString(),
             log: interpretationInfo.log.join('\n'),
             binaryOutput: uploadedBinaryOutput,
+            serializableOutput: finalSerializableOutput,
+            hasChanges,
         });
 
         try {
@@ -1184,6 +1230,7 @@ async function executeRun(id: string, userId: string) {
                 runByUserId: plainRun.runByUserId,
                 runByScheduleId: plainRun.runByScheduleId,
                 runByAPI: plainRun.runByAPI || false,
+                hasChanges,
                 browserId: plainRun.browserId
             };
 
@@ -1390,11 +1437,9 @@ async function executeRun(id: string, userId: string) {
 }
 
 export async function handleRunRecording(id: string, userId: string, runSource: 'api' | 'sdk' | 'mcp' | 'cli' = 'api', requestedFormats?: OutputFormats[], promptInstructions?: string) {
-    let socket: Socket | null = null;
-
     try {
         const result = await createWorkflowAndStoreMetadata(id, userId, runSource, requestedFormats, promptInstructions);
-        const { browserId, runId: newRunId, isDocRobot } = result as any;
+        const { runId: newRunId, isDocRobot } = result as any;
 
         if (!newRunId || !userId) {
             throw new Error('runId or userId is undefined');
@@ -1402,37 +1447,7 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
 
         if (isDocRobot) {
             logger.log('info', `Doc robot run ${newRunId} queued without browser`);
-            return newRunId;
         }
-
-        if (!browserId) {
-            throw new Error('browserId is undefined for non-document robot');
-        }
-
-        const CONNECTION_TIMEOUT = 30000;
-
-        socket = io(`${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:8080'}/${browserId}`, {
-            transports: ['websocket'],
-            rejectUnauthorized: false,
-            timeout: CONNECTION_TIMEOUT,
-        });
-
-        const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
-
-        socket.on('ready-for-run', readyHandler);
-
-        socket.on('connect_error', (error: Error) => {
-            logger.error(`Socket connection error for API run ${newRunId}: ${error.message}`);
-            cleanupSocketConnection(socket!, browserId, newRunId);
-        });
-
-        socket.on('error', (error: Error) => {
-            logger.error(`Socket error for API run ${newRunId}: ${error.message}`);
-        });
-
-        socket.on('disconnect', () => {
-            cleanupSocketConnection(socket!, browserId, newRunId);
-        });
 
         logger.log('info', `Running Robot: ${id}`);
 
@@ -1440,31 +1455,6 @@ export async function handleRunRecording(id: string, userId: string, runSource: 
 
     } catch (error: any) {
         logger.error('Error running robot:', error);
-        if (socket) {
-            cleanupSocketConnection(socket, '', '');
-        }
-    }
-}
-
-function cleanupSocketConnection(socket: Socket, browserId: string, id: string) {
-    try {
-        socket.removeAllListeners();
-        socket.disconnect();
-
-        if (browserId) {
-            const namespace = serverIo.of(browserId);
-            namespace.removeAllListeners();
-            namespace.disconnectSockets(true);
-            const nsps = (serverIo as any)._nsps;
-            if (nsps && nsps.has(`/${browserId}`)) {
-                nsps.delete(`/${browserId}`);
-                logger.log('debug', `Deleted namespace /${browserId} from io._nsps Map`);
-            }
-        }
-
-        logger.log('info', `Cleaned up socket connection for browserId: ${browserId}, runId: ${id}`);
-    } catch (error: any) {
-        logger.error(`Error cleaning up socket connection: ${error.message}`);
     }
 }
 

@@ -466,6 +466,7 @@
         "robot_limit": "ロボットの制限",
         "created_by_user": "作成したユーザー",
         "created_at": "作成日時",
+        "compare_runs": "Enable Monitoring",
         "errors": {
             "robot_not_found": "ロボットの詳細が見つかりませんでした。もう一度試してください。"
         },
@@ -651,6 +652,7 @@
         "de": "ドイツ語",
         "tr": "トルコ語",
         "ko": "韓国語",
-        "he": "ヘブライ語"
+        "he": "ヘブライ語",
+        "az": "アゼルバイジャン語"
     }
 }

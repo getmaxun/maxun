@@ -24,6 +24,7 @@ import { executeBrowserAgent } from './sdk/browserAgent';
 import { processRobotOutputFormats } from './utils/output-post-processor';
 import { getInterpretationFailureReason, hasExpectedRobotOutput, flushReloadAndCheckPartialOutput } from './utils/output-validation';
 import { handleRunRecording } from './workflow-management/scheduler';
+import { compareExtractRunWithPrevious, compareRunOutputsWithPrevious } from './utils/run-comparison';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -333,17 +334,57 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
             }
           }
 
-          await run.update({ status: 'success', finishedAt: new Date().toLocaleString(), log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, serializableOutput, binaryOutput });
+          const finishedAt = new Date().toLocaleString();
+          const [stillRunningCount] = await Run.update(
+            { log: `${formats.join(', ').toUpperCase()} conversion completed successfully`, hasChanges: false },
+            { where: { id: run.id, status: 'running' } },
+          );
+          if (stillRunningCount === 0) {
+            logger.log('info', `Run ${data.runId} left running state before results could be finalized`);
+            return;
+          }
+
+          let hasChanges = false;
+          const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+          if ((recording.recording_meta as any).compareRuns) {
+            capture('maxun-oss-monitoring-used', { robotType: 'scrape', source: 'manual' });
+            try {
+              const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
+              hasChanges = comparison.hasChanges;
+
+              serializableOutput._comparison = {
+                changedFormats: comparison.changedFormats,
+              };
+
+              if (comparison.previousRun && hasChanges) {
+                logger.log('info', `Run ${data.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
+              }
+            } catch (compareError: any) {
+              logger.log('warn', `Run comparison failed for run ${data.runId}: ${compareError.message}`);
+            }
+          }
 
           let uploadedBinaryOutput: Record<string, string> = {};
           if (Object.keys(binaryOutput).length > 0) {
-            const svc = new BinaryOutputService('maxun-run-screenshots');
-            uploadedBinaryOutput = await svc.uploadAndStoreBinaryOutput(run, binaryOutput);
-            await run.update({ binaryOutput: uploadedBinaryOutput });
+            uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
+          }
+
+          const [finalizedCount] = await Run.update({
+            status: 'success',
+            finishedAt,
+            hasChanges,
+            serializableOutput: { ...serializableOutput },
+            binaryOutput: uploadedBinaryOutput,
+          }, {
+            where: { id: run.id, status: 'running' },
+          });
+          if (finalizedCount === 0) {
+            logger.log('info', `Run ${data.runId} left running state while results were being finalized; success was not published`);
+            return;
           }
 
           try {
-            const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString() };
+            const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt, hasChanges };
             serverIo.of(browserId).emit('run-completed', completionData);
             serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', completionData);
           } catch (socketError: any) {
@@ -458,7 +499,22 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
         }
       }
 
+      const finalSerializableOutput: any = {
+        ...(finalRun?.serializableOutput || {}),
+        crawl: categorizedOutput.crawl,
+        search: categorizedOutput.search,
+      };
+      let hasChanges = false;
       const binarySvc = new BinaryOutputService('maxun-run-screenshots');
+      if (robotType === 'extract' && (recording.recording_meta as any).compareRuns) {
+        capture('maxun-oss-monitoring-used', { robotType: 'extract', source: 'manual' });
+        const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput);
+        hasChanges = comparison.hasChanges;
+        finalSerializableOutput._comparison = {
+          changedFormats: comparison.changedFormats,
+        };
+      }
+
       const uploadedBinaryOutput = Object.keys(binaryOutput).length > 0 ? await binarySvc.uploadAndStoreBinaryOutput(run, binaryOutput) : {};
 
       if (await isRunAborted()) {
@@ -466,13 +522,21 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
         return;
       }
 
-      await run.update({
+      const finishedAt = new Date().toLocaleString();
+      const [finalizedCount] = await Run.update({
         status: 'success',
-        finishedAt: new Date().toLocaleString(),
+        finishedAt,
         log: interpretationInfo.log.join('\n'),
         binaryOutput: uploadedBinaryOutput,
-        serializableOutput: { ...(finalRun?.serializableOutput || {}), crawl: categorizedOutput.crawl, search: categorizedOutput.search }
+        serializableOutput: finalSerializableOutput,
+        hasChanges,
+      }, {
+        where: { id: run.id, status: 'running' },
       });
+      if (finalizedCount === 0) {
+        logger.log('info', `Run ${data.runId} left running state while results were being finalized; success was not published`);
+        return;
+      }
 
       let totalSchemaItemsExtracted = 0;
       let totalListItemsExtracted = 0;
@@ -482,7 +546,7 @@ async function processRunExecution(data: ExecuteRunData): Promise<void> {
       capture('maxun-oss-run-created', { runId: data.runId, user_id: data.userId, created_at: new Date().toISOString(), status: 'success', totalRowsExtracted: totalSchemaItemsExtracted + totalListItemsExtracted, schemaItemsExtracted: totalSchemaItemsExtracted, listItemsExtracted: totalListItemsExtracted, extractedScreenshotsCount: Object.keys(uploadedBinaryOutput).length, is_llm: (recording.recording_meta as any).isLLM, source: 'manual' });
 
       try {
-        const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt: new Date().toLocaleString() };
+        const completionData = { runId: data.runId, robotMetaId: plainRun.robotMetaId, robotName: recording.recording_meta.name, status: 'success', finishedAt, hasChanges };
         serverIo.of(browserId).emit('run-completed', completionData);
         serverIo.of('/queued-run').to(`user-${data.userId}`).emit('run-completed', completionData);
       } catch (socketError: any) {

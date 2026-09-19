@@ -24,7 +24,8 @@ import {
   Close,
   LightMode,
   DarkMode,
-  Translate
+  Translate,
+  RssFeed
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/auth';
@@ -298,6 +299,11 @@ export const NavBar: React.FC<NavBarProps> = ({
                     }}>
                       <X sx={{ marginRight: '5px' }} /> Twitter (X)
                     </MenuItem>
+                    <MenuItem onClick={() => {
+                      window.open('https://www.maxun.dev/blog', '_blank');
+                    }}>
+                      <RssFeed sx={{ marginRight: '5px' }} /> Blog
+                    </MenuItem>
                     <Menu
                       anchorEl={langAnchorEl}
                       open={Boolean(langAnchorEl)}
@@ -374,6 +380,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                         }}
                       >
                         עברית
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          changeLanguage("az");
+                          handleMenuClose();
+                        }}
+                      >
+                        Azərbaycan dili
                       </MenuItem>
                       <MenuItem
                         onClick={() => {
@@ -494,6 +508,14 @@ export const NavBar: React.FC<NavBarProps> = ({
                   }}
                 >
                   עברית
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    changeLanguage("az");
+                    handleMenuClose();
+                  }}
+                >
+                  Azərbaycan dili
                 </MenuItem>
                 <MenuItem
                   onClick={() => {

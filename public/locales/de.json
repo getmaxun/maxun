@@ -465,6 +465,7 @@
         "robot_limit": "Roboter-Limit",
         "created_by_user": "Erstellt von Benutzer",
         "created_at": "Erstellungsdatum des Roboters",
+        "compare_runs": "Enable Monitoring",
         "errors": {
             "robot_not_found": "Roboterdetails konnten nicht gefunden werden. Bitte versuchen Sie es erneut."
         },
@@ -650,6 +651,7 @@
         "de": "Deutsch",
         "tr": "Türkisch",
         "ko": "Koreanisch",
-        "he": "Hebräisch"
+        "he": "Hebräisch",
+        "az": "Aserbaidschanisch"
     }
 }

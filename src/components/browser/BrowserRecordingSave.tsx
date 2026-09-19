@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
-import { Grid, Button, Box, Typography, IconButton, Menu, MenuItem, ListItemText, Dialog, DialogTitle, DialogActions, } from '@mui/material';
+import {
+  Grid, Button, Typography, IconButton, Menu, MenuItem,
+  ListItemText, Dialog, DialogTitle, DialogActions, DialogContent
+} from '@mui/material';
 import { SaveRecording } from "../recorder/SaveRecording";
 import { useGlobalInfoStore } from '../../context/globalInfo';
 import { useActionContext } from '../../context/browserActions';
 import { useBrowserSteps } from '../../context/browserSteps';
 import { stopRecording } from "../../api/recording";
-import { GenericModal } from "../ui/GenericModal";
 import { useTranslation } from 'react-i18next';
 import { emptyWorkflow } from '../../shared/constants';
 import { useSocketStore } from '../../context/socket';
@@ -183,67 +185,52 @@ const BrowserRecordingSave = () => {
 
           <SaveRecording fileName={recordingName} />
 
-          <Dialog
-            open={openDiscardModal}
-            onClose={() => setOpenDiscardModal(false)}
-            maxWidth="xs"
-            fullWidth
-            PaperProps={{
-              sx: {
-                p: 0,
-                borderRadius: 2,
-                border: "none"
-              }
-            }}
-          >
+          <Dialog open={openDiscardModal} onClose={() => setOpenDiscardModal(false)}>
             <DialogTitle>
               {t('browser_recording.modal.confirm_discard')}
             </DialogTitle>
-
-            <DialogActions sx={{ px: 3, pb: 2 }}>
+            <DialogActions>
               <Button
                 onClick={() => setOpenDiscardModal(false)}
                 color="inherit"
               >
-                {t('right_panel.buttons.cancel')}
+                No
               </Button>
               <Button
                 onClick={goToMainMenu}
                 variant="contained"
                 color="error"
               >
-                {t('right_panel.buttons.discard')}
+                Yes, Discard
               </Button>
             </DialogActions>
           </Dialog>
 
-          <GenericModal isOpen={openResetModal} onClose={() => setOpenResetModal(false)} modalStyle={modalStyle}>
-            <Box p={2}>
-              <Typography variant="h6">{t('browser_recording.modal.confirm_reset')}</Typography>
-              <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
-                {t('browser_recording.modal.reset_warning')}
-              </Typography>
-              <Box display="flex" justifyContent="space-between" mt={2}>
-                <Button
-                  onClick={performReset}
-                  variant="contained"
-                  color="primary"
-                >
-                  {t('right_panel.buttons.confirm_reset')}
-                </Button>
-                <Button
-                  onClick={() => setOpenResetModal(false)}
-                  variant="outlined"
-                  sx={{
-                    color: '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
-                    backgroundColor: 'whitesmoke !important',
-                  }} >
-                  {t('right_panel.buttons.cancel')}
-                </Button>
-              </Box>
-            </Box>
-          </GenericModal>
+          <Dialog open={openResetModal} onClose={() => setOpenResetModal(false)}>
+            <DialogTitle>
+              {t('browser_recording.modal.confirm_reset')}
+            </DialogTitle>
+
+            <DialogContent>
+              {t('browser_recording.modal.reset_warning')}
+            </DialogContent>
+
+            <DialogActions>
+              <Button
+                onClick={() => setOpenResetModal(false)}
+                color='inherit'
+              >
+                {t('right_panel.buttons.cancel')}
+              </Button>
+              <Button
+                onClick={performReset}
+                variant="contained"
+                color="primary"
+              >
+                Yes, Restart
+              </Button>
+            </DialogActions>
+          </Dialog>
         </div>
       </Grid>
     </Grid>

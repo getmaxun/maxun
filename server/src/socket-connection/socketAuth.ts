@@ -1,4 +1,4 @@
-import { verify } from 'jsonwebtoken';
+import { sign, verify } from 'jsonwebtoken';
 import { Socket } from 'socket.io';
 
 /**
@@ -28,6 +28,41 @@ const readTokenFromCookieHeader = (cookieHeader?: string): string | null => {
   }
 
   return null;
+};
+
+/**
+ * Lifetime of a server-minted socket token.
+ *
+ * It is used once, immediately, by a connection opened in the same tick. A
+ * login token is deliberately long-lived because it backs a session; this backs
+ * a handshake, so it expires almost at once.
+ */
+const INTERNAL_SOCKET_TOKEN_TTL_SECONDS = 60;
+
+/**
+ * Mint a token for a socket connection the backend opens to itself.
+ *
+ * The backend joins its own namespace as a client whenever a run is started by
+ * something other than a browser: API, SDK and scheduled runs all take that
+ * path. Those connections carry no cookie, so once `authenticateSocket` was
+ * applied to every namespace they were refused - and because the refusal
+ * surfaces as `connect_error` rather than as a failed run, the run simply
+ * waited for a `ready-for-run` that could never arrive.
+ *
+ * Signed with the same secret and the same `id` claim the HTTP login issues, so
+ * the gate needs no special case and `socketOwns` keeps working unchanged: the
+ * connection authenticates as the user the run already belongs to, rather than
+ * as a privileged internal caller.
+ */
+export const mintInternalSocketToken = (userId: string | number): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not set, so an internal socket connection cannot authenticate.');
+  }
+
+  return sign({ id: String(userId) }, secret, {
+    expiresIn: INTERNAL_SOCKET_TOKEN_TTL_SECONDS,
+  });
 };
 
 /**

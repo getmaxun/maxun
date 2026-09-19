@@ -210,15 +210,3 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
     </div>
   );
 }
-
-const modalStyle = {
-  top: '25%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '30%',
-  backgroundColor: 'background.paper',
-  p: 4,
-  height: 'fit-content',
-  display: 'block',
-  padding: '20px',
-};

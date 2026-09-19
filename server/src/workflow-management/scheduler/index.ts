@@ -1,5 +1,4 @@
 import { v4 as uuid } from "uuid";
-import { io, Socket } from "socket.io-client";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from '../../browser-management/controller';
 import logger from '../../logger';
 import { browserPool, io as serverIo } from "../../server";
@@ -20,6 +19,7 @@ import { safeDecrypt } from "../../utils/auth";
 import { getInterpretationFailureReason, hasExpectedRobotOutput } from "../../utils/output-validation";
 import { addJob } from '../../storage/graphileWorker';
 import { QUEUE_NAMES } from '../../task-runner';
+import { compareExtractRunWithPrevious, compareRunOutputsWithPrevious } from '../../utils/run-comparison';
 
 const getRobotTargetUrl = (recording: any): string => {
   const metaUrl = recording?.recording_meta?.url?.trim();
@@ -113,18 +113,58 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       logger.log('warn', `Failed to send run-scheduled notification for run ${plainRun.runId}: ${socketError.message}`);
     }
 
-    if (isDocRobot) {
+    try {
       await addJob(QUEUE_NAMES.EXECUTE_RUN, {
         userId,
         runId: plainRun.runId,
         browserId,
-      }, { maxAttempts: 1 });
-      return { browserId, runId: plainRun.runId, isDocRobot: true };
+      }, {
+        maxAttempts: 1,
+        jobKey: `${QUEUE_NAMES.EXECUTE_RUN}:${plainRun.runId}`,
+      });
+    } catch (queueError: any) {
+      const finishedAt = new Date().toLocaleString();
+      await run.update({
+        status: 'failed',
+        finishedAt,
+        log: `Failed to queue scheduled execution job: ${queueError.message}`,
+      });
+
+      const failureSocketData = {
+        runId: plainRun.runId,
+        robotMetaId: plainRun.robotMetaId,
+        robotName: plainRun.name,
+        status: 'failed',
+        finishedAt,
+        runByUserId: plainRun.runByUserId,
+        runByScheduleId: plainRun.runByScheduleId,
+        runByAPI: plainRun.runByAPI || false,
+        browserId: plainRun.browserId,
+        error: `Failed to queue scheduled execution job: ${queueError.message}`,
+      };
+
+      try {
+        serverIo.of(browserId).emit('run-completed', failureSocketData);
+        serverIo.of('/queued-run').to(`user-${userId}`).emit('run-completed', failureSocketData);
+      } catch (socketError: any) {
+        logger.log('warn', `Failed to emit queue failure for scheduled run ${plainRun.runId}: ${socketError.message}`);
+      }
+
+      if (!isDocRobot) {
+        try {
+          await destroyRemoteBrowser(browserId, userId);
+        } catch (cleanupError: any) {
+          logger.log('warn', `Failed to clean up browser ${browserId} after scheduled queue error: ${cleanupError.message}`);
+        }
+      }
+
+      throw queueError;
     }
 
     return {
       browserId,
       runId: plainRun.runId,
+      isDocRobot,
     }
 
   } catch (e) {
@@ -433,19 +473,55 @@ async function executeRun(id: string, userId: string) {
           }
         }
         
-        await run.update({
-          status: 'success',
-          finishedAt: new Date().toLocaleString(),
+        const [stillRunningCount] = await Run.update({
           log: `${formats.join(', ')} conversion completed successfully`,
-          serializableOutput,
-          binaryOutput,
+          hasChanges: false,
+        }, {
+          where: { id: run.id, status: 'running' },
         });
+        if (stillRunningCount === 0) {
+          logger.log('info', `Scheduled run ${plainRun.runId} left running state before results could be finalized`);
+          return false;
+        }
+
+        let hasChanges = false;
+        const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+        if ((recording.recording_meta as any).compareRuns) {
+          capture('maxun-oss-monitoring-used', { robotType: 'scrape', source: 'scheduled' });
+          try {
+            const comparison = await compareRunOutputsWithPrevious(run, serializableOutput);
+            hasChanges = comparison.hasChanges;
+
+            serializableOutput._comparison = {
+              changedFormats: comparison.changedFormats,
+            };
+
+            if (comparison.previousRun && hasChanges) {
+              logger.log('info', `Scheduled run ${plainRun.runId} has changes compared to previous run ${comparison.previousRun.runId}`);
+            }
+          } catch (compareError: any) {
+            logger.log('warn', `Run comparison failed for scheduled run ${plainRun.runId}: ${compareError.message}`);
+          }
+        }
 
         let uploadedBinaryOutput: Record<string, string> = {};
         if (Object.keys(binaryOutput).length > 0) {
-          const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
           uploadedBinaryOutput = await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput);
-          await run.update({ binaryOutput: uploadedBinaryOutput });
+        }
+
+        const finishedAt = new Date().toLocaleString();
+        const [finalizedCount] = await Run.update({
+          status: 'success',
+          finishedAt,
+          hasChanges,
+          serializableOutput: { ...serializableOutput },
+          binaryOutput: uploadedBinaryOutput,
+        }, {
+          where: { id: run.id, status: 'running' },
+        });
+        if (finalizedCount === 0) {
+          logger.log('info', `Scheduled run ${plainRun.runId} left running state while results were being finalized; success was not published`);
+          return false;
         }
 
         logger.log('info', `Markdown robot execution completed for scheduled run ${id}`);
@@ -457,7 +533,8 @@ async function executeRun(id: string, userId: string) {
             robotMetaId: plainRun.robotMetaId,
             robotName: recording.recording_meta.name,
             status: 'success',
-            finishedAt: new Date().toLocaleString()
+            finishedAt,
+            hasChanges,
           };
 
           serverIo.of(plainRun.browserId).emit('run-completed', completionData);
@@ -648,19 +725,43 @@ async function executeRun(id: string, userId: string) {
       }
     }
 
+    const finalSerializableOutput: any = {
+      ...(finalRun?.serializableOutput || {}),
+      crawl: categorizedOutput.crawl,
+      search: categorizedOutput.search,
+    };
+    let hasChanges = false;
     const binaryOutputService = new BinaryOutputService('maxun-run-screenshots');
+    if (robotType === 'extract' && (recording.recording_meta as any).compareRuns) {
+      capture('maxun-oss-monitoring-used', { robotType: 'extract', source: 'scheduled' });
+      const comparison = await compareExtractRunWithPrevious(run, finalSerializableOutput);
+      hasChanges = comparison.hasChanges;
+      finalSerializableOutput._comparison = {
+        changedFormats: comparison.changedFormats,
+      };
+    }
+
     const uploadedBinaryOutput = Object.keys(binaryOutput).length > 0
       ? await binaryOutputService.uploadAndStoreBinaryOutput(run, binaryOutput)
       : {};
 
     await destroyRemoteBrowser(plainRun.browserId, userId);
 
-    await run.update({
+    const finishedAt = new Date().toLocaleString();
+    const [finalizedCount] = await Run.update({
       status: 'success',
-      finishedAt: new Date().toLocaleString(),
+      finishedAt,
       log: interpretationInfo.log.join('\n'),
-      binaryOutput: uploadedBinaryOutput
+      binaryOutput: uploadedBinaryOutput,
+      serializableOutput: finalSerializableOutput,
+      hasChanges,
+    }, {
+      where: { id: run.id, status: 'running' },
     });
+    if (finalizedCount === 0) {
+      logger.log('info', `Scheduled run ${plainRun.runId} left running state while results were being finalized; success was not published`);
+      return false;
+    }
 
     // Get metrics from persisted data for analytics and webhooks
     let totalSchemaItemsExtracted = 0;
@@ -710,7 +811,8 @@ async function executeRun(id: string, userId: string) {
         robotMetaId: plainRun.robotMetaId,
         robotName: recording.recording_meta.name,
         status: 'success',
-        finishedAt: new Date().toLocaleString()
+        finishedAt,
+        hasChanges,
       };
 
       serverIo.of(plainRun.browserId).emit('run-completed', completionData);
@@ -832,38 +934,10 @@ async function executeRun(id: string, userId: string) {
   }
 }
 
-async function readyForRunHandler(browserId: string, id: string, userId: string, socket: Socket) {
-  try {
-    const interpretation = await executeRun(id, userId);
-
-    if (interpretation) {
-      logger.log('info', `Interpretation of ${id} succeeded`);
-    } else {
-      logger.log('error', `Interpretation of ${id} failed`);
-      await destroyRemoteBrowser(browserId, userId);
-    }
-
-    resetRecordingState(browserId, id);
-
-  } catch (error: any) {
-    logger.error(`Error during readyForRunHandler: ${error.message}`);
-    await destroyRemoteBrowser(browserId, userId);
-  } finally {
-    cleanupSocketConnection(socket, browserId, id);
-  }
-}
-
-function resetRecordingState(browserId: string, id: string) {
-  browserId = '';
-  id = '';
-}
-
 export async function handleRunRecording(id: string, userId: string) {
-  let socket: Socket | null = null;
-  
   try {
     const result = await createWorkflowAndStoreMetadata(id, userId);
-    const { browserId, runId: newRunId, isDocRobot } = result as any;
+    const { runId: newRunId, isDocRobot } = result as any;
 
     if (!newRunId || !userId) {
       throw new Error('runId or userId is undefined');
@@ -871,63 +945,14 @@ export async function handleRunRecording(id: string, userId: string) {
 
     if (isDocRobot) {
       logger.log('info', `Doc robot scheduled run ${newRunId} queued without browser`);
-      return newRunId;
     }
-
-    if (!browserId) {
-      throw new Error('browserId is undefined for non-document robot');
-    }
-
-    const CONNECTION_TIMEOUT = 30000;
-
-    socket = io(`${process.env.BACKEND_URL ? process.env.BACKEND_URL : 'http://localhost:5000'}/${browserId}`, {
-      transports: ['websocket'],
-      rejectUnauthorized: false,
-      timeout: CONNECTION_TIMEOUT,
-    });
-
-    const readyHandler = () => readyForRunHandler(browserId, newRunId, userId, socket!);
-
-    socket.on('ready-for-run', readyHandler);
-
-    socket.on('connect_error', (error: Error) => {
-      logger.error(`Socket connection error for scheduled run ${newRunId}: ${error.message}`);
-      cleanupSocketConnection(socket!, browserId, newRunId);
-    });
-
-    socket.on('disconnect', () => {
-      cleanupSocketConnection(socket!, browserId, newRunId);
-    });
 
     logger.log('info', `Running robot: ${id}`);
 
+    return newRunId;
+
   } catch (error: any) {
     logger.error('Error running recording:', error);
-    if (socket) {
-      cleanupSocketConnection(socket, '', '');
-    }
-  }
-}
-
-function cleanupSocketConnection(socket: Socket, browserId: string, id: string) {
-  try {
-    socket.removeAllListeners();
-    socket.disconnect();
-
-    if (browserId) {
-      const namespace = serverIo.of(browserId);
-      namespace.removeAllListeners();
-      namespace.disconnectSockets(true);
-      const nsps = (serverIo as any)._nsps;
-      if (nsps && nsps.has(`/${browserId}`)) {
-        nsps.delete(`/${browserId}`);
-        logger.log('debug', `Deleted namespace /${browserId} from io._nsps Map`);
-      }
-    }
-
-    logger.log('info', `Cleaned up socket connection for browserId: ${browserId}, runId: ${id}`);
-  } catch (error: any) {
-    logger.error(`Error cleaning up socket connection: ${error.message}`);
   }
 }
 

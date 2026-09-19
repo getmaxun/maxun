@@ -1,6 +1,7 @@
 # App Setup
 NODE_ENV=production                     # Set to 'development' or 'production' as required
-JWT_SECRET=a9Z$kLq7^f03GzNw!bP9dH4xV6sT2yXl3O8vR@uYq3          # Replace with a secure JWT secret key
+JWT_SECRET=TkcGHojOW6vSFoiw/5BIvUI9Zq3L/j08V0/YgsdOqbzNPxYAUCtQGqkGsKfXjOmZ         
+# Replace with a secure JWT secret key
 DB_NAME=maxun                           # Your PostgreSQL database name
 DB_USER=postgres                        # PostgreSQL username
 DB_PASSWORD=postgres                    # PostgreSQL password
