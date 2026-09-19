@@ -1,17 +1,16 @@
-<h2 align="center">
+<h3 align="center">
     <div>
         <a href="https://www.maxun.dev/?ref=ghread">
-            <img src="/src/assets/maxunlogo.png" width="70" />
+            <img src="/src/assets/maxunlogo.png" width="50" />
             <br>
             Maxun
         </a>
     </div>
     Turn Any Website Into A Structured API
-<br>
-</h2>
+</h3>
 
 <p align="center">
-The unified open-source web data platform for real-time web scraping, crawling, search, monitoring and AI data extraction.
+The open-source web data platform for real-time web scraping, crawling, search, monitoring and AI data extraction.
 
 <p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
@@ -21,7 +20,7 @@ The unified open-source web data platform for real-time web scraping, crawling, 
     <a href="https://www.youtube.com/@MaxunOSS?ref=ghread"><b>Watch Tutorials</b></a>
     <br />
     <br />
-<a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 250px; height: 55px; margin-top: 10px;" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/12113" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12113" alt="getmaxun%2Fmaxun | Trendshift" style="width: 200px; height: 40px; margin-top: 5px;" width="200" height="40"/></a>
 </p>
 
 ### Sponsors
