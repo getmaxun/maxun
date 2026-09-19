@@ -82,64 +82,25 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </tr>
 </table>
 
-## What is Maxun?
+## What Maxun Does
 
-Maxun is an open-source no-code web data platform for turning the web into structured, reliable data.
-It supports extraction, crawling, scraping, and search — designed to scale from simple use cases to complex, automated workflows.
+- **[Extract](https://docs.maxun.dev/category/extract)** – Extract structured data from any website by emulating real user behavior.
+   * **[Recorder Mode](https://docs.maxun.dev/robot/extract/robot-actions)** – Record browser actions and turn them into reusable extraction robots.
+   * **[AI Mode](https://docs.maxun.dev/robot/extract/llm-extraction)** – Describe what you need in natural language and extract it with AI.
+- **[Scrape](https://docs.maxun.dev/robot/scrape/scrape-robots)** – Convert full webpages into Markdown, HTML and capture screenshots.
+- **[Crawl](https://docs.maxun.dev/robot/crawl/crawl-introduction)** – Crawl entire websites and extract content across pages.
+- **[Search](https://docs.maxun.dev/robot/search/search-introduction)** – Search the web and extract results with time-based filters.
+- **[Monitoring](https://docs.maxun.dev/robot/monitoring)** – Track websites over time, detect changes, and get notified when they occur.
+- **[Document Extraction & Parsing](https://docs.maxun.dev/robot/document)** – Extract and parse structured data from documents.
 
-### Ecosystem
+## How To Use Maxun
 
-1. **[Extract](https://docs.maxun.dev/category/extract)** – Emulate real user behavior and collect structured data from any website.
-   * **[Recorder Mode](https://docs.maxun.dev/robot/extract/robot-actions)** – Record your actions as you browse; Maxun turns them into a reusable extraction robot.
-   * **[AI Mode](https://docs.maxun.dev/robot/extract/llm-extraction)** – Describe what you want in natural language and let LLM-powered extraction do the rest.
+- **[Dashboard](https://app.maxun.dev/login)** – Build, run, and manage robots through Maxun's visual interface.
+- **[API](https://docs.maxun.dev/api/api-overview)** – Integrate Maxun's scraping and extraction capabilities into your applications.
+- **[SDK](https://docs.maxun.dev/sdk/sdk-overview)** – Use Maxun programmatically for scraping, extraction, automation and more.
+- **[CLI](https://docs.maxun.dev/category/cli)** – Create robots, trigger runs, and retrieve data from your terminal.
+- **[MCP](https://docs.maxun.dev/category/mcp)** – Connect Maxun to AI agents through the Model Context Protocol.
 
-2. **[Scrape](https://docs.maxun.dev/robot/scrape/scrape-robots)** – Convert full webpages into clean Markdown or HTML and capture screenshots.
-3. **[Crawl](https://docs.maxun.dev/robot/crawl/crawl-introduction)** – Crawl entire websites and extract content from every relevant page, with full control over scope and discovery.
-4. **[Search](https://docs.maxun.dev/robot/search/search-introduction)** – Run automated web searches to discover or scrape results, with support for time-based filters.
-5. **[SDK](https://docs.maxun.dev/category/sdk)** – A complete developer toolkit for scraping, extraction, scheduling, and end-to-end data automation.
-6. **[CLI](https://docs.maxun.dev/category/cli)** – Create robots, trigger runs, and retrieve extracted data from your terminal.
-7. **[Document Extraction & Parsing](https://docs.maxun.dev/)** – Extract structured data from documents (PDF, DOCX, XLSX, and CSV) using native parsers and images (Scanned PDF, JPG, and PNG) with OCR, or convert them into clean Markdown, HTML, links, or a summary.
-
-## How Does It Work?
-
-Maxun robots are automated tools that help you collect data from websites without writing any code. Think of them as your personal web assistants that can navigate websites, extract information, and organize data just like you would manually - but faster and more efficiently.
-
-There are five types of robots, each designed for a different job.
-
-### 1. Extract
-Extract emulates real user behavior and captures structured data.
-- <a href="/robot/extract/robot-actions">Recorder Mode</a> - Record your actions as you browse; Maxun turns them into a reusable extraction robot.
-### Example: Extract 10 Property Listings from Airbnb
-
-[https://github.com/user-attachments/assets/recorder-mode-demo-video](https://github.com/user-attachments/assets/c6baa75f-b950-482c-8d26-8a8b6c5382c3)
-- <a href="/robot/extract/llm-extraction">AI Mode</a> - Describe what you want in natural language and let LLM-powered extraction do the rest.
-### Example: Extract Names, Rating & Duration of Top 50 Movies from IMDb
-
-https://github.com/user-attachments/assets/f714e860-58d6-44ed-bbcd-c9374b629384
-
-Learn more <a href="/category/extract">here</a>.
-
-### 2. Scrape
-Scrape converts full webpages into clean Markdown, HTML and can capture screenshots. Ideal for AI workflows, agents, and document processing. 
-
-Learn more <a href="https://docs.maxun.dev/robot/scrape/scrape-robots">here</a>.
-
-### 3. Crawl
-Crawl entire websites and extract content from every relevant page, with full control over scope and discovery.
-
-Learn more <a href="https://docs.maxun.dev/robot/crawl/crawl-introduction">here</a>.
-
-### 4. Search
-Run automated web searches to discover or scrape results, with support for time-based filters.
-
-Learn more <a href="https://docs.maxun.dev/robot/search/search-introduction">here</a>.
-
-### 5. Document Extraction & Parsing
-Upload a document or image — PDF, DOCX, XLSX, CSV, JPG, or PNG — and Maxun reads the text out of it, using OCR for scanned pages and photos. Convert it into clean Markdown, HTML, a list of links, or a summary, or use AI-powered extraction to pull specific structured fields.
-
-**Use cases:** digitize scanned receipts and invoices, pull fields from a photo of a paper form, turn a screenshot of a table into structured data, or convert a scanned document into clean Markdown for an AI workflow.
-
-Learn more <a href="https://docs.maxun.dev/">here</a>.
 
 ## Quick Start
 
