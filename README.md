@@ -11,7 +11,7 @@
 </h2>
 
 <p align="center">
-✨ The unified open-source no-code platform for real-time web scraping, crawling, search and AI data extraction ✨
+The unified open-source web data platform for real-time web scraping, crawling, search, monitoring and AI data extraction.
 
 <p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
