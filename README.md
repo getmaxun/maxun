@@ -96,7 +96,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 ## How To Use Maxun
 
 - **[Dashboard](https://app.maxun.dev/login)** – Build, run, and manage robots through Maxun's visual interface.
-- **[API](https://docs.maxun.dev/api/api-overview)** – Integrate Maxun's scraping and extraction capabilities into your applications.
+- **[API](https://docs.maxun.dev/category/api-reference)** – Integrate Maxun's scraping and extraction capabilities into your applications.
 - **[SDK](https://docs.maxun.dev/sdk/sdk-overview)** – Use Maxun programmatically for scraping, extraction, automation and more.
 - **[CLI](https://docs.maxun.dev/category/cli)** – Create robots, trigger runs, and retrieve data from your terminal.
 - **[MCP](https://docs.maxun.dev/category/mcp)** – Connect Maxun to AI agents through the Model Context Protocol.
