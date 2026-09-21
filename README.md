@@ -44,7 +44,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month. Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
+<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month.<strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
 </td>
 </tr>
 
