@@ -29,11 +29,22 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 <tr>
 <td width="20%" align="center" valign="middle">
 <a href="https://www.webshare.io/?referral_code=wwhk524ynls2">
-  <img src="https://github.com/user-attachments/assets/c3a60969-a8f8-4d2c-acef-22bee80c2484" alt="Webshare" width="250" height="130">
+  <img src="https://github.com/user-attachments/assets/c3a60969-a8f8-4d2c-acef-22bee80c2484" alt="Webshare" width="240" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://www.webshare.io/?referral_code=wwhk524ynls2"><strong>Webshare:</strong></a> Webshare gives you instant access to a proxy pool of 80M+ ethically-sourced IPs across 195+ countries, with rotating residential, static ISP, and datacenter options plus a full API. It includes a 100+ Gbps backbone, country/city/state/ZIP/ASN-level targeting, and requires no credit card to start. <strong>Free tier:</strong> 10 proxies + 1GB/month · <strong>Discount:</strong> <code>MAXUN20</code> - 20% off your first purchase.
+<a href="https://www.webshare.io/?referral_code=wwhk524ynls2"><strong>Webshare</strong></a> gives you instant access to a proxy pool of 80M+ ethically-sourced IPs across 195+ countries, with rotating residential, static ISP, and datacenter options plus a full API. It includes a 100+ Gbps backbone, country/city/state/ZIP/ASN-level targeting, and requires no credit card to start. <strong>Free tier:</strong> 10 proxies + 1GB/month · <strong>Discount:</strong> <code>MAXUN20</code> - 20% off your first purchase.
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
+<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship">
+  <img src="https://github.com/user-attachments/assets/f3f7ea4a-a965-4ff9-aab6-8d257da3b18c" alt="Byteful" width="280" height="130">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month. Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
 </td>
 </tr>
 
@@ -44,7 +55,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=getmaxun"><strong>Thordata – Reliable Proxies for Web Scraping & AI Data Collection: </strong></a> Residential, Mobile, ISP & Datacenter Proxies · 190+ countries with city-level targeting · Sticky and rotating sessions for flexible workflows · Fast, stable proxy infrastructure for developers. <strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off.
+<a href="https://www.thordata.com/?ls=github&lk=getmaxun"><strong>Thordata – Reliable Proxies for Web Scraping & AI Data Collection </strong></a> offers Residential, Mobile, ISP & Datacenter Proxies · 190+ countries with city-level targeting · Sticky and rotating sessions for flexible workflows · Fast, stable proxy infrastructure for developers. <strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off.
 </td>
 </tr>
 
@@ -55,7 +66,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun"><strong>Mango Proxy:</strong></a> MangoProxy offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management. <strong>Discount:</strong> <code>MAXUN</code> - 8% off Static ISP Proxies.
+<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun"><strong>Mango Proxy</strong></a> offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management. <strong>Discount:</strong> <code>MAXUN</code> - 8% off Static ISP Proxies.
 </td>
 </tr>
 
@@ -67,7 +78,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept"><strong>Nodemaven:</strong></a> The most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunGHsept">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
+<a href="https://go.nodemaven.com/maxunGHsept"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunGHsept">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
 </td>
 </tr>
 
@@ -78,7 +89,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun"><strong>TestMu AI:</strong></a> The native AI-agentic cloud platform for quality engineering. Test intelligently and ship faster.
+<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun"><strong>TestMu AI</strong></a> is the native AI-agentic cloud platform for quality engineering. Test intelligently and ship faster.
 </td>
 </tr>
 </table>
