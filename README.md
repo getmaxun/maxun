@@ -63,7 +63,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 <tr>
 <td width="20%" align="center" valign="middle">
 <a href="https://go.nodemaven.com/maxunGHsept">
-  <img src="https://github.com/user-attachments/assets/7269ea9b-83fb-4b70-9a41-0eb2beaabf2a" alt="Nodemaven" width="390" height="130">
+  <img src="https://github.com/user-attachments/assets/7269ea9b-83fb-4b70-9a41-0eb2beaabf2a" alt="Nodemaven" width="420" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
