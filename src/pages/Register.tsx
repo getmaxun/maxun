@@ -83,7 +83,7 @@ const Register = () => {
           textAlign: "center",
           backgroundColor: darkMode ? "#121111ff" : "#ffffff",
           color: darkMode ? "#ffffff" : "#333333",
-          padding: 6,
+          padding: 3.5,
           borderRadius: 5,
           boxShadow:
             "0px 20px 40px rgba(0, 0, 0, 0.2), 0px -5px 10px rgba(0, 0, 0, 0.15)",
