@@ -100,8 +100,8 @@ const Login = () => {
           width: "100%",
         }}
       >
-        <img src={MaxunLogo} alt="logo" height={50}
-          width={60} style={{ marginBottom: 10, borderRadius: "20%", alignItems: "center" }} />
+        <img src={MaxunLogo} alt="logo" height={70} width={80} 
+        style={{ marginBottom: 10, borderRadius: "20%", alignItems: "center" }} />
         <TextField
           fullWidth
           label={t('login.email')}
