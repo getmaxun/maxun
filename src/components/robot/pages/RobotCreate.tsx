@@ -716,8 +716,8 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
                   marginBottom: '20px',
@@ -1069,8 +1069,8 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
                   marginBottom: '20px',
@@ -1321,8 +1321,8 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
                   marginBottom: '20px',
@@ -1592,8 +1592,8 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
                   marginBottom: '20px',
@@ -1830,8 +1830,8 @@ const RobotCreate: React.FC = () => {
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
                   marginBottom: '20px',
