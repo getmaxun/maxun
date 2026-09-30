@@ -224,7 +224,7 @@ const ProxyForm: React.FC = () => {
                                 disabled={isTesting}
                                 startIcon={isTesting ? <CircularProgress size={16} color="inherit" /> : null}
                             >
-                                {isTesting ? 'Testing...' : t('proxy.test_proxy')}
+                                {isTesting ? t('proxy.testing') : t('proxy.test_proxy')}
                             </Button>
                             <Button
                                 variant="outlined"
