@@ -1,6 +1,14 @@
-/** Quotes one CSV field, doubling embedded quotes (RFC 4180). Keeps 0 and false. */
+/**
+ * Quotes one CSV field, doubling embedded quotes (RFC 4180). Keeps 0 and false,
+ * and writes objects as JSON, the same way the run data table shows them.
+ */
 export function escapeCsvField(value: unknown): string {
-  const text = value === null || value === undefined ? '' : String(value);
+  const text =
+    value === null || value === undefined
+      ? ''
+      : typeof value === 'object'
+        ? JSON.stringify(value)
+        : String(value);
   return `"${text.replace(/"/g, '""')}"`;
 }
 
