@@ -720,7 +720,7 @@ const RobotCreate: React.FC = () => {
                 height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1073,7 +1073,7 @@ const RobotCreate: React.FC = () => {
                 height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1325,7 +1325,7 @@ const RobotCreate: React.FC = () => {
                 height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1596,7 +1596,7 @@ const RobotCreate: React.FC = () => {
                 height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1834,7 +1834,7 @@ const RobotCreate: React.FC = () => {
                 height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
