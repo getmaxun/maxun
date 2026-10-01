@@ -31,6 +31,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import JSZip from "jszip";
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../../context/theme-provider";
+import { convertToCSV } from "../../helpers/csv";
 
 interface ScreenshotTabsProps {
   screenshotVisible?: string;
@@ -890,26 +891,6 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
           setCurrentSearchIndex(0);
         }
       }
-    }
-  };
-
-  const convertToCSV = (data: any[], columns: string[], isSchemaData: boolean = false, isTabular: boolean = false): string => {
-    if (isSchemaData && !isTabular && data.length === 1) {
-      const header = 'Label,Value';
-      const rows = columns.map(column =>
-        `"${column}","${data[0][column] || ""}"`
-      );
-      return [header, ...rows].join('\n');
-    } else {
-      const header = columns.map(col => `"${col}"`).join(',');
-      const rows = data.map(row =>
-        columns.map(col => {
-          const value = row[col] || "";
-          const escapedValue = String(value).replace(/"/g, '""');
-          return `"${escapedValue}"`;
-        }).join(',')
-      );
-      return [header, ...rows].join('\n');
     }
   };
 
