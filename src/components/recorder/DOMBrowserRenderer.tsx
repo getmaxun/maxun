@@ -183,38 +183,6 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
     }
   }, [listSelector, getList, paginationMode]);
 
-  const goToMainMenu = async () => {
-    if (browserId) {
-      const notificationData = {
-        type: 'warning',
-        message: t('browser_recording.notifications.terminated'),
-        timestamp: Date.now()
-      };
-      window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
-
-      if (window.opener) {
-        window.opener.postMessage({
-          type: 'recording-notification',
-          notification: notificationData
-        }, '*');
-
-        window.opener.postMessage({
-          type: 'session-data-clear',
-          timestamp: Date.now()
-        }, '*');
-      }
-
-      setBrowserId(null);
-
-      window.close();
-
-      stopRecording(browserId).catch((error) => {
-        console.warn('Background cleanup failed:', error);
-      });
-    }
-  };
-
-
   /**
    * Handle client-side highlighting for DOM mode using complete backend logic
    */
@@ -998,6 +966,38 @@ const ChromeWebErrorOverlay: React.FC<{ message: string; onDismiss: () => void }
   message,
   onDismiss,
 }) => {
+  const { t } = useTranslation();
+  const { browserId, setBrowserId } = useGlobalInfoStore();
+  const goToMainMenu = async () => {
+    if (browserId) {
+      const notificationData = {
+        type: 'warning',
+        message: t('browser_recording.notifications.terminated'),
+        timestamp: Date.now()
+      };
+      window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
+
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'recording-notification',
+          notification: notificationData
+        }, '*');
+
+        window.opener.postMessage({
+          type: 'session-data-clear',
+          timestamp: Date.now()
+        }, '*');
+      }
+
+      setBrowserId(null);
+
+      window.close();
+
+      stopRecording(browserId).catch((error) => {
+        console.warn('Background cleanup failed:', error);
+      });
+    }
+  };
   return (
     <div
       style={{
@@ -1056,9 +1056,7 @@ const ChromeWebErrorOverlay: React.FC<{ message: string; onDismiss: () => void }
 
       <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
         <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('maxun:trigger-discard'));
-          }}
+          onClick={goToMainMenu}
           style={{
             padding: "8px 20px",
             background: "#ff00c3",
