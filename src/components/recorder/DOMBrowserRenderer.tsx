@@ -990,11 +990,10 @@ const ChromeWebErrorOverlay: React.FC<{ message: string; onDismiss: () => void }
 
       setBrowserId(null);
 
-      window.close();
-
-      stopRecording(browserId).catch((error) => {
+      await stopRecording(browserId).catch((error) => {
         console.warn('Background cleanup failed:', error);
       });
+      window.close();
     }
   };
   return (
