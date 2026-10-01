@@ -18,7 +18,7 @@ const CustomBoxContainer = styled.div<CustomBoxContainerProps>`
   border-radius: 5px;
   background-color: ${({ isDarkMode }) => (isDarkMode ? '#1d1c1cff' : 'white')};
   color: ${({ isDarkMode }) => (isDarkMode ? 'white' : 'black')};
-  margin: 80px 13px 25px 13px;
+  margin: 60px 13px 25px 13px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 `;
 
