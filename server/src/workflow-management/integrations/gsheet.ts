@@ -177,7 +177,7 @@ export async function updateGoogleSheet(robotId: string, runId: string) {
           robotId,
           spreadsheetId,
           'Screenshot',
-          [screenshots],
+          screenshots,
           plainRobot
         );
       }
