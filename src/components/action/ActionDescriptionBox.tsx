@@ -24,7 +24,7 @@ const CustomBoxContainer = styled.div<CustomBoxContainerProps>`
 
 const Triangle = styled.div<CustomBoxContainerProps>`
   position: absolute;
-  top: -15px;
+  top: -10px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
