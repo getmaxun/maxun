@@ -994,6 +994,8 @@ const ChromeWebErrorOverlay: React.FC<{ message: string; onDismiss: () => void }
         console.warn('Background cleanup failed:', error);
       });
       window.close();
+    } else {
+      onDismiss();
     }
   };
   return (
