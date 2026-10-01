@@ -146,9 +146,8 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
     childSelectors?: string[];
   } | null>(null);
 
-  const { t } = useTranslation();
   const { socket } = useSocketStore();
-  const { setLastAction, lastAction, recordingUrl, browserId, setBrowserId } = useGlobalInfoStore();
+  const { setLastAction, lastAction, recordingUrl } = useGlobalInfoStore();
 
   const { state } = useContext(AuthContext);
   const { user } = state;
