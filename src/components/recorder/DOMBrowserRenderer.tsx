@@ -13,6 +13,8 @@ import {
   ActionType,
   clientSelectorGenerator,
 } from "../../helpers/clientSelectorGenerator";
+import { useTranslation } from 'react-i18next';
+import { stopRecording } from "../../api/recording";
 
 interface ElementInfo {
   tagName: string;
@@ -708,7 +710,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             if (lastScroll && replayerRef.current) {
               try {
                 replayerRef.current.addEvent(lastScroll);
-              } catch (_) {}
+              } catch (_) { }
               lastDroppedScrollEventRef.current = null;
             }
           }, 500);
@@ -826,16 +828,16 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
           console.warn('Container #mirror-container not found');
           return;
         }
-        
+
         const replayer = new Replayer([], {
           root: container,
           liveMode: true,
           mouseTail: false
         });
 
-        replayer.startLive();     
+        replayer.startLive();
         replayer.addEvent(event);
-        
+
         replayerRef.current = replayer;
 
         setTimeout(() => {
@@ -852,7 +854,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             replayerIframe.style.backgroundColor = '#ffffff';
             replayerIframe.style.display = 'block';
             replayerIframe.style.pointerEvents = 'auto';
-            
+
             replayerIframe.id = 'dom-browser-iframe';
 
             replayerIframeRef.current = replayerIframe;
@@ -865,20 +867,20 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
             } catch (err) {
               console.warn('Error accessing iframe:', err);
             }
-            
+
             replayer.on('fullsnapshot-rebuilded', () => {
               const iframe = replayerIframeRef.current;
               if (iframe && iframe.contentDocument) {
                 setupIframeInteractions(iframe.contentDocument);
-                
+
                 iframe.style.pointerEvents = 'auto';
                 const wrapper = container.querySelector('.replayer-wrapper') as HTMLElement;
-                if(wrapper) wrapper.style.pointerEvents = 'auto';
-                
+                if (wrapper) wrapper.style.pointerEvents = 'auto';
+
                 setIsRendered(true);
               }
             });
-            
+
           } else {
             console.warn('Could not find iframe in replayer-wrapper');
           }
@@ -912,7 +914,7 @@ export const DOMBrowserRenderer: React.FC<RRWebDOMBrowserRendererProps> = ({
 
     const handleBrowserPageError = (data: { url: string; message: string }) => {
       if (replayerRef.current) {
-        try { replayerRef.current.pause(); } catch (_) {}
+        try { replayerRef.current.pause(); } catch (_) { }
         replayerRef.current = null;
       }
       const container = containerRef.current;
@@ -963,6 +965,39 @@ const ChromeWebErrorOverlay: React.FC<{ message: string; onDismiss: () => void }
   message,
   onDismiss,
 }) => {
+  const { t } = useTranslation();
+  const { browserId, setBrowserId } = useGlobalInfoStore();
+  const goToMainMenu = async () => {
+    if (browserId) {
+      const notificationData = {
+        type: 'warning',
+        message: t('browser_recording.notifications.terminated'),
+        timestamp: Date.now()
+      };
+      window.sessionStorage.setItem('pendingNotification', JSON.stringify(notificationData));
+
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'recording-notification',
+          notification: notificationData
+        }, '*');
+
+        window.opener.postMessage({
+          type: 'session-data-clear',
+          timestamp: Date.now()
+        }, '*');
+      }
+
+      setBrowserId(null);
+
+      await stopRecording(browserId).catch((error) => {
+        console.warn('Background cleanup failed:', error);
+      });
+      window.close();
+    } else {
+      onDismiss();
+    }
+  };
   return (
     <div
       style={{
@@ -1021,9 +1056,7 @@ const ChromeWebErrorOverlay: React.FC<{ message: string; onDismiss: () => void }
 
       <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
         <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('maxun:trigger-discard'));
-          }}
+          onClick={goToMainMenu}
           style={{
             padding: "8px 20px",
             background: "#ff00c3",

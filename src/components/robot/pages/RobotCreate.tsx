@@ -712,15 +712,15 @@ const RobotCreate: React.FC = () => {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Card sx={{ mb: 4, p: 3 }}>
+          <Card sx={{ mb: 4, p: 2 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1065,15 +1065,15 @@ const RobotCreate: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+          <Card sx={{ mb: 4, p: 2, textAlign: 'center' }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1317,15 +1317,15 @@ const RobotCreate: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
-          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+          <Card sx={{ mb: 4, p: 2, textAlign: 'center' }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1588,15 +1588,15 @@ const RobotCreate: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={3}>
-          <Card sx={{ mb: 4, p: 4, textAlign: 'center' }}>
+          <Card sx={{ mb: 4, p: 2, textAlign: 'center' }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1826,15 +1826,15 @@ const RobotCreate: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={4}>
-          <Card sx={{ mb: 4, p: 4 }}>
+          <Card sx={{ mb: 4, p: 2 }}>
             <Box display="flex" flexDirection="column" alignItems="center">
               <img
                 src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={55}
-                height={47}
+                width={70}
+                height={63}
                 style={{
                   borderRadius: '5px',
-                  marginBottom: '20px',
+                  marginBottom: '10px',
                   marginTop: '-10px',
                 }}
                 alt="Maxun Logo"
@@ -1907,7 +1907,7 @@ const RobotCreate: React.FC = () => {
                     border: '1.5px dashed',
                     borderColor: theme => theme.palette.mode === 'dark' ? 'divider' : '#0000004a',
                     borderRadius: 2,
-                    p: 3,
+                    p: 2,
                     mb: 3,
                     textAlign: 'center',
                     cursor: 'pointer',
@@ -2224,7 +2224,7 @@ const modalStyle = {
   transform: 'translate(-50%, -50%)',
   width: '30%',
   backgroundColor: 'background.paper',
-  p: 4,
+  p: 2,
   height: 'fit-content',
   display: 'block',
   padding: '20px',
