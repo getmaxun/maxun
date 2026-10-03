@@ -1110,6 +1110,31 @@ router.delete('/runs/:id', requireSignIn, async (req: AuthenticatedRequest, res)
   }
 });
 
+router.delete('/runs/robot/:robotMetaId', requireSignIn, async (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).send({ error: 'Unauthorized' });
+  }
+
+  try {
+    const robot = await Robot.findOne({
+      where: { 'recording_meta.id': req.params.robotMetaId, userId: req.user.id },
+    });
+    if (!robot) {
+      return res.status(404).json({ error: 'Robot not found.' });
+    }
+    if (robot.recording_meta?.type !== 'scrape') {
+      return res.status(400).json({ error: 'Runs can only be bulk-deleted for scrape robots.' });
+    }
+
+    await Run.destroy({ where: { robotMetaId: req.params.robotMetaId } });
+    return res.send(true);
+  } catch (e) {
+    const { message } = e as Error;
+    logger.log('error', `Error while deleting runs for robot ${req.params.robotMetaId}: ${message}`);
+    return res.status(500).send(false);
+  }
+});
+
 /**
  * PUT endpoint for starting a remote browser instance and saving run metadata to the storage.
  * Making it ready for interpretation and returning a runId.
