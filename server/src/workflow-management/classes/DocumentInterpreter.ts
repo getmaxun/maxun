@@ -11,6 +11,7 @@ import { parseMarkdown } from '../../markdownify/markdown';
 import { DOCX_MIME_TYPE, PDF_MIME_TYPE, XLSX_MIME_TYPE, CSV_MIME_TYPE, 
   PNG_MIME_TYPE, isImageMimeType } from '../../utils/document/documentFile';
 import { assertLlmBaseUrlAllowed, resolveOpenAiApiKey } from '../../utils/llm-endpoint';
+import { PromptOrchestrator } from '../../utils/prompt-orchestrator';
 
 import * as XLSX from 'xlsx';
 
@@ -1538,14 +1539,10 @@ export class DocumentInterpreter {
       'Prefer simple flat schemas unless the prompt clearly implies nested objects or arrays.',
     ].join('\n');
 
-    const userPrompt = [
-      `Extraction goal: ${prompt}`,
-      '',
-      'Sample document text:',
-      truncate(sampleText, MAX_SCHEMA_SAMPLE_CHARS),
-    ].join('\n');
+    const documentContext = truncate(sampleText, MAX_SCHEMA_SAMPLE_CHARS);
+    const orchestratedUserPrompt = PromptOrchestrator.buildPrompt(prompt, documentContext);
 
-    return { systemPrompt, userPrompt };
+    return { systemPrompt, userPrompt: orchestratedUserPrompt };
   }
 
   private static buildAtomicSchemaExpansionPrompt(
@@ -1562,18 +1559,16 @@ export class DocumentInterpreter {
       '{"schema":{"field_key":{"label":"Field Label","type":"string|number|boolean|date|array|object","description":"...","required":true}}}',
     ].join('\n');
 
-    const userPrompt = [
-      `Extraction goal: ${prompt}`,
-      '',
+    const documentContext = [
       `Current schema: ${JSON.stringify(schemaToJsonDefinition(currentSchema), null, 2)}`,
-      '',
       'Sample document text:',
       truncate(sampleText, MAX_SCHEMA_SAMPLE_CHARS),
-      '',
       'Expand the schema into specific fields that can be extracted directly from the document.',
     ].join('\n');
 
-    return { systemPrompt, userPrompt };
+    const orchestratedUserPrompt = PromptOrchestrator.buildPrompt(prompt, documentContext);
+
+    return { systemPrompt, userPrompt: orchestratedUserPrompt };
   }
 
   private static buildExtractionPrompt(
@@ -1595,17 +1590,17 @@ export class DocumentInterpreter {
       ? `\nDetected tables:\n${tables.map((table, index) => `Table ${index + 1}\n${table.map((row) => row.join(' | ')).join('\n')}`).join('\n\n')}`
       : '';
 
-    const userPrompt = [
-      `Extraction goal: ${prompt}`,
-      '',
+    const documentContext = [
       `Schema: ${JSON.stringify(schemaToJsonDefinition(schema), null, 2)}`,
-      '',
       `Document chunk pages: ${chunk.pageRange}`,
       truncate(chunk.text, MAX_CHUNK_CHARS),
-      tableContext,
+      tableContext
     ].join('\n');
 
-    return { systemPrompt, userPrompt };
+    // Route through the new PromptOrchestrator
+    const orchestratedUserPrompt = PromptOrchestrator.buildPrompt(prompt, documentContext);
+
+    return { systemPrompt, userPrompt: orchestratedUserPrompt };
   }
 
   static async extractText(buffer: Buffer, documentMimeType: string = PDF_MIME_TYPE): Promise<{ text: string; pageCount: number }> {
