@@ -430,6 +430,11 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     (recording: any) => recording?.recording_meta?.id === robotMetaId && recording.recording_meta.type === 'scrape'
   );
 
+  const isDocumentRobot = (robotMetaId: string) => recordings.some(
+    (recording: any) => recording?.recording_meta?.id === robotMetaId &&
+      ['doc-extract', 'doc-parse'].includes(recording.recording_meta.type)
+  );
+
   const parseDateString = (dateStr: string): Date => {
     try {
       if (dateStr.includes('PM') || dateStr.includes('AM')) {
@@ -610,7 +615,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                     <Typography variant="h6">{getRunGroupName(robotNames, robotMetaId, data)}</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    {isScrapeRobot(robotMetaId) && (
+                    {(isScrapeRobot(robotMetaId) || isDocumentRobot(robotMetaId)) && (
                       <Box display="flex" justifyContent="flex-end" mb={1}>
                         <Button
                           color="error"
