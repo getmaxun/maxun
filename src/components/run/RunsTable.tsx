@@ -9,9 +9,10 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, Tooltip, CircularProgress } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, Tooltip, CircularProgress, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
+import DeleteForever from '@mui/icons-material/DeleteForever';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGlobalInfoStore, useCachedRuns, useCachedRecordings, useCacheInvalidation } from "../../context/globalInfo";
 import { getCurrentRobotNames, getRunGroupName, runGroupMatchesSearch } from "../../helpers/robotNames";
@@ -20,6 +21,7 @@ import { CollapsibleRow } from "./ColapsibleRow";
 import { ArrowDownward, ArrowUpward, UnfoldMore } from '@mui/icons-material';
 import { Socket } from 'socket.io-client';
 import { getOrCreateBrowserSocket, releaseBrowserSocket } from '../../utils/browserSocket';
+import { deleteAllRunsFromStorage } from '../../api/storage';
 
 export const columns: readonly Column[] = [
   { id: 'runStatus', label: 'Status', minWidth: 80 },
@@ -150,6 +152,8 @@ export const RunsTable: React.FC<RunsTableProps> = ({
   const [paginationStates, setPaginationStates] = useState<PaginationState>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set());
+  const [deleteAllRobotMetaId, setDeleteAllRobotMetaId] = useState<string | null>(null);
+  const [isDeletingAllRuns, setIsDeletingAllRuns] = useState(false);
 
   const handleAccordionChange = useCallback((robotMetaId: string, isExpanded: boolean) => {
     setExpandedAccordions(prev => {
@@ -399,6 +403,38 @@ export const RunsTable: React.FC<RunsTableProps> = ({
     refetch();
   }, [notify, t, refetch]);
 
+  const handleDeleteAll = useCallback(() => {
+    notify('success', t('runstable.notifications.delete_all_success', { defaultValue: 'All runs deleted successfully' }));
+    invalidateRuns();
+    refetch();
+    setDeleteAllRobotMetaId(null);
+  }, [notify, t, invalidateRuns, refetch]);
+
+  const handleConfirmDeleteAll = async () => {
+    if (!deleteAllRobotMetaId) return;
+
+    setIsDeletingAllRuns(true);
+    try {
+      const deleted = await deleteAllRunsFromStorage(deleteAllRobotMetaId);
+      if (deleted) {
+        handleDeleteAll();
+      } else {
+        notify('error', t('runstable.notifications.delete_all_error', { defaultValue: 'Could not delete runs. Please try again.' }));
+      }
+    } finally {
+      setIsDeletingAllRuns(false);
+    }
+  };
+
+  const isScrapeRobot = (robotMetaId: string) => recordings.some(
+    (recording: any) => recording?.recording_meta?.id === robotMetaId && recording.recording_meta.type === 'scrape'
+  );
+
+  const isDocumentRobot = (robotMetaId: string) => recordings.some(
+    (recording: any) => recording?.recording_meta?.id === robotMetaId &&
+      ['doc-extract', 'doc-parse'].includes(recording.recording_meta.type)
+  );
+
   const parseDateString = (dateStr: string): Date => {
     try {
       if (dateStr.includes('PM') || dateStr.includes('AM')) {
@@ -579,6 +615,18 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                     <Typography variant="h6">{getRunGroupName(robotNames, robotMetaId, data)}</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
+                    {(isScrapeRobot(robotMetaId) || isDocumentRobot(robotMetaId)) && (
+                      <Box display="flex" justifyContent="flex-end" mb={1}>
+                        <Button
+                          color="error"
+                          size="small"
+                          startIcon={<DeleteForever />}
+                          onClick={() => setDeleteAllRobotMetaId(robotMetaId)}
+                        >
+                          {t('runstable.delete_all_runs', { defaultValue: 'Delete all runs' })}
+                        </Button>
+                      </Box>
+                    )}
                     <Table stickyHeader aria-label="sticky table">
                       <TableHead>
                         <TableRow>
@@ -659,6 +707,30 @@ export const RunsTable: React.FC<RunsTableProps> = ({
           />
         </>
       )}
+      <Dialog
+        open={deleteAllRobotMetaId !== null}
+        onClose={() => !isDeletingAllRuns && setDeleteAllRobotMetaId(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>{t('runstable.delete_all_confirm.title', { defaultValue: 'Delete all runs?' })}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t('runstable.delete_all_confirm.message', {
+              name: deleteAllRobotMetaId ? getRunGroupName(robotNames, deleteAllRobotMetaId, groupedRows[deleteAllRobotMetaId] || []) : '',
+              defaultValue: 'Delete every run associated with "{{name}}"? This action cannot be undone.',
+            })}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteAllRobotMetaId(null)} color="inherit" disabled={isDeletingAllRuns}>
+            {t('common.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+          <Button onClick={handleConfirmDeleteAll} color="error" variant="contained" disabled={isDeletingAllRuns}>
+            {isDeletingAllRuns ? <CircularProgress size={20} color="inherit" /> : t('common.delete', { defaultValue: 'Delete' })}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </React.Fragment>
   );
 };
