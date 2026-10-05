@@ -141,7 +141,8 @@
       "fetch_success": "Proxy loaded successfully",
       "remove_success": "Proxy removed successfully",
       "remove_error": "Failed to remove proxy. Try again."
-    }
+    },
+    "testing": "Testing..."
   },
   "apikey": {
     "title": "Manage Your API Key",
@@ -165,7 +166,8 @@
       "generate_error": "Failed to generate API Key - {{error}}",
       "delete_success": "API Key deleted successfully",
       "delete_error": "Failed to delete API Key - {{error}}",
-      "copy_success": "Copied API Key successfully"
+      "copy_success": "Copied API Key successfully",
+      "copy_error": "Failed to copy API Key"
     }
   },
   "action_description": {
@@ -283,7 +285,8 @@
       "no_actions_performed": "Cannot save robot. Please perform at least one capture action before saving."
     },
     "tooltips": {
-      "saving": "Optimizing and saving the workflow"
+      "saving": "Optimizing and saving the workflow",
+      "optimizing": "Optimizing the workflow"
     }
   },
   "browser_recording": {
@@ -430,7 +433,8 @@
       "notifications": {
         "base_selected": "Airtable base selected successfully",
         "table_selected": "Airtable table selected successfully",
-        "integration_removed": "Airtable integration removed successfully"
+        "integration_removed": "Airtable integration removed successfully",
+        "auth_success": "Airtable authenticated successfully"
       }
     }
   },
@@ -467,7 +471,8 @@
     "created_at": "Robot Created At",
     "compare_runs": "Enable Monitoring",
     "errors": {
-      "robot_not_found": "Could not find robot details. Please try again."
+      "robot_not_found": "Could not find robot details. Please try again.",
+      "update_failed": "Failed to update robot settings. Please try again."
     },
     "buttons": {
       "close": "Close"
@@ -520,7 +525,8 @@
       "schedule_failed": "Failed to schedule robot {{name}}",
       "abort_success": "Interpretation of robot {{name}} aborted successfully",
       "abort_failed": "Failed to abort the interpretation of robot {{name}}",
-      "abort_initiated": "Aborting the interpretation of robot {{name}}"
+      "abort_initiated": "Aborting the interpretation of robot {{name}}",
+      "connection_failed": "Failed to connect to the browser for robot {{name}}"
     },
     "menu": {
       "recordings": "Robots",
@@ -576,7 +582,11 @@
         "run_by_user": "Run by User",
         "run_by_schedule": "Run by Schedule ID",
         "run_by_api": "Run by API",
-        "run_type": "Run Type"
+        "run_type": "Run Type",
+        "run_by_cli": "Run by CLI",
+        "run_by_mcp": "Run by MCP",
+        "run_by_sdk": "Run by SDK",
+        "run_by_unknown": "Run by Unknown"
       }
     }
   },
