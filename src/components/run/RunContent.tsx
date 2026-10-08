@@ -32,6 +32,7 @@ import JSZip from "jszip";
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../../context/theme-provider";
 import { convertToCSV } from "../../helpers/csv";
+import { withSnakeCaseKeys } from "../../helpers/jsonKeys";
 
 interface ScreenshotTabsProps {
   screenshotVisible?: string;
@@ -1340,7 +1341,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
             icon={<Storage sx={{ mr: 1 }} />}
             title={title}
             actions={[
-              { label: t('run_content.captured_data.download_json', 'Download JSON'), onClick: () => downloadJSON(data, jsonFilename) },
+              { label: t('run_content.captured_data.download_json', 'Download JSON'), onClick: () => downloadJSON(withSnakeCaseKeys(data), jsonFilename) },
               { label: t('run_content.captured_data.download_csv', 'Download as CSV'), onClick: () => downloadCSV(data, columns, csvFilename, isSchemaData, isSchemaTabular) },
             ]}
           />
@@ -1669,7 +1670,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                                 {
                                   label: t('run_content.captured_data.download_json', 'Download JSON'),
                                   onClick: () => downloadJSON(
-                                    schemaDataByKey[schemaKeys[currentSchemaIndex]] || schemaData,
+                                    withSnakeCaseKeys(schemaDataByKey[schemaKeys[currentSchemaIndex]] || schemaData),
                                     `${schemaKeys[currentSchemaIndex] || 'schema_data'}.json`
                                   ),
                                 },
@@ -1741,8 +1742,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               actions={[
                                 {
                                   label: t('run_content.captured_data.download_json', 'Download JSON'),
-                                  onClick: () => downloadJSON(
-                                    listData[currentListIndex],
+                                  onClick: () => withSnakeCaseKeys(listData[currentListIndex]),
                                     `${listKeys[currentListIndex] || 'list_data'}.json`
                                   ),
                                 },
