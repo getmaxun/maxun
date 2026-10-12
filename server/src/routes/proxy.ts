@@ -4,6 +4,7 @@ import { connectToRemoteBrowser } from '../browser-management/browserConnection'
 import User from '../models/User';
 import { encrypt, decrypt } from '../utils/auth';
 import { requireSignIn } from '../middlewares/auth';
+import crypto from 'crypto';
 
 export const router = Router();
 
@@ -172,6 +173,18 @@ const maskProxyUrl = (url: string) => {
     } else {
         return maskedDomain;
     }
+};
+
+// Expands the `{session}` placeholder in a proxy username with a per-run sticky-session id.
+// Residential proxy providers key sticky sessions on the username, so a fresh id gives
+// each run (or browser context) its own exit IP. Usernames without the placeholder pass
+// through byte-identical.
+export const newProxySessionId = (): string =>
+    crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
+
+export const expandSessionPlaceholder = (username: string | null, sessionId?: string): string | null => {
+    if (!username || !username.includes('{session}')) return username;
+    return username.replace(/\{session\}/g, sessionId ?? newProxySessionId());
 };
 
 // TODO: Move this from here
