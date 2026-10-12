@@ -90,7 +90,7 @@ router.get('/test', requireSignIn, async (req: Request, res: Response) => {
             context = await browser.newContext({
                 proxy: {
                     server: decryptedProxyUrl,
-                    username: decryptedProxyUsername || undefined,
+                    username: expandSessionPlaceholder(decryptedProxyUsername) || undefined,
                     password: decryptedProxyPassword || undefined,
                 },
             });
