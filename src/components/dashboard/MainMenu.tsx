@@ -5,11 +5,11 @@ import Box from '@mui/material/Box';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Paper, Button, useTheme, Typography, Stack, Divider,
-  Dialog, DialogContent, DialogTitle
+  Dialog, DialogContent
 } from "@mui/material";
 import {
   AutoAwesome, VpnKey, Usb, CloudQueue, Description, Favorite, SlowMotionVideo,
-  PlayArrow, ArrowForwardIos, Star, Terminal, CloseFullscreen
+  PlayArrow, ArrowForwardIos, Star, CloseFullscreen
 } from "@mui/icons-material";
 import { useTranslation } from 'react-i18next';
 
@@ -24,7 +24,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [starCount, setStarCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -250,7 +249,8 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
               sx={buttonStyles} startIcon={<CloseFullscreen />}>
               MCP
             </Button>
-            <Button onClick={() => setSponsorModalOpen(true)} sx={buttonStyles} startIcon={<Favorite />}>
+            <Button href='https://github.com/sponsors/amhsirak' target="_blank"
+              rel="noopener noreferrer" sx={buttonStyles} startIcon={<Favorite />}>
               Sponsor Us
             </Button>
           </Box>
@@ -299,44 +299,6 @@ export const MainMenu = ({ value = 'robots', handleChangeContent }: MainMenuProp
           </Box>
         </Button>
       </Paper>
-
-      <Dialog
-        open={sponsorModalOpen}
-        onClose={() => setSponsorModalOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            width: 600
-          }
-        }}
-      >
-        <DialogTitle>
-          Support Maxun Open Source
-        </DialogTitle>
-
-        <DialogContent sx={{ pt: 2 }}>
-          <Typography variant="body1" gutterBottom>
-            Maxun is built by a small, full-time team. Your donations directly
-            contribute to making it better.
-            <br />
-            Thank you for your support! 🩷
-          </Typography>
-
-          <Stack direction="row" spacing={2} mt={4}>
-            <Button
-              href="https://github.com/sponsors/amhsirak"
-              target="_blank"
-              rel="noopener noreferrer"
-              variant="outlined"
-              fullWidth
-            >
-              Sponsor Maxun on GitHub Sponsors
-            </Button>
-          </Stack>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

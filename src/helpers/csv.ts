@@ -1,0 +1,34 @@
+/**
+ * Quotes one CSV field, doubling embedded quotes (RFC 4180). Keeps 0 and false,
+ * and writes objects as JSON, the same way the run data table shows them.
+ */
+export function escapeCsvField(value: unknown): string {
+  const text =
+    value === null || value === undefined
+      ? ''
+      : typeof value === 'object'
+        ? JSON.stringify(value)
+        : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+export function convertToCSV(
+  data: any[],
+  columns: string[],
+  isSchemaData: boolean = false,
+  isTabular: boolean = false,
+): string {
+  if (isSchemaData && !isTabular && data.length === 1) {
+    const header = 'Label,Value';
+    const rows = columns.map(column =>
+      `${escapeCsvField(column)},${escapeCsvField(data[0][column])}`
+    );
+    return [header, ...rows].join('\n');
+  }
+
+  const header = columns.map(escapeCsvField).join(',');
+  const rows = data.map(row =>
+    columns.map(col => escapeCsvField(row[col])).join(',')
+  );
+  return [header, ...rows].join('\n');
+}

@@ -12,7 +12,8 @@ import {
     TableRow,
     TableBody,
     TableCell,
-    Paper
+    Paper,
+    CircularProgress
 } from '@mui/material';
 import { sendProxyConfig, getProxyConfig, testProxyConfig, deleteProxyConfig } from '../../api/proxy';
 import { useGlobalInfoStore } from '../../context/globalInfo';
@@ -37,6 +38,7 @@ const ProxyForm: React.FC = () => {
     const [isProxyConfigured, setIsProxyConfigured] = useState(false);
     const [proxy, setProxy] = useState({ proxy_url: '', auth: false });
     const [recommendedProxiesAvailable, setRecommendedProxiesAvailable] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
 
     const { notify } = useGlobalInfoStore();
 
@@ -89,6 +91,7 @@ const ProxyForm: React.FC = () => {
                 setIsProxyConfigured(true);
                 setProxy({ proxy_url: proxyConfigForm.server_url, auth: requiresAuth });
                 notify('success', t('proxy.notifications.config_success'));
+                // Refresh the masked config silently; the success toast above already covers this action
                 fetchProxyConfig();
             } else {
                 notify('error', t('proxy.notifications.config_error'));
@@ -100,22 +103,32 @@ const ProxyForm: React.FC = () => {
     };
 
     const testProxy = async () => {
-        await testProxyConfig().then((response) => {
+        if (isTesting) return;
+        setIsTesting(true);
+        try {
+            const response = await testProxyConfig();
             if (response.success) {
                 notify('success', t('proxy.notifications.test_success'));
             } else {
                 notify('error', t('proxy.notifications.test_error'));
             }
-        });
+        } catch (error: any) {
+            notify('error', t('proxy.notifications.test_error'));
+        } finally {
+            setIsTesting(false);
+        }
     };
 
-    const fetchProxyConfig = async () => {
+    // Only notifies when explicitly asked to, so loading the page stays silent
+    const fetchProxyConfig = async (showNotification: boolean = false) => {
         try {
             const response = await getProxyConfig();
             if (response.proxy_url) {
                 setIsProxyConfigured(true);
                 setProxy(response);
-                notify('success', t('proxy.notifications.fetch_success'));
+                if (showNotification) {
+                    notify('success', t('proxy.notifications.fetch_success'));
+                }
             }
         } catch (error: any) {
             notify('error', error);
@@ -204,10 +217,22 @@ const ProxyForm: React.FC = () => {
                                     </TableBody>
                                 </Table>
                             </TableContainer>
-                            <Button variant="outlined" color="primary" onClick={testProxy}>
-                                {t('proxy.test_proxy')}
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                onClick={testProxy}
+                                disabled={isTesting}
+                                startIcon={isTesting ? <CircularProgress size={16} color="inherit" /> : null}
+                            >
+                                {isTesting ? t('proxy.testing') : t('proxy.test_proxy')}
                             </Button>
-                            <Button variant="outlined" color="error" onClick={removeProxy} sx={{ ml: 1 }}>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                onClick={removeProxy}
+                                disabled={isTesting}
+                                sx={{ ml: 1 }}
+                            >
                                 {t('proxy.remove_proxy')}
                             </Button>
                         </Box>
