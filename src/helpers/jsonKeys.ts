@@ -4,7 +4,8 @@
  * "2026 Product" -> "2026_product"
  *
  * Only the downloaded file changes. Tables in the app keep the readable
- * names, and the API returns the original keys.
+ * names.
+ * Stored runs keep the original labels; only API responses are converted.
  */
 
 export function toSnakeCaseKey(label: string): string {
@@ -58,4 +59,32 @@ export function withSnakeCaseKeys<T>(data: T): T {
     : row);
 
   return (Array.isArray(data) ? data.map(rename) : rename(data)) as T;
+}
+
+/**
+ * Converts captured text/list output as stored on a run:
+ * - grouped: { "Texts": [rows], "List 1": [rows] } -> each group's rows converted, group names kept
+ * - flat: [rows] -> rows converted
+ * - single row: { "Plan Name": "ABC" } -> converted
+ */
+export function withSnakeCaseCapturedKeys<T>(output: T): T {
+  if (Array.isArray(output)) return withSnakeCaseKeys(output);
+  if (!isPlainObject(output)) return output;
+
+  // No array values means it's a single row of captured fields.
+  if (!Object.values(output).some(Array.isArray)) return withSnakeCaseKeys(output);
+
+  // Grouped: convert each group's rows, keep group names and any non-row entries as they are.
+  return Object.fromEntries(Object.entries(output).map(([group, rows]) => [
+    group, Array.isArray(rows) ? withSnakeCaseKeys(rows) : rows,
+  ])) as T;
+}
+
+/** Copy of a run's serializableOutput with captured text/list row keys converted. */
+export function withSnakeCaseOutput<T extends Record<string, any> | null | undefined>(serializableOutput: T): T {
+  if (!isPlainObject(serializableOutput)) return serializableOutput;
+  const output: Record<string, any> = { ...serializableOutput };
+  if (output.scrapeSchema) output.scrapeSchema = withSnakeCaseCapturedKeys(output.scrapeSchema);
+  if (output.scrapeList) output.scrapeList = withSnakeCaseCapturedKeys(output.scrapeList);
+  return output as T;
 }

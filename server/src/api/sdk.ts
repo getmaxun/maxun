@@ -41,6 +41,7 @@ import {
     serializeCapturedLists,
     serializeCapturedText,
 } from '../utils/run-comparison';
+import { withSnakeCaseCapturedKeys, withSnakeCaseKeys, withSnakeCaseOutput } from "../../../src/helpers/jsonKeys";
 
 const router = Router();
 
@@ -769,8 +770,8 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
                 hasChanges: !!run.hasChanges,
                 changedFormats: (run.serializableOutput as any)?._comparison?.changedFormats || [],
                 data: {
-                    textData: run.serializableOutput?.scrapeSchema || {},
-                    listData: listData,
+                    textData: withSnakeCaseCapturedKeys(run.serializableOutput?.scrapeSchema || {}),
+                    listData: withSnakeCaseKeys(listData),
                     crawlData: crawlData,
                     searchData: searchData,
                     text: text,
@@ -846,7 +847,7 @@ router.get("/sdk/robots/:id/runs", requireAPIKey, async (req: AuthenticatedReque
         });
 
         return res.status(200).json({
-            data: runs
+            data: runs.map((run: any) => ({ ...run, serializableOutput: withSnakeCaseOutput(run.serializableOutput) }))
         });
     } catch (error: any) {
         logger.error("[SDK] Error getting runs:", error);
@@ -891,8 +892,9 @@ router.get("/sdk/robots/:id/runs/:runId", requireAPIKey, async (req: Authenticat
             });
         }
 
+        const plainRun: any = run.toJSON();
         return res.status(200).json({
-            data: run
+            data: { ...plainRun, serializableOutput: withSnakeCaseOutput(plainRun.serializableOutput) }
         });
     } catch (error: any) {
         logger.error("[SDK] Error getting run:", error);
@@ -1021,7 +1023,10 @@ router.post("/sdk/robots/:id/runs/:runId/abort", requireAPIKey, async (req: Auth
 
         return res.status(200).json({
             message: "Run abortion initiated",
-            data: run
+            data: (() => {
+                const plainRun: any = run.toJSON();
+                return { ...plainRun, serializableOutput: withSnakeCaseOutput(plainRun.serializableOutput) };
+            })()
         });
     } catch (error: any) {
         logger.error("[SDK] Error aborting run:", error);
