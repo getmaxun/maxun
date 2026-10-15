@@ -25,6 +25,7 @@ import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
 import { computeNextRun, buildCronExpression, ScheduleValidationError } from '../utils/schedule';
 import { compareExtractRunWithPrevious, compareRunOutputsWithPrevious } from '../utils/run-comparison';
+import { withSnakeCaseCapturedKeys } from "../../../src/helpers/jsonKeys";
 
 const router = Router();
 
@@ -412,11 +413,11 @@ function formatRunResponse(run: any) {
     const output = run.serializableOutput || {};
 
     if (output.scrapeSchema && typeof output.scrapeSchema === 'object') {
-        formattedRun.data.textData = output.scrapeSchema;
+        formattedRun.data.textData = withSnakeCaseCapturedKeys(output.scrapeSchema);
     }
 
     if (output.scrapeList && typeof output.scrapeList === 'object') {
-        formattedRun.data.listData = output.scrapeList;
+        formattedRun.data.listData = withSnakeCaseCapturedKeys(output.scrapeList);
     }
 
     if (output.crawl && typeof output.crawl === 'object') {
