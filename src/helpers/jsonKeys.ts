@@ -1,6 +1,7 @@
 /**
  * Developer-friendly keys for the JSON download of captured data:
- * "Plan Name" -> "plan_name".
+ * "Plan Name" -> "plan_name". 
+ * "2026 Product" -> "2026_product"
  *
  * Only the downloaded file changes. Tables in the app keep the readable
  * names, and the API returns the original keys.
@@ -18,8 +19,7 @@ export function toSnakeCaseKey(label: string): string {
     // Letters of any script survive ("価格" stays "価格"); everything else becomes _.
     .replace(/[^\p{L}\p{M}\p{N}]+/gu, '_')
     .replace(/^_+|_+$/g, '');
-  if (!key) return 'field';
-  return /^\p{N}/u.test(key) ? `field_${key}` : key;
+  return key || 'field';
 }
 
 /**
