@@ -675,13 +675,21 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
 
         logger.info(`[SDK] Starting execution for robot ${robotId}`);
 
-        const runSource = req.headers['x-run-source'] === 'cli' ? 'cli' : 'sdk';
+        const sourceHeader = req.headers['x-run-source'];
+        const runSource = sourceHeader === 'cli' || sourceHeader === 'mcp' ? sourceHeader : 'sdk';
         const promptInstructions = req.body?.promptInstructions;
         const requestedFormats = req.body?.formats as OutputFormats[] | undefined;
         
         const runId = await handleRunRecording(robotId, user.id.toString(), runSource, requestedFormats, promptInstructions);
         if (!runId) {
             throw new Error('Failed to start robot execution');
+        }
+
+        // `wait: false` returns as soon as the run is queued; poll the run for its output.
+        if (req.body?.wait === false) {
+            return res.status(202).json({
+                data: { runId, status: 'running' }
+            });
         }
 
         const run = await waitForRunCompletion(runId);
