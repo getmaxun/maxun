@@ -1742,7 +1742,7 @@ export const RunContent = ({ row, currentLog, interpretationInProgress, logEndRe
                               actions={[
                                 {
                                   label: t('run_content.captured_data.download_json', 'Download JSON'),
-                                  onClick: () => withSnakeCaseKeys(listData[currentListIndex]),
+                                  onClick: () => downloadJSON(withSnakeCaseKeys(listData[currentListIndex]),
                                     `${listKeys[currentListIndex] || 'list_data'}.json`
                                   ),
                                 },
