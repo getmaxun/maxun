@@ -16,6 +16,7 @@ import { cancelScheduledWorkflow, scheduleWorkflow } from '../storage/schedule';
 import { addJob } from '../storage/graphileWorker';
 import { QUEUE_NAMES } from '../task-runner';
 import { io as serverIo, recentRecoveries } from '../server';
+import { checkAiExtractInput } from '../sdk/aiExtract/target';
 import { WorkflowEnricher } from '../sdk/workflowEnricher';
 import sequelizeInstance from '../storage/db';
 import { Op, literal } from 'sequelize';
@@ -761,36 +762,22 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 });
 
 /**
- * POST endpoint for creating an LLM-powered extraction robot
- * URL is optional - if not provided, the system will search for the target website based on the prompt
+ * POST endpoint for creating an AI Extract robot.
+ * Both the page URL and the prompt are required: the robot extracts what the
+ * prompt asks for from that page only.
  */
 router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, res) => {
   try {
     const { url, prompt, llmProvider, llmModel, llmApiKey, llmBaseUrl, robotName } = req.body;
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'The "prompt" field is required.' });
+    const input = checkAiExtractInput(url, prompt);
+    if (!input.ok) {
+      return res.status(400).json({ error: input.error });
     }
-
-    const trimmedPrompt = (prompt as string).trim();
-    if (trimmedPrompt.length < 15) {
-      return res.status(400).json({ error: 'Extraction prompt is too short. Please describe what you want to extract (e.g., "Extract company names and descriptions from the YC companies page").' });
-    }
-    if (/field_\d+/i.test(trimmedPrompt)) {
-      return res.status(400).json({ error: 'Extraction prompt looks like a template placeholder. Please replace it with a specific description of what you want to extract.' });
-    }
+    const { url: targetUrl, prompt: trimmedPrompt } = input;
 
     if (!req.user) {
       return res.status(401).send({ error: 'Unauthorized' });
-    }
-
-    // Validate URL format if provided
-    if (url) {
-      try {
-        normalizeRobotUrl(url);
-      } catch (err) {
-        return res.status(400).json({ error: 'Invalid URL format' });
-      }
     }
 
     const finalRobotName = (typeof robotName === 'string' ? robotName.trim() : '') || `LLM Extract: ${prompt.substring(0, 50)}`;
@@ -823,7 +810,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         pairs: 0,
         params: [],
         type: 'extract',
-        url: url || '',
+        url: targetUrl,
         isLLM: true,
         prompt: trimmedPrompt,
         status: 'creating',
@@ -839,39 +826,15 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
 
     logger.log('info', `LLM robot stub created with id: ${stubRobot.id}, starting workflow generation`);
 
-    let workflowResult: any;
-    let finalUrl: string;
-
     try {
-      if (url) {
-        logger.log('info', `Starting LLM workflow generation for provided URL: ${url}`);
-        workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, req.user.id, llmConfig);
-        finalUrl = workflowResult.url || url;
-      } else if (await WorkflowEnricher.isMultiSitePrompt(prompt, llmConfig)) {
-        logger.log('info', `Auto-detected multi-site prompt, starting multi-site workflow generation: "${prompt}"`);
-        workflowResult = await WorkflowEnricher.generateMultiSiteWorkflowFromSearch(prompt, req.user.id, llmConfig);
-        finalUrl = workflowResult.url || '';
-        if (finalUrl) {
-          logger.log('info', `Multi-site workflow primary URL: ${finalUrl}`);
-        }
-      } else {
-        logger.log('info', `Starting LLM workflow generation with automatic URL detection for prompt: "${prompt}"`);
-        workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, req.user.id, llmConfig);
-        finalUrl = workflowResult.url || '';
-        if (finalUrl) {
-          logger.log('info', `Auto-detected URL: ${finalUrl}`);
-        }
-      }
-
-      if (finalUrl) {
-        finalUrl = normalizeRobotUrl(finalUrl);
-      }
+      logger.log('info', `Starting AI Extract for ${targetUrl}`);
+      const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(targetUrl, trimmedPrompt, req.user.id, llmConfig);
 
       if (!workflowResult.success || !workflowResult.workflow) {
         logger.log('error', `Failed to generate workflow: ${JSON.stringify(workflowResult.errors)}`);
         await stubRobot.destroy();
-        return res.status(400).json({
-          error: 'Failed to generate workflow from prompt',
+        return res.status(422).json({
+          error: workflowResult.errors?.[0] || 'Failed to generate workflow from prompt',
           details: workflowResult.errors
         });
       }
@@ -882,9 +845,11 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         recording_meta: {
           ...stubRobot.recording_meta,
           pairs: normalizedWorkflow.length,
-          url: finalUrl,
+          url: targetUrl,
           updatedAt: new Date().toISOString(),
           status: 'ready',
+          // Spec, sample rows and fields not found on the page.
+          ...(workflowResult.aiExtract ? { aiExtract: workflowResult.aiExtract } : {}),
         },
         recording: { workflow: normalizedWorkflow },
       });
@@ -896,8 +861,7 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
         robot_meta: stubRobot.recording_meta,
         recording: stubRobot.recording,
         llm_provider: llmProvider || 'ollama',
-        prompt: prompt,
-        urlAutoDetected: !url,
+        prompt: trimmedPrompt,
       });
 
       return res.status(201).json({

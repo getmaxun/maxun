@@ -110,7 +110,8 @@
     "seed": "sequelize-cli db:seed:all",
     "seed:undo:all": "sequelize-cli db:seed:undo:all",
     "migration:generate": "sequelize-cli migration:generate --name",
-    "mcp:build": "tsc --project server/tsconfig.mcp.json"
+    "mcp:build": "tsc --project server/tsconfig.mcp.json",
+    "test:ai-extract": "cross-env TS_NODE_PROJECT=server/tsconfig.json TS_NODE_TRANSPILE_ONLY=1 node --test -r ts-node/register server/tests/ai-extract/unit.test.ts server/tests/ai-extract/pipeline.test.ts"
   },
   "eslintConfig": {
     "extends": [

@@ -120,7 +120,9 @@ const AgentComposer: React.FC<AgentRobotPanelProps> = ({
 
   const trimmedPrompt = prompt.trim();
   const promptTooShort = trimmedPrompt.length > 0 && trimmedPrompt.length < MIN_AGENT_PROMPT_LENGTH;
-  const canSubmit = trimmedPrompt.length >= MIN_AGENT_PROMPT_LENGTH && !!name.trim() && !nameError && !urlError;
+  // AI Extract reads only the page the user enters, so the website is required.
+  const urlMissing = !url.trim();
+  const canSubmit = trimmedPrompt.length >= MIN_AGENT_PROMPT_LENGTH && !urlMissing && !!name.trim() && !nameError && !urlError;
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && canSubmit) {
@@ -150,8 +152,9 @@ const AgentComposer: React.FC<AgentRobotPanelProps> = ({
               onChange={(e) => onUrlChange(e.target.value)}
               onBlur={onUrlBlur}
               onKeyDown={handleKeyDown}
-              placeholder="Website (optional)"
-              inputProps={{ 'aria-label': 'Website (optional)', inputMode: 'url' }}
+              placeholder="Website URL, e.g. https://example.com/products"
+              required
+              inputProps={{ 'aria-label': 'Website URL', 'aria-required': true, 'aria-invalid': !!urlError, inputMode: 'url' }}
               sx={{ flex: 1, minWidth: 180, fontSize: 14 }}
             />
           </>
@@ -163,7 +166,7 @@ const AgentComposer: React.FC<AgentRobotPanelProps> = ({
           value={prompt}
           onChange={(e) => onPromptChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Example: Extract the top 10 company names and descriptions from the Y Combinator companies directory"
+          placeholder="Example: Extract the top 10 company names and descriptions"
           multiline
           minRows={4}
           maxRows={12}
@@ -179,7 +182,9 @@ const AgentComposer: React.FC<AgentRobotPanelProps> = ({
           ? urlError
           : promptTooShort
             ? `Describe what to collect in a bit more detail (at least ${MIN_AGENT_PROMPT_LENGTH} characters).`
-            : ''}
+            : urlMissing && trimmedPrompt
+              ? 'Add the website to extract from. AI Extract only reads that page.'
+              : ''}
       </HintLine>
 
       <RobotNameField value={name} onChange={onNameChange} error={nameError} placeholder="Example: YC Companies" />
@@ -210,7 +215,7 @@ type StepState = 'done' | 'active' | 'pending' | 'failed';
 const STEPS = [
   {
     title: 'Build the robot',
-    detail: 'The agent visits the site and works out how to collect your data. This can take a minute or two.',
+    detail: 'Opens the page you entered and works out how to collect your data from it. Other pages are not visited. This can take a minute or two.',
   },
   { title: 'Run it for the first time', detail: 'Collects the data with the steps it just built.' },
   { title: 'Open the results', detail: 'Takes you to the run so you can see the data.' },
@@ -277,7 +282,7 @@ const AgentCreationProgress: React.FC<AgentRobotPanelProps & { creation: AgentCr
       >
         <Typography sx={{ fontSize: 16, lineHeight: 1.55, overflowWrap: 'anywhere' }}>{creation.prompt}</Typography>
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.75 }}>
-          {host ? `On ${host}` : 'The agent will find the right website'}
+          {host ? `On ${host}` : creation.url}
         </Typography>
       </Box>
 
