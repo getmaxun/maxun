@@ -101,6 +101,8 @@ const formatRecording = (recordingData: any) => {
  *   get:
  *     summary: Get all robots
  *     description: Retrieve a list of all robots.
+ *     tags:
+ *       - Robots
  *     security:
  *       - api_key: []
  *     responses:
@@ -206,6 +208,8 @@ const formatRecordingById = (recordingData: any) => {
  *   get:
  *     summary: Get robot by ID
  *     description: Retrieve a robot by its ID.
+ *     tags:
+ *       - Robots
  *     security:
  *       - api_key: []
  *     parameters:
@@ -289,6 +293,8 @@ router.get("/robots/:id", requireAPIKey, async (req: Request, res: Response) => 
  *   get:
  *     summary: Get all runs for a robot
  *     description: Retrieve all runs associated with a specific robot.
+ *     tags:
+ *       - Runs
  *     security:
  *       - api_key: []
  *     parameters:
@@ -462,6 +468,8 @@ function formatRunResponse(run: any) {
  *   get:
  *     summary: Get a specific run by ID for a robot
  *     description: Retrieve details of a specific run by its ID.
+ *     tags:
+ *       - Runs
  *     security:
  *       - api_key: []
  *     parameters:
@@ -1489,6 +1497,8 @@ async function waitForRunCompletion(runId: string, interval: number = 2000) {
  *   post:
  *     summary: Run a robot by ID
  *     description: When you need to run a robot and get its captured data, you can use this endpoint to create a run for the robot. For now, you can poll the GET endpoint to retrieve a run's details as soon as it is finished. We are working on adding a webhook feature to notify you when a run is finished.
+ *     tags:
+ *       - Runs 
  *     security:
  *       - api_key: []
  *     parameters:
@@ -1605,6 +1615,8 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
  *   post:
  *     summary: Duplicate a robot with a new target URL
  *     description: Duplicate an existing robot to run it on a different URL with the same structure.
+ *    tags: 
+ *     - Robots   
  *     security:
  *       - api_key: []
  *     parameters:
@@ -1763,6 +1775,8 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
  *   post:
  *     summary: Schedule recurring runs for a robot
  *     description: Create or replace a recurring schedule for a robot. The robot will run automatically based on the provided frequency. Re-posting replaces any existing schedule.
+ *     tags:
+ *      - Schedule
  *     security:
  *       - api_key: []
  *     parameters:
@@ -1914,6 +1928,8 @@ router.post("/robots/:id/schedule", requireAPIKey, async (req: Request, res: Res
  *   get:
  *     summary: Get a robot's schedule
  *     description: Retrieve the current recurring schedule for a robot, or null if none is set.
+ *     tags: 
+ *      - Schedule
  *     security:
  *       - api_key: []
  *     parameters:
@@ -1972,6 +1988,8 @@ router.get("/robots/:id/schedule", requireAPIKey, async (req: Request, res: Resp
  *   delete:
  *     summary: Delete a robot's schedule
  *     description: Cancel a robot's recurring schedule. Idempotent — succeeds even if the robot has no schedule.
+ *     tags:
+ *       - Schedule
  *     security:
  *       - api_key: []
  *     parameters:
