@@ -152,7 +152,7 @@ export const RobotNameField: React.FC<{ value: string; onChange: (value: string)
   placeholder,
   error,
 }) => (
-  <Box sx={{ mt: 4 }}>
+  <Box sx={{ mt: 2 }}>
     <TextField
       label="Name"
       placeholder={placeholder}
