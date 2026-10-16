@@ -4,6 +4,7 @@ import { gfm } from 'joplin-turndown-plugin-gfm';
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 import { AsyncLocalStorage } from 'async_hooks';
+import { isolateMainContent } from './mainContent';
 
 const _als = new AsyncLocalStorage<{ baseUrl: string | null }>();
 
@@ -107,9 +108,10 @@ const _turndown = (() => {
       if (_baseUrl && isRelativeUrl(src)) {
         try {
           src = new URL(src, _baseUrl).toString();
-        } catch {}
+        } catch { }
       }
-      return alt ? `![${alt}](${src})` : `[Image](${src})`;
+      // Standard markdown for images without alt text (no invented "Image" label).
+      return `![${alt.replace(/[\[\]]/g, "")}](${src})`;
     },
   });
 
@@ -275,7 +277,12 @@ function tidyHtml(html: string): string {
     }
   }
 
-  const $content = bestContent || $("body");
+  // The page headline often sits outside the article body; remember it before
+  // narrowing to the main content.
+  const pageHeading = $("h1").first().text().replace(/\s+/g, " ").trim();
+  const docTitle = $("title").text().replace(/\s+/g, " ").trim();
+
+  const $content = isolateMainContent($);
 
   $content.find("button, span, a, div").each((_i, el) => {
     const $el = $(el);
@@ -283,14 +290,19 @@ function tidyHtml(html: string): string {
     if (UI_ARTIFACTS.has($el.text().trim())) $el.remove();
   });
 
-  const title = $("title").text().trim() || $("h1").first().text().trim();
   let resultHtml = $content.html() || "";
 
-  if (title && !resultHtml.includes(title)) {
-    resultHtml = `<h1>${title}</h1>\n${resultHtml}`;
+  const hasHeading = $content.find("h1").length > 0 || $content.is("h1");
+  const title = hasHeading ? docTitle : (pageHeading || docTitle);
+  if (title && !resultHtml.includes(title) && !(hasHeading && pageHeading && docTitle.includes(pageHeading))) {
+    resultHtml = `<h1>${escapeHtml(title)}</h1>\n${resultHtml}`;
   }
 
   return resultHtml;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function fixBrokenLinks(md: string): string {
