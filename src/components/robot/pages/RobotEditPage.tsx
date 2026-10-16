@@ -1511,7 +1511,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     const targetUrlValue = getTargetUrl();
     const robotType = robot.recording_meta.type;
     const hasEditableTargetUrl = !robot.recording_meta.type?.includes("prebuilt") &&
-      robotType !== 'search' && robotType !== 'doc-extract' && robotType !== 'doc-parse';
+      robotType !== 'search' && robotType !== 'doc-extract' && robotType !== 'doc-parse' &&
+      robot.recording_meta.isLLM !== true;
     if (hasEditableTargetUrl && targetUrlValue && !isNavigableUrl(normalizeUrl(targetUrlValue))) {
       notify("error", t("robot_edit.notifications.invalid_url", "Please enter a valid website URL (e.g. https://example.com)"));
       return;
@@ -1664,6 +1665,10 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
     navigate(basePath);
   };
 
+  // AI mode / Agent robots: target URL, list limits and actions are hidden here
+  // (UI only; the values stay on the robot and are saved unchanged).
+  const isAgentRobot = robot?.recording_meta?.isLLM === true;
+
   return (
     <RobotConfigPage
       title={t("robot_edit.title")}
@@ -1687,7 +1692,7 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
                 style={{ marginBottom: "20px" }}
               />
 
-              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && (
+              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && !isAgentRobot && (
                 <TextField
                   label={t("robot_duplication.fields.target_url")}
                   key={t("robot_duplication.fields.target_url")}
@@ -1702,8 +1707,8 @@ export const RobotEditPage = ({ handleStart }: RobotSettingsProps) => {
               {renderSearchConfigFields()}
               {renderScrapeOutputFormatsField()}
 
-              {renderScrapeListLimitFields()}
-              {renderActionNameFields()}
+              {!isAgentRobot && renderScrapeListLimitFields()}
+              {!isAgentRobot && renderActionNameFields()}
               {renderAllCredentialFields()}
               {robot?.recording_meta?.type !== 'crawl' && robot?.recording_meta?.type !== 'search' && renderLlmConfigFields()}
               {renderDocumentFileSection()}
