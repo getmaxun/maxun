@@ -163,6 +163,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   }, [robot?.userId]);
 
   const targetUrl = getTargetUrl();
+  const isAgentRobot = robot?.recording_meta?.isLLM === true;
 
   return (
     <RobotConfigPage
@@ -175,7 +176,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
         <Box style={{ display: "flex", flexDirection: "column" }}>
           {robot && (
             <>
-              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && (
+              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && !isAgentRobot && (
                 <TextField
                   label={t("robot_settings.target_url")}
                   key="Target URL"
@@ -209,6 +210,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                     return argsWithLimit.map((arg, limitIndex) => {
                       const labelName = action.name || `List ${listCounter++}`;
                       return (
+                        !isAgentRobot && (
                         <TextField
                           key={`limit-${wfIndex}-${actionIndex}-${limitIndex}`}
                           label={`${t("robot_settings.robot_limit")} (${labelName})`}
@@ -219,6 +221,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                           }}
                           style={{ marginBottom: "20px" }}
                         />
+                        )
                       );
                     });
                   })
