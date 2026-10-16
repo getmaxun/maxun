@@ -15,6 +15,7 @@ interface RobotMeta {
   formats?: OutputFormats[];
   compareRuns?: boolean;
   isLLM?: boolean;
+  prompt?: string;
   promptInstructions?: string;
   promptLlmProvider?: 'anthropic' | 'openai' | 'ollama';
   promptLlmModel?: string;
