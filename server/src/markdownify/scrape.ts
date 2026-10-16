@@ -1,11 +1,11 @@
 import { Page } from "playwright-core";
 import { parseMarkdown } from "./markdown";
 import logger from "../logger";
+import { isBackgroundRequest } from "../utils/backgroundRequests";
 
 interface PageState {
+  /** Open XHR/fetch requests that can carry page data. */
   pending: number;
-  /** Last time an XHR/fetch started or finished. */
-  lastActivity: number;
   /** URL the page was last made ready for (wait + overlay dismissal). */
   readyFor?: string;
   /** Cleaned DOM snapshot shared by the markdown and HTML formats. */
@@ -14,22 +14,27 @@ interface PageState {
 
 const pageStates = new WeakMap<Page, PageState>();
 
-const isApiRequest = (type: string) => type === 'xhr' || type === 'fetch';
+/** Analytics, ads and chat widgets never carry page content and may never finish. */
+const isDataRequest = (req: any) => {
+  const type = req.resourceType();
+  return (type === 'xhr' || type === 'fetch') && !isBackgroundRequest(req.url());
+};
 
 function ensurePageState(page: Page): PageState {
   const existing = pageStates.get(page);
   if (existing) return existing;
-  const state: PageState = { pending: 0, lastActivity: Date.now() };
+  const state: PageState = { pending: 0 };
+  const tracked = new WeakSet<object>();
   pageStates.set(page, state);
   page.on('request', (req) => {
-    if (!isApiRequest(req.resourceType())) return;
+    if (!isDataRequest(req)) return;
+    tracked.add(req);
     state.pending++;
-    state.lastActivity = Date.now();
   });
   const done = (req: any) => {
-    if (!isApiRequest(req.resourceType())) return;
+    if (!tracked.has(req)) return;
+    tracked.delete(req);    
     state.pending = Math.max(0, state.pending - 1);
-    state.lastActivity = Date.now();
   };
   page.on('requestfinished', done);
   page.on('requestfailed', done);
@@ -51,8 +56,6 @@ const idle = (page: Page, timeout: number) =>
     }
   }), timeout).catch(() => {});
 
-/** Requests still open with no network activity for this long are long-polls / streams, not page data. */
-const NETWORK_QUIET_MS = 1500;
 
 async function waitForPageReady(page: Page): Promise<void> {
   try {
@@ -60,11 +63,7 @@ async function waitForPageReady(page: Page): Promise<void> {
     await idle(page, 3000);
 
     const deadline = Date.now() + 8000;
-    while (
-      state.pending > 0 &&
-      Date.now() < deadline &&
-      Date.now() - state.lastActivity < NETWORK_QUIET_MS
-    ) {
+    while (state.pending > 0 && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 50));
     }
 
