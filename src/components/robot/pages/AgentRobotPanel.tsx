@@ -4,8 +4,11 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { Check, ErrorOutline, Language } from '@mui/icons-material';
 import {
   BRAND,
+  MONITORING_DESCRIPTION,
+  MONITORING_DOCS,
   CreatePanel,
   HintLine,
+  OptionRow,
   OptionsSection,
   PanelHeading,
   PrimaryAction,
@@ -64,6 +67,8 @@ interface AgentRobotPanelProps {
   urlError: string;
   /** Shown under the heading, e.g. a switch between recorder and AI mode. */
   modeToggle?: React.ReactNode;
+  monitoring: boolean;
+  onMonitoringChange: (enabled: boolean) => void;
   /** LLM provider and model fields, shown under Model settings. */
   llmSettings: React.ReactNode;
   creation: AgentCreationState | null;
@@ -106,6 +111,8 @@ const AgentComposer: React.FC<AgentRobotPanelProps> = ({
   onUrlBlur,
   urlError,
   modeToggle,
+  monitoring,
+  onMonitoringChange,
   llmSettings,
   onSubmit,
 }) => {
@@ -176,6 +183,16 @@ const AgentComposer: React.FC<AgentRobotPanelProps> = ({
       </HintLine>
 
       <RobotNameField value={name} onChange={onNameChange} error={nameError} placeholder="Example: YC Companies" />
+
+      <OptionsSection defaultOpen={monitoring}>
+        <OptionRow
+          title="Monitoring"
+          description={MONITORING_DESCRIPTION}
+          href={MONITORING_DOCS}
+          checked={monitoring}
+          onChange={onMonitoringChange}
+        />
+      </OptionsSection>
 
       <OptionsSection label="Model settings">
         <Box sx={{ pt: 1 }}>{llmSettings}</Box>

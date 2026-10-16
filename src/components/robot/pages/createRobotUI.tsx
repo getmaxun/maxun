@@ -27,6 +27,9 @@ import { ExpandMore, InsertDriveFileOutlined, UploadFileOutlined } from '@mui/ic
 import { OUTPUT_FORMAT_LABELS, OutputFormats } from '../../../constants/outputFormats';
 
 export const BRAND = '#ff00c3';
+
+export const MONITORING_DESCRIPTION = 'Compare each run with the previous one and flag what changed.';
+export const MONITORING_DOCS = 'https://docs.maxun.dev/monitoring';
 const BRAND_HOVER = '#e000ab';
 
 /** The gray card every tab sits on, with the content column inside it. */

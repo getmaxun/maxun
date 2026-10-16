@@ -22,7 +22,7 @@ import { ArrowBack, AutoAwesome, HighlightAlt, Language, Search as SearchIcon } 
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
 import {
-  createScrapeRobot, createLLMRobot, createAndRunRecording,
+  createScrapeRobot, createLLMRobot, createAndRunRecording, updateRecording,
   createCrawlRobot, createSearchRobot, createDocumentExtractRobot, createDocumentParseRobot
 } from "../../../api/storage";
 import { DEFAULT_OUTPUT_FORMATS, DOC_PARSE_FORMAT_OPTIONS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
@@ -34,6 +34,8 @@ import {
   HintLine,
   InlineNumber,
   InlineSelect,
+  MONITORING_DESCRIPTION,
+  MONITORING_DOCS,
   OptionField,
   OptionRow,
   OptionsSection,
@@ -357,11 +359,13 @@ const RobotCreate: React.FC = () => {
   // agent example) never fills another.
   const [url, setUrl] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [extractCompareRuns, setExtractCompareRuns] = useState(false);
 
   const [aiPrompt, setAiPrompt] = useState('');
   const [agentUrl, setAgentUrl] = useState('');
   const [agentUrlError, setAgentUrlError] = useState('');
   const [extractRobotName, setExtractRobotName] = useState('');
+  const [agentCompareRuns, setAgentCompareRuns] = useState(false);
   const agentLlm = useLlmConfig();
   /** Progress of an agent robot being built; null shows the request form. */
   const [agentCreation, setAgentCreation] = useState<AgentCreationState | null>(null);
@@ -379,6 +383,7 @@ const RobotCreate: React.FC = () => {
   const [scrapeRobotName, setScrapeRobotName] = useState('');
   const [outputFormats, setOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [scrapePromptInstructions, setScrapePromptInstructions] = useState('');
+  const [scrapeCompareRuns, setScrapeCompareRuns] = useState(false);
   const scrapePromptLlm = useLlmConfig();
 
   const [crawlRobotName, setCrawlRobotName] = useState('');
@@ -452,6 +457,16 @@ const RobotCreate: React.FC = () => {
     setError(isValidUrl(normalized) ? '' : INVALID_URL_MESSAGE);
   };
 
+  /** Turns on monitoring for a robot that was just created; robots can only get it through an update. */
+  const enableMonitoring = async (robotId: string, robotName: string) => {
+    try {
+      const updated = await updateRecording(robotId, { compareRuns: true });
+      if (!updated) throw new Error('update failed');
+    } catch {
+      notify('warning', `${robotName} was created, but monitoring couldn't be turned on. You can turn it on in the robot's settings.`);
+    }
+  };
+
   const agentNameTaken = !!extractRobotName.trim() &&
     recordings.some((r) => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase());
 
@@ -493,6 +508,7 @@ const RobotCreate: React.FC = () => {
       window.sessionStorage.setItem('recordingUrl', normalizedUrl);
       window.sessionStorage.setItem('initialUrl', normalizedUrl);
       window.sessionStorage.setItem('needsLogin', needsLogin.toString());
+      window.sessionStorage.setItem('compareRuns', extractCompareRuns.toString());
 
       const sessionId = Date.now().toString();
       window.sessionStorage.setItem('recordingSessionId', sessionId);
@@ -526,6 +542,7 @@ const RobotCreate: React.FC = () => {
     window.sessionStorage.setItem('recordingUrl', url);
     window.sessionStorage.setItem('initialUrl', url);
     window.sessionStorage.setItem('needsLogin', needsLogin.toString());
+    window.sessionStorage.setItem('compareRuns', extractCompareRuns.toString());
 
     const sessionId = Date.now().toString();
     window.sessionStorage.setItem('recordingSessionId', sessionId);
@@ -625,6 +642,8 @@ const RobotCreate: React.FC = () => {
       const robotMetaId = result.robot.recording_meta.id;
       const createdName = result.robot.recording_meta.name;
 
+      if (agentCompareRuns) await enableMonitoring(robotMetaId, createdName);
+
       if (isMountedRef.current) {
         setAgentCreation({ ...baseState, robotName: createdName, phase: 'running' });
       }
@@ -701,6 +720,9 @@ const RobotCreate: React.FC = () => {
         needsLlm && scrapePromptLlm.provider !== 'ollama' ? scrapePromptLlm.apiKey || undefined : undefined,
         needsLlm && scrapePromptLlm.provider !== 'anthropic' ? scrapePromptLlm.baseUrl || undefined : undefined,
       );
+      if (result && scrapeCompareRuns && result.robot?.recording_meta?.id) {
+        await enableMonitoring(result.robot.recording_meta.id, scrapeRobotName);
+      }
       setIsLoading(false);
       if (result) {
         setRerenderRobots(true);
@@ -999,6 +1021,8 @@ const RobotCreate: React.FC = () => {
               onUrlBlur={urlBlurHandler(agentUrl, setAgentUrl, setAgentUrlError)}
               urlError={agentUrlError}
               modeToggle={extractModeToggle}
+              monitoring={agentCompareRuns}
+              onMonitoringChange={setAgentCompareRuns}
               llmSettings={<LlmSettings config={agentLlm} anthropicApiKeyLabel="API key (optional if set in .env)" />}
               creation={agentCreation}
               onSubmit={handleCreateAgentRobot}
@@ -1036,6 +1060,16 @@ const RobotCreate: React.FC = () => {
                 <HintLine tone={urlError ? 'error' : 'muted'} sx={{ mt: 1.5 }}>
                   {urlError || ''}
                 </HintLine>
+
+                <OptionsSection defaultOpen={extractCompareRuns}>
+                  <OptionRow
+                    title="Monitoring"
+                    description={MONITORING_DESCRIPTION}
+                    href={MONITORING_DOCS}
+                    checked={extractCompareRuns}
+                    onChange={setExtractCompareRuns}
+                  />
+                </OptionsSection>
               </Box>
             </CreatePanel>
           )}
@@ -1095,6 +1129,16 @@ const RobotCreate: React.FC = () => {
               </Box>
 
               <RobotNameField value={scrapeRobotName} onChange={setScrapeRobotName} placeholder="Example: YC Companies Scraper" />
+
+              <OptionsSection defaultOpen={scrapeCompareRuns}>
+                <OptionRow
+                  title="Monitoring"
+                  description={MONITORING_DESCRIPTION}
+                  href={MONITORING_DOCS}
+                  checked={scrapeCompareRuns}
+                  onChange={setScrapeCompareRuns}
+                />
+              </OptionsSection>
 
               <OptionsSection label="Model settings">
                 <Typography sx={{ fontSize: 13, color: 'text.secondary', pt: 1 }}>
