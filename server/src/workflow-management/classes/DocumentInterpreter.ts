@@ -32,7 +32,6 @@ const MAX_TABLE_ROWS_IN_CONTEXT = 50;
 const MAX_TABLE_CONTEXT_CHARS = 8000;
 const CHUNK_HEADER_ALLOWANCE = 64;
 const MAX_PROMPT_CHUNK_HEADROOM = 2000;
-const MAX_PAGE_SUBCHUNKS = 20;
 const SCANNED_THRESHOLD_CHARS_PER_PAGE = 30;
 const MAX_TABLE_DETECTION_PAGES = 200;
 const EXTRACTION_CONCURRENCY = 3;
@@ -972,6 +971,8 @@ const fallbackExtract = (text: string, schema: ExtractionSchema): Record<string,
  * Formats without intrinsic pagination (DOCX, CSV) parse to one page holding
  * the entire document, so without this every such document was silently
  * truncated to the first MAX_CHUNK_CHARS characters before extraction.
+ * There is no segment cap: a capped last segment held the rest of the page
+ * and the prompt cut it, silently dropping the end of large CSVs and sheets.
  */
 const splitOversizedPageText = (text: string, limit: number): string[] => {
   if (text.length <= limit) return [text];
@@ -980,7 +981,7 @@ const splitOversizedPageText = (text: string, limit: number): string[] => {
   let remaining = text;
   const minimumCut = Math.floor(limit / 2);
 
-  while (remaining.length > limit && segments.length < MAX_PAGE_SUBCHUNKS - 1) {
+  while (remaining.length > limit) {
     const candidates = [
       remaining.lastIndexOf('\n\n', limit),
       remaining.lastIndexOf('\n', limit),
@@ -1046,12 +1047,6 @@ const buildChunks = (pages: ParsedPage[], budget: number = MAX_CHUNK_CHARS): Arr
     const pageName = page.label ? `Sheet "${page.label}"` : `Page ${page.pageNumber}`;
 
     const segments = carryTableHeaders(splitOversizedPageText(pageText, segmentBudget));
-
-    if (segments.length >= MAX_PAGE_SUBCHUNKS) {
-      logger.warn(
-        `[DocumentInterpreter] Page ${page.pageNumber} exceeds ${MAX_PAGE_SUBCHUNKS} extraction chunks; content beyond that point is not sent to the model`
-      );
-    }
 
     segments.forEach((segment, index) => {
       const label = segments.length > 1
