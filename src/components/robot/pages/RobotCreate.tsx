@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -6,34 +6,44 @@ import {
   Typography,
   TextField,
   Button,
-  Checkbox,
   IconButton,
-  Card,
-  CircularProgress,
   Container,
-  CardContent,
   Tabs,
   Tab,
-  FormControl,
-  Select,
   MenuItem,
-  InputLabel,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Collapse,
-  FormControlLabel
+  InputBase,
+  Link,
 } from '@mui/material';
-import { ArrowBack, AutoAwesome, HighlightAlt, Article, InsertDriveFile, Upload } from '@mui/icons-material';
+import { ArrowBack, AutoAwesome, HighlightAlt, Language, Search as SearchIcon } from '@mui/icons-material';
 import { useGlobalInfoStore, useCacheInvalidation } from '../../../context/globalInfo';
 import { canCreateBrowserInState, getActiveBrowserId, stopRecording } from '../../../api/recording';
 import {
   createScrapeRobot, createLLMRobot, createAndRunRecording,
   createCrawlRobot, createSearchRobot, createDocumentExtractRobot, createDocumentParseRobot
 } from "../../../api/storage";
-import { AuthContext } from '../../../context/auth';
-import { DEFAULT_OUTPUT_FORMATS, DOC_PARSE_FORMAT_OPTIONS, OUTPUT_FORMAT_LABELS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
+import { DEFAULT_OUTPUT_FORMATS, DOC_PARSE_FORMAT_OPTIONS, OUTPUT_FORMAT_OPTIONS, OutputFormats } from '../../../constants/outputFormats';
+import { AgentRobotPanel, AgentCreationState } from './AgentRobotPanel';
+import {
+  ChoiceToggle,
+  CreatePanel,
+  FileDropZone,
+  HintLine,
+  InlineNumber,
+  InlineSelect,
+  OptionField,
+  OptionRow,
+  OptionsSection,
+  OutputFormatsSelect,
+  PanelHeading,
+  PrimaryAction,
+  RequestBox,
+  RequestInput,
+  RobotNameField,
+} from './createRobotUI';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -135,6 +145,7 @@ const OPENAI_COMPATIBLE_PRESET_IDS: OpenAICompatiblePresetId[] = [
   'custom',
 ];
 
+
 const getOpenAICompatiblePreset = (presetId: OpenAICompatiblePresetId) =>
   OPENAI_COMPATIBLE_PRESETS[presetId];
 
@@ -172,105 +183,207 @@ const DOCUMENT_MODEL_FIELD_TEXT: ModelFieldTextOptions = {
   anthropicHelperText: 'Leave blank to use default: claude-3-5-haiku-20241022',
 };
 
-interface OpenAICompatiblePresetFieldsProps {
-  presetId: OpenAICompatiblePresetId;
-  onPresetChange: (presetId: OpenAICompatiblePresetId) => void;
-  baseUrl: string;
-  onBaseUrlChange: (baseUrl: string) => void;
-  apiKey: string;
-  onApiKeyChange: (apiKey: string) => void;
-  bottomMargin?: number;
+
+/** One LLM configuration: provider, OpenAI-compatible preset, model, API key and base URL. */
+const useLlmConfig = () => {
+  const [provider, setProviderState] = useState<LlmProvider>('ollama');
+  const [presetId, setPresetIdState] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
+  const [model, setModel] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
+
+  // Switching provider or preset clears the fields that belonged to the previous one.
+  const setProvider = (next: LlmProvider) => {
+    setProviderState(next);
+    setModel('');
+    setBaseUrl(next === 'openai' ? getOpenAICompatiblePreset(presetId).baseUrl : '');
+    setApiKey('');
+  };
+
+  const setPresetId = (next: OpenAICompatiblePresetId) => {
+    setPresetIdState(next);
+    setModel('');
+    setBaseUrl(getOpenAICompatiblePreset(next).baseUrl);
+    setApiKey('');
+  };
+
+  return { provider, setProvider, presetId, setPresetId, model, setModel, apiKey, setApiKey, baseUrl, setBaseUrl };
+};
+
+type LlmConfig = ReturnType<typeof useLlmConfig>;
+
+const SUMMARY_API_KEY_HELPER = 'Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env.';
+const OLLAMA_BASE_URL_HELPER = 'Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker';
+
+const smallFieldProps = {
+  size: 'small' as const,
+  fullWidth: true,
+  InputLabelProps: { shrink: true },
+  FormHelperTextProps: { sx: { ml: 0 } },
+};
+
+interface LlmSettingsProps {
+  config: LlmConfig;
+  providerLabel?: string;
+  modelText?: ModelFieldTextOptions;
+  anthropicApiKeyLabel?: string;
+  anthropicApiKeyHelperText?: string;
 }
 
-const OpenAICompatiblePresetFields: React.FC<OpenAICompatiblePresetFieldsProps> = ({
-  presetId,
-  onPresetChange,
-  baseUrl,
-  onBaseUrlChange,
-  apiKey,
-  onApiKeyChange,
-  bottomMargin = 3,
+/** Provider, model and connection fields for one LLM configuration, laid out for an Options section. */
+const LlmSettings: React.FC<LlmSettingsProps> = ({
+  config,
+  providerLabel = 'LLM provider',
+  modelText,
+  anthropicApiKeyLabel = 'API key',
+  anthropicApiKeyHelperText,
 }) => {
-  const preset = getOpenAICompatiblePreset(presetId);
+  const preset = getOpenAICompatiblePreset(config.presetId);
 
   return (
-    <>
-      <FormControl fullWidth sx={{ mb: 2 }}>
-        <InputLabel>OpenAI-compatible Preset</InputLabel>
-        <Select
-          value={presetId}
-          label="OpenAI-compatible Preset"
-          onChange={(e) => onPresetChange(e.target.value as OpenAICompatiblePresetId)}
-        >
-          {OPENAI_COMPATIBLE_PRESET_IDS.map((id) => (
-            <MenuItem key={id} value={id}>
-              {OPENAI_COMPATIBLE_PRESETS[id].label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+    <Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
+        <OptionField>
+          <TextField
+            select
+            label={providerLabel}
+            value={config.provider}
+            onChange={(e) => config.setProvider(e.target.value as LlmProvider)}
+            {...smallFieldProps}
+          >
+            <MenuItem value="ollama">Ollama (Local)</MenuItem>
+            <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
+            <MenuItem value="openai">OpenAI-compatible</MenuItem>
+          </TextField>
+        </OptionField>
+        <OptionField>
+          <TextField
+            label="Model"
+            value={config.model}
+            placeholder={getModelPlaceholder(config.provider, config.presetId, modelText)}
+            helperText={getModelHelperText(config.provider, config.presetId, modelText)}
+            onChange={(e) => config.setModel(e.target.value)}
+            {...smallFieldProps}
+          />
+        </OptionField>
+      </Box>
 
-      <TextField
-        placeholder={preset.baseUrlPlaceholder}
-        variant="outlined"
-        fullWidth
-        value={baseUrl}
-        onChange={(e) => onBaseUrlChange(e.target.value)}
-        label="Base URL"
-        helperText={preset.baseUrlHelperText}
-        sx={{ mb: 2 }}
-        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-      />
+      {config.provider === 'openai' && (
+        <>
+          <OptionField>
+            <TextField
+              select
+              label="OpenAI-compatible preset"
+              value={config.presetId}
+              onChange={(e) => config.setPresetId(e.target.value as OpenAICompatiblePresetId)}
+              {...smallFieldProps}
+            >
+              {OPENAI_COMPATIBLE_PRESET_IDS.map((id) => (
+                <MenuItem key={id} value={id}>
+                  {OPENAI_COMPATIBLE_PRESETS[id].label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </OptionField>
+          <OptionField>
+            <TextField
+              label="Base URL"
+              placeholder={preset.baseUrlPlaceholder}
+              value={config.baseUrl}
+              onChange={(e) => config.setBaseUrl(e.target.value)}
+              helperText={preset.baseUrlHelperText}
+              {...smallFieldProps}
+            />
+          </OptionField>
+          <OptionField>
+            <TextField
+              label="API key"
+              type="password"
+              placeholder={preset.apiKeyPlaceholder}
+              value={config.apiKey}
+              onChange={(e) => config.setApiKey(e.target.value)}
+              helperText={preset.apiKeyHelperText}
+              {...smallFieldProps}
+            />
+          </OptionField>
+        </>
+      )}
 
-      <TextField
-        placeholder={preset.apiKeyPlaceholder}
-        variant="outlined"
-        fullWidth
-        type="password"
-        value={apiKey}
-        onChange={(e) => onApiKeyChange(e.target.value)}
-        label="API Key"
-        helperText={preset.apiKeyHelperText}
-        sx={{ mb: bottomMargin }}
-        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-      />
-    </>
+      {config.provider === 'anthropic' && (
+        <OptionField>
+          <TextField
+            label={anthropicApiKeyLabel}
+            type="password"
+            placeholder="Anthropic API key"
+            value={config.apiKey}
+            onChange={(e) => config.setApiKey(e.target.value)}
+            helperText={anthropicApiKeyHelperText}
+            {...smallFieldProps}
+          />
+        </OptionField>
+      )}
+
+      {config.provider === 'ollama' && (
+        <OptionField>
+          <TextField
+            label="Ollama base URL (optional)"
+            placeholder={OLLAMA_DEFAULT_BASE_URL}
+            value={config.baseUrl}
+            onChange={(e) => config.setBaseUrl(e.target.value)}
+            helperText={OLLAMA_BASE_URL_HELPER}
+            {...smallFieldProps}
+          />
+        </OptionField>
+      )}
+    </Box>
   );
 };
+
+const INVALID_URL_MESSAGE = 'Please enter a valid URL (e.g. https://example.com)';
 
 const RobotCreate: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setBrowserId, setRecordingUrl, notify, setRecordingId, setRerenderRobots, recordings } = useGlobalInfoStore();
+  const { setBrowserId, setRecordingUrl, notify, setRerenderRobots, recordings } = useGlobalInfoStore();
 
   const [tabValue, setTabValue] = useState(0);
-  const [url, setUrl] = useState('');
-  const [scrapeRobotName, setScrapeRobotName] = useState('');
-  const [extractRobotName, setExtractRobotName] = useState('');
-  const [needsLogin, setNeedsLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isWarningModalOpen, setWarningModalOpen] = useState(false);
   const [activeBrowserId, setActiveBrowserId] = useState('');
-  const [outputFormats, setOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
-  const [generationMode, setGenerationMode] = useState<'agent' | 'recorder' | null>('recorder');
+  const [needsLogin] = useState(false);
+  const [generationMode, setGenerationMode] = useState<'agent' | 'recorder'>('recorder');
+
+  // Each tab keeps its own website field, so typing in one tab (or picking an
+  // agent example) never fills another.
+  const [url, setUrl] = useState('');
+  const [urlError, setUrlError] = useState('');
 
   const [aiPrompt, setAiPrompt] = useState('');
-  const [llmProvider, setLlmProvider] = useState<LlmProvider>('ollama');
-  const [llmOpenAICompatiblePreset, setLlmOpenAICompatiblePreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
-  const [llmModel, setLlmModel] = useState('');
-  const [llmApiKey, setLlmApiKey] = useState('');
-  const [llmBaseUrl, setLlmBaseUrl] = useState('');
+  const [agentUrl, setAgentUrl] = useState('');
+  const [agentUrlError, setAgentUrlError] = useState('');
+  const [extractRobotName, setExtractRobotName] = useState('');
+  const agentLlm = useLlmConfig();
+  /** Progress of an agent robot being built; null shows the request form. */
+  const [agentCreation, setAgentCreation] = useState<AgentCreationState | null>(null);
+  /** Whether this page is still open, so a finished build doesn't pull the user back from elsewhere. */
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
+  const [scrapeUrl, setScrapeUrl] = useState('');
+  const [scrapeUrlError, setScrapeUrlError] = useState('');
+  const [scrapeRobotName, setScrapeRobotName] = useState('');
+  const [outputFormats, setOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [scrapePromptInstructions, setScrapePromptInstructions] = useState('');
-  const [scrapePromptLlmProvider, setScrapePromptLlmProvider] = useState<LlmProvider>('ollama');
-  const [scrapePromptOpenAICompatiblePreset, setScrapePromptOpenAICompatiblePreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
-  const [scrapePromptLlmModel, setScrapePromptLlmModel] = useState('');
-  const [scrapePromptLlmApiKey, setScrapePromptLlmApiKey] = useState('');
-  const [scrapePromptLlmBaseUrl, setScrapePromptLlmBaseUrl] = useState('');
-  const [aiRobotName, setAiRobotName] = useState('');
+  const scrapePromptLlm = useLlmConfig();
 
   const [crawlRobotName, setCrawlRobotName] = useState('');
   const [crawlUrl, setCrawlUrl] = useState('');
+  const [crawlUrlError, setCrawlUrlError] = useState('');
   const [crawlMode, setCrawlMode] = useState<'domain' | 'subdomain' | 'path'>('domain');
   const [crawlLimit, setCrawlLimit] = useState(50);
   const [crawlMaxDepth, setCrawlMaxDepth] = useState(3);
@@ -279,7 +392,8 @@ const RobotCreate: React.FC = () => {
   const [crawlUseSitemap, setCrawlUseSitemap] = useState(true);
   const [crawlFollowLinks, setCrawlFollowLinks] = useState(true);
   const [crawlRespectRobots, setCrawlRespectRobots] = useState(true);
-  const [showCrawlAdvanced, setShowCrawlAdvanced] = useState(false);
+  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
+  const crawlSummaryLlm = useLlmConfig();
 
   const [searchRobotName, setSearchRobotName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -287,80 +401,22 @@ const RobotCreate: React.FC = () => {
   const [searchProvider] = useState<'duckduckgo'>('duckduckgo');
   const [searchMode, setSearchMode] = useState<'discover' | 'scrape'>('discover');
   const [searchTimeRange, setSearchTimeRange] = useState<'day' | 'week' | 'month' | 'year' | ''>('');
-
-  const [crawlOutputFormats, setCrawlOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
   const [searchOutputFormats, setSearchOutputFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
-
-  const [crawlSummaryLlmProvider, setCrawlSummaryLlmProvider] = useState<LlmProvider>('ollama');
-  const [crawlSummaryOpenAIPreset, setCrawlSummaryOpenAIPreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
-  const [crawlSummaryLlmModel, setCrawlSummaryLlmModel] = useState('');
-  const [crawlSummaryLlmApiKey, setCrawlSummaryLlmApiKey] = useState('');
-  const [crawlSummaryLlmBaseUrl, setCrawlSummaryLlmBaseUrl] = useState('');
-
-  const [searchSummaryLlmProvider, setSearchSummaryLlmProvider] = useState<LlmProvider>('ollama');
-  const [searchSummaryOpenAIPreset, setSearchSummaryOpenAIPreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
-  const [searchSummaryLlmModel, setSearchSummaryLlmModel] = useState('');
-  const [searchSummaryLlmApiKey, setSearchSummaryLlmApiKey] = useState('');
-  const [searchSummaryLlmBaseUrl, setSearchSummaryLlmBaseUrl] = useState('');
+  const searchSummaryLlm = useLlmConfig();
 
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentPrompt, setDocumentPrompt] = useState('');
   const [documentRobotName, setDocumentRobotName] = useState('');
   const [documentMode, setDocumentMode] = useState<'extract' | 'parse'>('extract');
   const [documentParseFormats, setDocumentParseFormats] = useState<OutputFormats[]>(DEFAULT_OUTPUT_FORMATS);
-  const [documentLlmProvider, setDocumentLlmProvider] = useState<LlmProvider>('ollama');
-  const [documentOpenAICompatiblePreset, setDocumentOpenAICompatiblePreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
-  const [documentLlmModel, setDocumentLlmModel] = useState('');
-  const [documentLlmApiKey, setDocumentLlmApiKey] = useState('');
-  const [documentLlmBaseUrl, setDocumentLlmBaseUrl] = useState('');
+  const documentLlm = useLlmConfig();
+  const docParseSummaryLlm = useLlmConfig();
 
-  const [docParseSummaryLlmProvider, setDocParseSummaryLlmProvider] = useState<LlmProvider>('ollama');
-  const [docParseSummaryOpenAIPreset, setDocParseSummaryOpenAIPreset] = useState<OpenAICompatiblePresetId>(DEFAULT_OPENAI_COMPATIBLE_PRESET_ID);
-  const [docParseSummaryLlmModel, setDocParseSummaryLlmModel] = useState('');
-  const [docParseSummaryLlmApiKey, setDocParseSummaryLlmApiKey] = useState('');
-  const [docParseSummaryLlmBaseUrl, setDocParseSummaryLlmBaseUrl] = useState('');
-
-  const { state } = React.useContext(AuthContext);
-  const { user } = state;
   const { addOptimisticRobot, removeOptimisticRobot, invalidateRecordings, invalidateRuns, updateOptimisticRun } = useCacheInvalidation();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
-
-  const getBaseUrlForProvider = (provider: LlmProvider, presetId: OpenAICompatiblePresetId) => {
-    if (provider === 'ollama') return '';
-    if (provider === 'openai') return getOpenAICompatiblePreset(presetId).baseUrl;
-    return '';
-  };
-
-  const applyLlmProvider = (
-    provider: LlmProvider,
-    presetId: OpenAICompatiblePresetId,
-    setProvider: React.Dispatch<React.SetStateAction<LlmProvider>>,
-    setModel: React.Dispatch<React.SetStateAction<string>>,
-    setBaseUrl: React.Dispatch<React.SetStateAction<string>>,
-    setApiKey: React.Dispatch<React.SetStateAction<string>>
-  ) => {
-    setProvider(provider);
-    setModel('');
-    setBaseUrl(getBaseUrlForProvider(provider, presetId));
-    setApiKey('');
-  };
-
-  const applyOpenAICompatiblePreset = (
-    presetId: OpenAICompatiblePresetId,
-    setPresetId: React.Dispatch<React.SetStateAction<OpenAICompatiblePresetId>>,
-    setModel: React.Dispatch<React.SetStateAction<string>>,
-    setBaseUrl: React.Dispatch<React.SetStateAction<string>>,
-    setApiKey: React.Dispatch<React.SetStateAction<string>>
-  ) => {
-    setPresetId(presetId);
-    setModel('');
-    setBaseUrl(getOpenAICompatiblePreset(presetId).baseUrl);
-    setApiKey('');
-  };
-
 
   const normalizeUrl = (rawUrl: string): string => {
     const trimmed = rawUrl.trim();
@@ -388,9 +444,20 @@ const RobotCreate: React.FC = () => {
     }
   };
 
+  /** Normalizes a website field when it loses focus and shows an inline error for an invalid address. */
+  const urlBlurHandler = (value: string, setValue: (value: string) => void, setError: (error: string) => void) => () => {
+    if (!value) { setError(''); return; }
+    const normalized = normalizeUrl(value);
+    setValue(normalized);
+    setError(isValidUrl(normalized) ? '' : INVALID_URL_MESSAGE);
+  };
+
+  const agentNameTaken = !!extractRobotName.trim() &&
+    recordings.some((r) => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase());
+
   const handleStartRecording = async () => {
     if (!url.trim()) {
-      notify('error', 'Please enter a valid URL');
+      setUrlError(INVALID_URL_MESSAGE);
       return;
     }
 
@@ -398,7 +465,7 @@ const RobotCreate: React.FC = () => {
     setUrl(normalizedUrl);
 
     if (!isValidUrl(normalizedUrl)) {
-      notify('error', 'Please enter a valid URL (e.g. https://example.com)');
+      setUrlError(INVALID_URL_MESSAGE);
       return;
     }
 
@@ -470,9 +537,187 @@ const RobotCreate: React.FC = () => {
     navigate('/robots');
   };
 
+  /**
+   * Builds an AI mode robot, then runs it once and opens the run. Progress is
+   * shown in place; if the user leaves the page, the build keeps going and
+   * they get a notification instead of being navigated back.
+   */
+  const handleCreateAgentRobot = async () => {
+    const prompt = aiPrompt.trim();
+    const robotName = extractRobotName.trim();
+
+    if (!robotName) {
+      notify('error', 'Please enter a robot name');
+      return;
+    }
+    if (!prompt) {
+      notify('error', 'Please describe what the agent should collect');
+      return;
+    }
+    if (agentNameTaken) {
+      notify('error', `A robot with the name "${robotName}" already exists.`);
+      return;
+    }
+
+    let targetUrl = '';
+    if (agentUrl.trim()) {
+      targetUrl = normalizeUrl(agentUrl);
+      setAgentUrl(targetUrl);
+      if (!isValidUrl(targetUrl)) {
+        setAgentUrlError(INVALID_URL_MESSAGE);
+        return;
+      }
+    }
+
+    const startedAt = Date.now();
+    const baseState = { startedAt, robotName, prompt, url: targetUrl || undefined };
+    setAgentCreation({ ...baseState, phase: 'building' });
+
+    // Keep the robot visible in the list while it builds, in case the user goes there.
+    const tempRobotId = `temp-${startedAt}`;
+    addOptimisticRobot({
+      id: tempRobotId,
+      recording_meta: {
+        id: tempRobotId,
+        name: robotName,
+        createdAt: new Date(startedAt).toISOString(),
+        updatedAt: new Date(startedAt).toISOString(),
+        pairs: 0,
+        params: [],
+        type: 'extract',
+        url: targetUrl || '(auto-detecting...)',
+      },
+      recording: { workflow: [] },
+      isLoading: true,
+      isOptimistic: true,
+    });
+
+    const fail = (error: string, robotCreated = false) => {
+      if (isMountedRef.current) {
+        setAgentCreation({ ...baseState, phase: 'failed', error, robotCreated });
+      } else {
+        notify(
+          robotCreated ? 'warning' : 'error',
+          robotCreated ? `${robotName} was created, but its first run didn't start.` : `Couldn't build ${robotName}: ${error}`
+        );
+      }
+    };
+
+    try {
+      const result = await createLLMRobot(
+        targetUrl || undefined,
+        prompt,
+        agentLlm.provider,
+        agentLlm.model.trim() || undefined,
+        agentLlm.apiKey || undefined,
+        agentLlm.baseUrl || undefined,
+        robotName
+      );
+
+      removeOptimisticRobot(tempRobotId);
+      invalidateRecordings();
+
+      if (!result || !result.robot) {
+        fail('The agent could not create this robot. Please check your LLM configuration, or try describing the data differently or adding the website.');
+        return;
+      }
+
+      const robotMetaId = result.robot.recording_meta.id;
+      const createdName = result.robot.recording_meta.name;
+
+      if (isMountedRef.current) {
+        setAgentCreation({ ...baseState, robotName: createdName, phase: 'running' });
+      }
+
+      updateOptimisticRun({
+        id: robotMetaId,
+        runId: `temp-${Date.now()}`,
+        status: 'running',
+        name: createdName,
+        startedAt: new Date().toISOString(),
+        finishedAt: '',
+        robotMetaId,
+        log: 'Starting...',
+        isOptimistic: true,
+      });
+
+      const runResponse = await createAndRunRecording(robotMetaId, {
+        maxConcurrency: 1,
+        maxRepeats: 1,
+        debug: false,
+      });
+
+      invalidateRuns();
+
+      if (!runResponse || !runResponse.runId) {
+        fail("The robot's first run didn't start.", true);
+        return;
+      }
+
+      if (isMountedRef.current) {
+        setAgentCreation({ ...baseState, robotName: createdName, phase: 'opening' });
+        navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
+      } else {
+        notify('success', `${createdName} is ready. Its first run has started.`);
+      }
+    } catch (error: any) {
+      console.error('Error in AI robot creation:', error);
+      removeOptimisticRobot(tempRobotId);
+      invalidateRecordings();
+      fail(error?.message || 'Failed to create the robot.');
+    }
+  };
+
+  const handleCreateScrapeRobot = async () => {
+    if (!scrapeUrl.trim()) {
+      setScrapeUrlError(INVALID_URL_MESSAGE);
+      return;
+    }
+    if (!scrapeRobotName.trim()) {
+      notify('error', 'Please enter a robot name');
+      return;
+    }
+    if (outputFormats.length === 0) {
+      notify('error', 'Please select at least one output format');
+      return;
+    }
+    const normalizedUrl = normalizeUrl(scrapeUrl);
+    setScrapeUrl(normalizedUrl);
+    if (!isValidUrl(normalizedUrl)) {
+      setScrapeUrlError(INVALID_URL_MESSAGE);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const hasPrompt = !!scrapePromptInstructions.trim();
+      const needsLlm = hasPrompt || outputFormats.includes('summary');
+      const result = await createScrapeRobot(
+        normalizedUrl,
+        scrapeRobotName,
+        outputFormats,
+        hasPrompt ? scrapePromptInstructions : undefined,
+        needsLlm ? scrapePromptLlm.provider : undefined,
+        needsLlm ? scrapePromptLlm.model.trim() || undefined : undefined,
+        needsLlm && scrapePromptLlm.provider !== 'ollama' ? scrapePromptLlm.apiKey || undefined : undefined,
+        needsLlm && scrapePromptLlm.provider !== 'anthropic' ? scrapePromptLlm.baseUrl || undefined : undefined,
+      );
+      setIsLoading(false);
+      if (result) {
+        setRerenderRobots(true);
+        notify('success', `${scrapeRobotName} created successfully!`);
+        navigate('/robots');
+      } else {
+        notify('error', 'Failed to create scrape robot');
+      }
+    } catch (error: any) {
+      setIsLoading(false);
+      notify('error', error.message || 'Failed to create scrape robot');
+    }
+  };
+
   const handleCreateCrawlRobot = async () => {
     if (!crawlUrl.trim()) {
-      notify('error', 'Please enter a valid URL');
+      setCrawlUrlError(INVALID_URL_MESSAGE);
       return;
     }
     if (!crawlRobotName.trim()) {
@@ -483,8 +728,9 @@ const RobotCreate: React.FC = () => {
       notify('error', 'Please select at least one output format');
       return;
     }
-    if (crawlOutputFormats.includes('summary' as OutputFormats) && crawlSummaryLlmProvider !== 'ollama' && !crawlSummaryLlmApiKey.trim()) {
-      notify('error', `An API key is required when using ${crawlSummaryLlmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
+    const wantsSummary = crawlOutputFormats.includes('summary' as OutputFormats);
+    if (wantsSummary && crawlSummaryLlm.provider !== 'ollama' && !crawlSummaryLlm.apiKey.trim()) {
+      notify('error', `An API key is required when using ${crawlSummaryLlm.provider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
       return;
     }
 
@@ -492,7 +738,7 @@ const RobotCreate: React.FC = () => {
     setCrawlUrl(normalizedCrawlUrl);
 
     if (!isValidUrl(normalizedCrawlUrl)) {
-      notify('error', 'Please enter a valid URL (e.g. https://example.com)');
+      setCrawlUrlError(INVALID_URL_MESSAGE);
       return;
     }
 
@@ -512,10 +758,10 @@ const RobotCreate: React.FC = () => {
           respectRobots: crawlRespectRobots
         },
         crawlOutputFormats,
-        crawlOutputFormats.includes('summary' as OutputFormats) ? crawlSummaryLlmProvider : undefined,
-        crawlOutputFormats.includes('summary' as OutputFormats) ? crawlSummaryLlmModel.trim() || undefined : undefined,
-        crawlOutputFormats.includes('summary' as OutputFormats) && crawlSummaryLlmProvider !== 'ollama' ? crawlSummaryLlmApiKey || undefined : undefined,
-        crawlOutputFormats.includes('summary' as OutputFormats) ? crawlSummaryLlmBaseUrl.trim() || undefined : undefined
+        wantsSummary ? crawlSummaryLlm.provider : undefined,
+        wantsSummary ? crawlSummaryLlm.model.trim() || undefined : undefined,
+        wantsSummary && crawlSummaryLlm.provider !== 'ollama' ? crawlSummaryLlm.apiKey || undefined : undefined,
+        wantsSummary ? crawlSummaryLlm.baseUrl.trim() || undefined : undefined
       );
       setIsLoading(false);
       if (result) {
@@ -544,8 +790,9 @@ const RobotCreate: React.FC = () => {
       notify('error', 'Please select at least one output format');
       return;
     }
-    if (searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) && searchSummaryLlmProvider !== 'ollama' && !searchSummaryLlmApiKey.trim()) {
-      notify('error', `An API key is required when using ${searchSummaryLlmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
+    const wantsSummary = searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats);
+    if (wantsSummary && searchSummaryLlm.provider !== 'ollama' && !searchSummaryLlm.apiKey.trim()) {
+      notify('error', `An API key is required when using ${searchSummaryLlm.provider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
       return;
     }
 
@@ -565,10 +812,10 @@ const RobotCreate: React.FC = () => {
           mode: searchMode
         },
         formatsForRequest,
-        searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) ? searchSummaryLlmProvider : undefined,
-        searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) ? searchSummaryLlmModel.trim() || undefined : undefined,
-        searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) && searchSummaryLlmProvider !== 'ollama' ? searchSummaryLlmApiKey || undefined : undefined,
-        searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) ? searchSummaryLlmBaseUrl.trim() || undefined : undefined
+        wantsSummary ? searchSummaryLlm.provider : undefined,
+        wantsSummary ? searchSummaryLlm.model.trim() || undefined : undefined,
+        wantsSummary && searchSummaryLlm.provider !== 'ollama' ? searchSummaryLlm.apiKey || undefined : undefined,
+        wantsSummary ? searchSummaryLlm.baseUrl.trim() || undefined : undefined
       );
       setIsLoading(false);
       if (result) {
@@ -584,6 +831,15 @@ const RobotCreate: React.FC = () => {
     }
   };
 
+  const handleSearchModeChange = (newMode: 'discover' | 'scrape') => {
+    setSearchMode(newMode);
+    if (newMode === 'discover') {
+      setSearchOutputFormats([]);
+    } else if (searchOutputFormats.length === 0) {
+      setSearchOutputFormats(DEFAULT_OUTPUT_FORMATS);
+    }
+  };
+
   const handleCreateDocumentRobot = async () => {
     if (!documentFile) { notify('error', 'Please upload a PDF, DOCX, XLSX, CSV, JPG, or PNG file'); return; }
     if (!documentPrompt.trim()) { notify('error', 'Please enter an extraction prompt'); return; }
@@ -595,10 +851,10 @@ const RobotCreate: React.FC = () => {
         documentFile,
         documentPrompt.trim(),
         documentRobotName.trim(),
-        documentLlmProvider,
-        documentLlmModel || undefined,
-        documentLlmApiKey || undefined,
-        documentLlmBaseUrl || undefined
+        documentLlm.provider,
+        documentLlm.model || undefined,
+        documentLlm.apiKey || undefined,
+        documentLlm.baseUrl || undefined
       );
       setIsLoading(false);
       if (result) {
@@ -620,8 +876,8 @@ const RobotCreate: React.FC = () => {
     if (documentParseFormats.length === 0) { notify('error', 'Please select at least one output format'); return; }
 
     const wantsSummary = documentParseFormats.includes('summary' as OutputFormats);
-    if (wantsSummary && docParseSummaryLlmProvider !== 'ollama' && !docParseSummaryLlmApiKey.trim()) {
-      notify('error', `An API key is required when using ${docParseSummaryLlmProvider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
+    if (wantsSummary && docParseSummaryLlm.provider !== 'ollama' && !docParseSummaryLlm.apiKey.trim()) {
+      notify('error', `An API key is required when using ${docParseSummaryLlm.provider === 'anthropic' ? 'Anthropic' : 'an OpenAI-compatible'} provider for summaries`);
       return;
     }
 
@@ -631,10 +887,10 @@ const RobotCreate: React.FC = () => {
         documentFile,
         documentRobotName.trim(),
         documentParseFormats,
-        wantsSummary ? docParseSummaryLlmProvider : undefined,
-        wantsSummary ? docParseSummaryLlmModel.trim() || undefined : undefined,
-        wantsSummary && docParseSummaryLlmProvider !== 'ollama' ? docParseSummaryLlmApiKey || undefined : undefined,
-        wantsSummary ? docParseSummaryLlmBaseUrl.trim() || undefined : undefined
+        wantsSummary ? docParseSummaryLlm.provider : undefined,
+        wantsSummary ? docParseSummaryLlm.model.trim() || undefined : undefined,
+        wantsSummary && docParseSummaryLlm.provider !== 'ollama' ? docParseSummaryLlm.apiKey || undefined : undefined,
+        wantsSummary ? docParseSummaryLlm.baseUrl.trim() || undefined : undefined
       );
       setIsLoading(false);
       if (result) {
@@ -649,6 +905,22 @@ const RobotCreate: React.FC = () => {
       notify('error', error.message || 'Failed to create document parse robot');
     }
   };
+
+  const extractModeToggle = (
+    <ChoiceToggle
+      ariaLabel="How to build the robot"
+      value={generationMode}
+      onChange={setGenerationMode}
+      options={[
+        { value: 'recorder', label: 'Recorder Mode', description: 'Record your actions on websites into workflows.', icon: <HighlightAlt sx={{ fontSize: 17 }} /> },
+        { value: 'agent', label: 'AI Mode', description: 'Describe the task to extract data from websites.', icon: <AutoAwesome sx={{ fontSize: 17 }} /> },
+      ]}
+    />
+  );
+
+  const crawlWantsSummary = crawlOutputFormats.includes('summary' as OutputFormats);
+  const searchWantsSummary = searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats);
+  const docParseWantsSummary = documentParseFormats.includes('summary' as OutputFormats);
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -712,1458 +984,398 @@ const RobotCreate: React.FC = () => {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Card sx={{ mb: 4, p: 2 }}>
-            <Box display="flex" flexDirection="column" alignItems="center">
-              <img
-                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={70}
-                height={63}
-                style={{
-                  borderRadius: '5px',
-                  marginBottom: '10px',
-                  marginTop: '-10px',
-                }}
-                alt="Maxun Logo"
-              />
-
-              <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Box sx={{ width: '100%', maxWidth: 700 }}>
-                  <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
-                    <Card
-                      onClick={() => setGenerationMode('recorder')}
-                      sx={{
-                        flex: 1,
-                        cursor: 'pointer',
-                        border: '2px solid',
-                        borderColor: generationMode === 'recorder' ? '#ff00c3' : 'divider',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          borderColor: '#ff00c3',
-                        }
-                      }}
-                    >
-                      <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <HighlightAlt sx={{ fontSize: 17 }} />
-                          <Typography variant="subtitle1" fontWeight={500} color="text.primary">
-                            Recorder Mode
-                          </Typography>
-                        </Box>
-                        <Typography variant="caption" sx={{ mt: 0.25 }}>
-                          Record your actions on websites into workflows.
-                        </Typography>
-                      </CardContent>
-                    </Card>
-
-                    <Card
-                      onClick={() => setGenerationMode('agent')}
-                      sx={{
-                        flex: 1,
-                        cursor: 'pointer',
-                        border: '2px solid',
-                        borderColor: generationMode === 'agent' ? '#ff00c3' : 'divider',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          borderColor: '#ff00c3',
-                        },
-                        position: 'relative'
-                      }}
-                    >
-                      <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <AutoAwesome sx={{ fontSize: 17 }} />
-                          <Typography variant="subtitle1" fontWeight={500} color="text.primary">
-                            AI Mode
-                          </Typography>
-                        </Box>
-                        <Typography variant="caption" sx={{ mt: 0.25 }}>
-                          Describe the task to extract data from websites.
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                </Box>
+          {generationMode === 'agent' ? (
+            <AgentRobotPanel
+              name={extractRobotName}
+              onNameChange={setExtractRobotName}
+              nameError={agentNameTaken ? 'A robot with this name already exists.' : undefined}
+              prompt={aiPrompt}
+              onPromptChange={setAiPrompt}
+              url={agentUrl}
+              onUrlChange={(value) => {
+                setAgentUrl(value);
+                setAgentUrlError('');
+              }}
+              onUrlBlur={urlBlurHandler(agentUrl, setAgentUrl, setAgentUrlError)}
+              urlError={agentUrlError}
+              modeToggle={extractModeToggle}
+              llmSettings={<LlmSettings config={agentLlm} anthropicApiKeyLabel="API key (optional if set in .env)" />}
+              creation={agentCreation}
+              onSubmit={handleCreateAgentRobot}
+              onEditRequest={() => setAgentCreation(null)}
+              onRetry={handleCreateAgentRobot}
+              onGoToRobots={() => navigate('/robots')}
+            />
+          ) : (
+            <CreatePanel>
+              <Box component="form" onSubmit={(e: React.FormEvent) => { e.preventDefault(); if (url.trim() && !isLoading) handleStartRecording(); }}>
+                <PanelHeading
+                  description="Extract structured data from any website by emulating real user behavior and recording browser actions."
+                />
+                {extractModeToggle}
+                <RequestBox
+                  invalid={!!urlError}
+                  footer={<Typography sx={{ fontSize: 13, color: 'text.secondary', pl: 0.5 }}>Paste the full website address</Typography>}
+                  action={
+                    <PrimaryAction type="submit" loading={isLoading} loadingLabel="Starting..." disabled={!url.trim()}>
+                      Start recording
+                    </PrimaryAction>
+                  }
+                >
+                  <RequestInput
+                    value={url}
+                    onChange={(value) => { setUrl(value); setUrlError(''); }}
+                    onBlur={urlBlurHandler(url, setUrl, setUrlError)}
+                    placeholder="https://www.ycombinator.com/companies"
+                    icon={<Language />}
+                    ariaLabel="Website address"
+                    inputMode="url"
+                    autoFocus
+                  />
+                </RequestBox>
+                <HintLine tone={urlError ? 'error' : 'muted'} sx={{ mt: 1.5 }}>
+                  {urlError || ''}
+                </HintLine>
               </Box>
-
-              {generationMode === 'agent' && (
-                <Box sx={{ width: '100%', maxWidth: 700 }}>
-                  <Box sx={{ mb: 3 }}>
-                    <TextField
-                      placeholder="Name"
-                      variant="outlined"
-                      fullWidth
-                      value={extractRobotName}
-                      onChange={(e) => setExtractRobotName(e.target.value)}
-                      label="Name"
-                    />
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <TextField
-                      placeholder="Example: Extract first 15 company names, descriptions, and batch information"
-                      variant="outlined"
-                      fullWidth
-                      multiline
-                      rows={3}
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      label="Extraction Prompt"
-                    />
-                  </Box>
-
-                  <Box sx={{ mb: 3 }}>
-                    <TextField
-                      placeholder="Example: https://www.ycombinator.com/companies/"
-                      variant="outlined"
-                      fullWidth
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      onBlur={() => setUrl(normalizeUrl(url))}
-                      label="Website URL (Optional)"
-                    />
-                  </Box>
-
-                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    <FormControl sx={{ flex: 1 }}>
-                      <InputLabel>LLM Provider</InputLabel>
-                      <Select
-                        value={llmProvider}
-                        label="LLM Provider"
-                        onChange={(e) => {
-                          applyLlmProvider(
-                            e.target.value as LlmProvider,
-                            llmOpenAICompatiblePreset,
-                            setLlmProvider,
-                            setLlmModel,
-                            setLlmBaseUrl,
-                            setLlmApiKey
-                          );
-                        }}
-                      >
-                        <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                        <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                        <MenuItem value="openai">OpenAI-compatible</MenuItem>
-                      </Select>
-                    </FormControl>
-
-                    <TextField
-                      sx={{ flex: 1 }}
-                      value={llmModel}
-                      label="Model"
-                      placeholder={getModelPlaceholder(llmProvider, llmOpenAICompatiblePreset)}
-                      onChange={(e) => setLlmModel(e.target.value)}
-                      helperText={getModelHelperText(llmProvider, llmOpenAICompatiblePreset)}
-                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                    />
-                  </Box>
-
-                  {llmProvider === 'openai' && (
-                    <OpenAICompatiblePresetFields
-                      presetId={llmOpenAICompatiblePreset}
-                      onPresetChange={(presetId) => applyOpenAICompatiblePreset(
-                        presetId,
-                        setLlmOpenAICompatiblePreset,
-                        setLlmModel,
-                        setLlmBaseUrl,
-                        setLlmApiKey
-                      )}
-                      baseUrl={llmBaseUrl}
-                      onBaseUrlChange={setLlmBaseUrl}
-                      apiKey={llmApiKey}
-                      onApiKeyChange={setLlmApiKey}
-                    />
-                  )}
-
-                  {llmProvider === 'anthropic' && (
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder="Anthropic API key"
-                        variant="outlined"
-                        fullWidth
-                        type="password"
-                        value={llmApiKey}
-                        onChange={(e) => setLlmApiKey(e.target.value)}
-                        label="API Key (Optional if set in .env)"
-                      />
-                    </Box>
-                  )}
-
-                  {llmProvider === 'ollama' && (
-                    <Box sx={{ mb: 3 }}>
-                      <TextField
-                        placeholder={OLLAMA_DEFAULT_BASE_URL}
-                        variant="outlined"
-                        fullWidth
-                        value={llmBaseUrl}
-                        onChange={(e) => setLlmBaseUrl(e.target.value)}
-                        label="Ollama Base URL (Optional)"
-                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                      />
-                    </Box>
-                  )}
-
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={async () => {
-                      if (!extractRobotName.trim()) {
-                        notify('error', 'Please enter a robot name');
-                        return;
-                      }
-                      if (!aiPrompt.trim()) {
-                        notify('error', 'Please enter an extraction prompt');
-                        return;
-                      }
-                      if (recordings.some(r => r.trim().toLowerCase() === extractRobotName.trim().toLowerCase())) {
-                        notify('error', `A robot with the name "${extractRobotName.trim()}" already exists.`);
-                        return;
-                      }
-
-                      const normalizedUrl = normalizeUrl(url);
-                      setUrl(normalizedUrl);
-
-                      const tempRobotId = `temp-${Date.now()}`;
-                      const robotDisplayName = extractRobotName;
-
-                      const optimisticRobot = {
-                        id: tempRobotId,
-                        recording_meta: {
-                          id: tempRobotId,
-                          name: robotDisplayName,
-                          createdAt: new Date().toISOString(),
-                          updatedAt: new Date().toISOString(),
-                          pairs: 0,
-                          params: [],
-                          type: 'extract',
-                          url: normalizedUrl || '(auto-detecting...)',
-                        },
-                        recording: { workflow: [] },
-                        isLoading: true,
-                        isOptimistic: true
-                      };
-
-                      addOptimisticRobot(optimisticRobot);
-
-                      notify('info', normalizedUrl
-                        ? `Robot ${robotDisplayName} creation started`
-                        : `Robot ${robotDisplayName} creation started (searching for website...)`);
-                      navigate('/robots');
-
-                      try {
-                        const result = await createLLMRobot(
-                          normalizedUrl || undefined,
-                          aiPrompt,
-                          llmProvider,
-                          llmModel.trim() || undefined,
-                          llmApiKey || undefined,
-                          llmBaseUrl || undefined,
-                          extractRobotName
-                        );
-
-                        removeOptimisticRobot(tempRobotId);
-
-                        if (!result || !result.robot) {
-                          notify('error', 'Failed to create AI robot. Please check your LLM configuration.');
-                          invalidateRecordings();
-                          return;
-                        }
-
-                        const robotMetaId = result.robot.recording_meta.id;
-                        const robotName = result.robot.recording_meta.name;
-
-                        invalidateRecordings();
-                        notify('success', `${robotName} created successfully!`);
-
-                        const optimisticRun = {
-                          id: robotMetaId,
-                          runId: `temp-${Date.now()}`,
-                          status: 'running',
-                          name: robotName,
-                          startedAt: new Date().toISOString(),
-                          finishedAt: '',
-                          robotMetaId: robotMetaId,
-                          log: 'Starting...',
-                          isOptimistic: true
-                        };
-
-                        updateOptimisticRun(optimisticRun);
-
-                        const runResponse = await createAndRunRecording(robotMetaId, {
-                          maxConcurrency: 1,
-                          maxRepeats: 1,
-                          debug: false
-                        });
-
-                        invalidateRuns();
-
-                        if (runResponse && runResponse.runId) {
-                          await new Promise(resolve => setTimeout(resolve, 300));
-                          navigate(`/runs/${robotMetaId}/run/${runResponse.runId}`);
-                          notify('info', `Run started: ${robotName}`);
-                        } else {
-                          notify('warning', 'Robot created but failed to start execution.');
-                          navigate('/robots');
-                        }
-                      } catch (error: any) {
-                        console.error('Error in AI robot creation:', error);
-                        removeOptimisticRobot(tempRobotId);
-                        invalidateRecordings();
-                        notify('error', error?.message || 'Failed to create and run AI robot');
-                      }
-                    }}
-                    disabled={!extractRobotName.trim() || !aiPrompt.trim() || isLoading}
-                    sx={{
-                      bgcolor: '#ff00c3',
-                      py: 1.4,
-                      fontSize: '1rem',
-                      textTransform: 'none',
-                      borderRadius: 2
-                    }}
-                    startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-                  >
-                    {isLoading ? 'Creating & Running...' : 'Create & Run Robot'}
-                  </Button>
-                </Box>
-              )}
-
-              {generationMode === 'recorder' && (
-                <>
-                  <Box sx={{ width: '100%', maxWidth: 700, mb: 3 }}>
-                    <TextField
-                      placeholder="Example: https://www.ycombinator.com/companies/"
-                      variant="outlined"
-                      fullWidth
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      onBlur={() => setUrl(normalizeUrl(url))}
-                      label="Website URL"
-                    />
-                  </Box>
-                  <Box sx={{ width: '100%', maxWidth: 700 }}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      onClick={handleStartRecording}
-                      disabled={!url.trim() || isLoading}
-                      sx={{
-                        bgcolor: '#ff00c3',
-                        py: 1.4,
-                        fontSize: '1rem',
-                        textTransform: 'none',
-                        borderRadius: 2
-                      }}
-                      startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-                    >
-                      {isLoading ? 'Starting...' : 'Start Recording'}
-                    </Button>
-                  </Box>
-                </>
-              )}
-            </Box>
-          </Card>
+            </CreatePanel>
+          )}
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <Card sx={{ mb: 4, p: 2, textAlign: 'center' }}>
-            <Box display="flex" flexDirection="column" alignItems="center">
-              <img
-                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={70}
-                height={63}
-                style={{
-                  borderRadius: '5px',
-                  marginBottom: '10px',
-                  marginTop: '-10px',
-                }}
-                alt="Maxun Logo"
+          <CreatePanel>
+            <Box component="form" onSubmit={(e: React.FormEvent) => { e.preventDefault(); if (scrapeUrl.trim() && scrapeRobotName.trim() && outputFormats.length > 0 && !isLoading) handleCreateScrapeRobot(); }}>
+              <PanelHeading
+                description="Turn websites into markdown, html, screenshots, summaries and more."
               />
-
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Turn websites into markdown, html, screenshots, summaries and more.
-              </Typography>
-
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
-                <TextField
-                  placeholder="Example: YC Companies Scraper"
-                  variant="outlined"
-                  fullWidth
-                  value={scrapeRobotName}
-                  onChange={(e) => setScrapeRobotName(e.target.value)}
-                  sx={{ mb: 2 }}
-                  label="Name"
+              <RequestBox
+                invalid={!!scrapeUrlError}
+                footer={<OutputFormatsSelect value={outputFormats} onChange={setOutputFormats} options={OUTPUT_FORMAT_OPTIONS} />}
+                action={
+                  <PrimaryAction type="submit" loading={isLoading} loadingLabel="Creating..." disabled={!scrapeUrl.trim() || !scrapeRobotName.trim() || outputFormats.length === 0}>
+                    Create robot
+                  </PrimaryAction>
+                }
+              >
+                <RequestInput
+                  value={scrapeUrl}
+                  onChange={(value) => { setScrapeUrl(value); setScrapeUrlError(''); }}
+                  onBlur={urlBlurHandler(scrapeUrl, setScrapeUrl, setScrapeUrlError)}
+                  placeholder="https://www.ycombinator.com/companies"
+                  icon={<Language />}
+                  ariaLabel="Page address"
+                  inputMode="url"
+                  autoFocus
                 />
-                <TextField
-                  placeholder="Example: https://www.ycombinator.com/companies/"
-                  variant="outlined"
-                  fullWidth
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  onBlur={() => setUrl(normalizeUrl(url))}
-                  label="Website URL"
-                  sx={{ mb: 2 }}
-                />
+              </RequestBox>
+              <HintLine tone={scrapeUrlError ? 'error' : 'muted'} sx={{ mt: 1.5 }}>
+                {scrapeUrlError || (outputFormats.length === 0 ? 'Choose at least one output format.' : '')}
+              </HintLine>
 
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel id="output-formats-label">Output Formats *</InputLabel>
-                    <Select
-                      labelId="output-formats-label"
-                      id="output-formats"
-                      multiple
-                      value={outputFormats}
-                      label="Output Formats *"
-                      onChange={(e) => {
-                        const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                        setOutputFormats(value as OutputFormats[]);
-                      }}
-                      renderValue={(selected) => {
-                        const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
-                        return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}…` : labels.join(', ');
-                      }}
-                      MenuProps={{
-                        PaperProps: {
-                          style: {
-                            maxHeight: 300,
-                          },
-                        },
-                      }}
-                    >
-                      {OUTPUT_FORMAT_OPTIONS.map((format) => (
-                        <MenuItem key={format} value={format}>
-                          <Checkbox checked={outputFormats.includes(format)} />
-                          {OUTPUT_FORMAT_LABELS[format]}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-              </Box>
-
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
+              <Box sx={{ mt: 3 }}>
                 <TextField
-                  placeholder={`Example: Click the "Login" button and extract the user profile data.\nExample: Navigate to the pricing page and list all plan names and prices.\nExample: Fill in the search box with "AI tools" and return the first 5 results.`}
-                  variant="outlined"
+                  label="Smart query (optional)"
+                  placeholder="Example: Navigate to the pricing page and list all plan names and prices."
+                  size="small"
                   fullWidth
                   multiline
-                  minRows={3}
-                  maxRows={6}
+                  minRows={2}
                   value={scrapePromptInstructions}
                   onChange={(e) => setScrapePromptInstructions(e.target.value)}
-                  label="Smart Queries (Optional)"
+                  InputLabelProps={{ shrink: true }}
                   helperText={
                     <>
-                      After scraping, Smart Queries analyze the page and return results based on your instructions.{" "}
-                      <a
-                        href="https://docs.maxun.dev/robot/scrape#smart-queries"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ textDecoration: "none" }}
-                      >
+                      After scraping, Smart Queries analyze the page and return results based on your instructions.{' '}
+                      <Link href="https://docs.maxun.dev/robot/scrape#smart-queries" target="_blank" rel="noopener noreferrer" underline="hover" sx={{ color: 'text.secondary', textDecorationColor: 'currentColor' }}>
                         Learn more
-                      </a>
+                      </Link>
                     </>
                   }
-                  sx={{ mb: 2 }}
-                  FormHelperTextProps={{ sx: { ml: 0.5, mb: 2 } }}
+                  FormHelperTextProps={{ sx: { ml: 0 } }}
                 />
-                <Box>
-                  <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                    <FormControl sx={{ flex: 1 }}>
-                      <InputLabel>LLM Provider</InputLabel>
-                      <Select
-                        value={scrapePromptLlmProvider}
-                        label="LLM Provider"
-                        onChange={(e) => {
-                          applyLlmProvider(
-                            e.target.value as LlmProvider,
-                            scrapePromptOpenAICompatiblePreset,
-                            setScrapePromptLlmProvider,
-                            setScrapePromptLlmModel,
-                            setScrapePromptLlmBaseUrl,
-                            setScrapePromptLlmApiKey
-                          );
-                        }}
-                      >
-                        <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                        <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                        <MenuItem value="openai">OpenAI-compatible</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <TextField
-                      sx={{ flex: 1 }}
-                      value={scrapePromptLlmModel}
-                      label="Model"
-                      placeholder={getModelPlaceholder(scrapePromptLlmProvider, scrapePromptOpenAICompatiblePreset)}
-                      onChange={(e) => setScrapePromptLlmModel(e.target.value)}
-                      helperText={getModelHelperText(scrapePromptLlmProvider, scrapePromptOpenAICompatiblePreset)}
-                      FormHelperTextProps={{ sx: { ml: 0.5, mb: 1 } }}
-                    />
-                  </Box>
-                  {scrapePromptLlmProvider === 'openai' && (
-                    <OpenAICompatiblePresetFields
-                      presetId={scrapePromptOpenAICompatiblePreset}
-                      onPresetChange={(presetId) => applyOpenAICompatiblePreset(
-                        presetId,
-                        setScrapePromptOpenAICompatiblePreset,
-                        setScrapePromptLlmModel,
-                        setScrapePromptLlmBaseUrl,
-                        setScrapePromptLlmApiKey
-                      )}
-                      baseUrl={scrapePromptLlmBaseUrl}
-                      onBaseUrlChange={setScrapePromptLlmBaseUrl}
-                      apiKey={scrapePromptLlmApiKey}
-                      onApiKeyChange={setScrapePromptLlmApiKey}
-                      bottomMargin={2}
-                    />
-                  )}
-                  {scrapePromptLlmProvider === 'anthropic' && (
-                    <TextField
-                      placeholder="Anthropic API key"
-                      variant="outlined"
-                      fullWidth
-                      type="password"
-                      value={scrapePromptLlmApiKey}
-                      onChange={(e) => setScrapePromptLlmApiKey(e.target.value)}
-                      label="API Key"
-                      helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
-                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                      sx={{ mb: 2 }}
-                    />
-                  )}
-                  {scrapePromptLlmProvider === 'ollama' && (
-                    <TextField
-                      placeholder={OLLAMA_DEFAULT_BASE_URL}
-                      variant="outlined"
-                      fullWidth
-                      value={scrapePromptLlmBaseUrl}
-                      onChange={(e) => setScrapePromptLlmBaseUrl(e.target.value)}
-                      label="Ollama Base URL (Optional)"
-                      helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
-                      sx={{ mb: 2 }}
-                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                    />
-                  )}
-                </Box>
               </Box>
 
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={async () => {
-                  if (!url.trim()) {
-                    notify('error', 'Please enter a valid URL');
-                    return;
-                  }
-                  if (!scrapeRobotName.trim()) {
-                    notify('error', 'Please enter a robot name');
-                    return;
-                  }
-                  if (outputFormats.length === 0) {
-                    notify('error', 'Please select at least one output format');
-                    return;
-                  }
-                  const normalizedUrl = normalizeUrl(url);
-                  setUrl(normalizedUrl);
-                  if (!isValidUrl(normalizedUrl)) {
-                    notify('error', 'Please enter a valid URL (e.g. https://example.com)');
-                    return;
-                  }
-                  setIsLoading(true);
-                  try {
-                    const hasPrompt = !!scrapePromptInstructions.trim();
-                    const needsLlm = hasPrompt || outputFormats.includes('summary');
-                    const result = await createScrapeRobot(
-                      normalizedUrl,
-                      scrapeRobotName,
-                      outputFormats,
-                      hasPrompt ? scrapePromptInstructions : undefined,
-                      needsLlm ? scrapePromptLlmProvider : undefined,
-                      needsLlm ? scrapePromptLlmModel.trim() || undefined : undefined,
-                      needsLlm && scrapePromptLlmProvider !== 'ollama' ? scrapePromptLlmApiKey || undefined : undefined,
-                      needsLlm && scrapePromptLlmProvider !== 'anthropic' ? scrapePromptLlmBaseUrl || undefined : undefined,
-                    );
-                    setIsLoading(false);
-                    if (result) {
-                      setRerenderRobots(true);
-                      notify('success', `${scrapeRobotName} created successfully!`);
-                      navigate('/robots');
-                    } else {
-                      notify('error', 'Failed to create scrape robot');
-                    }
-                  } catch (error: any) {
-                    setIsLoading(false);
-                    notify('error', error.message || 'Failed to create scrape robot');
-                  }
-                }}
-                disabled={!url.trim() || !scrapeRobotName.trim() || outputFormats.length === 0 || isLoading}
-                sx={{
-                  bgcolor: '#ff00c3',
-                  py: 1.4,
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  maxWidth: 700,
-                  borderRadius: 2
-                }}
-                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-              >
-                {isLoading
-                  ? "Creating..."
-                  : `Create Robot`
-                }
-              </Button>
+              <RobotNameField value={scrapeRobotName} onChange={setScrapeRobotName} placeholder="Example: YC Companies Scraper" />
+
+              <OptionsSection label="Model settings">
+                <Typography sx={{ fontSize: 13, color: 'text.secondary', pt: 1 }}>
+                  Used for Smart Queries and summary output.
+                </Typography>
+                <LlmSettings config={scrapePromptLlm} anthropicApiKeyHelperText={SUMMARY_API_KEY_HELPER} />
+              </OptionsSection>
             </Box>
-          </Card>
+          </CreatePanel>
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
-          <Card sx={{ mb: 4, p: 2, textAlign: 'center' }}>
-            <Box display="flex" flexDirection="column" alignItems="center">
-              <img
-                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={70}
-                height={63}
-                style={{
-                  borderRadius: '5px',
-                  marginBottom: '10px',
-                  marginTop: '-10px',
-                }}
-                alt="Maxun Logo"
+          <CreatePanel>
+            <Box component="form" onSubmit={(e: React.FormEvent) => { e.preventDefault(); if (crawlUrl.trim() && crawlRobotName.trim() && crawlOutputFormats.length > 0 && !isLoading) handleCreateCrawlRobot(); }}>
+              <PanelHeading
+                description="Crawl entire websites and gather data from multiple pages automatically."
               />
-
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Crawl entire websites and gather data from multiple pages automatically.
-              </Typography>
-
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
-                <TextField
-                  label="Name"
-                  placeholder="Example: YC Companies Crawler"
-                  fullWidth
-                  value={crawlRobotName}
-                  onChange={(e) => setCrawlRobotName(e.target.value)}
-                  sx={{ mb: 2 }}
-                />
-                <TextField
-                  label="Starting URL"
-                  placeholder="https://www.ycombinator.com/companies"
-                  fullWidth
+              <RequestBox
+                invalid={!!crawlUrlError}
+                footer={
+                  <>
+                    <InlineNumber before="Up to" after="pages" value={crawlLimit} onChange={setCrawlLimit} min={1} ariaLabel="Maximum pages to crawl" />
+                    <OutputFormatsSelect value={crawlOutputFormats} onChange={setCrawlOutputFormats} options={OUTPUT_FORMAT_OPTIONS} />
+                  </>
+                }
+                action={
+                  <PrimaryAction type="submit" loading={isLoading} loadingLabel="Creating..." disabled={!crawlUrl.trim() || !crawlRobotName.trim() || crawlOutputFormats.length === 0}>
+                    Create robot
+                  </PrimaryAction>
+                }
+              >
+                <RequestInput
                   value={crawlUrl}
-                  onChange={(e) => setCrawlUrl(e.target.value)}
-                  onBlur={() => setCrawlUrl(normalizeUrl(crawlUrl))}
-                  sx={{ mb: 2 }}
+                  onChange={(value) => { setCrawlUrl(value); setCrawlUrlError(''); }}
+                  onBlur={urlBlurHandler(crawlUrl, setCrawlUrl, setCrawlUrlError)}
+                  placeholder="https://www.ycombinator.com/companies"
+                  icon={<Language />}
+                  ariaLabel="Starting page address"
+                  inputMode="url"
+                  autoFocus
                 />
+              </RequestBox>
+              <HintLine tone={crawlUrlError ? 'error' : 'muted'} sx={{ mt: 1.5 }}>
+                {crawlUrlError || (crawlOutputFormats.length === 0 ? 'Choose at least one output format.' : '')}
+              </HintLine>
 
-                <TextField
-                  label="Max Pages to Crawl"
-                  type="number"
-                  fullWidth
-                  value={crawlLimit}
-                  onChange={(e) => setCrawlLimit(parseInt(e.target.value) || 10)}
-                  sx={{ mb: 2 }}
-                />
+              <RobotNameField value={crawlRobotName} onChange={setCrawlRobotName} placeholder="Example: YC Companies Crawler" />
 
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel id="crawl-output-formats-label">Output Formats *</InputLabel>
-                    <Select
-                      labelId="crawl-output-formats-label"
-                      multiple
-                      value={crawlOutputFormats}
-                      label="Output Formats *"
-                      onChange={(e) => {
-                        const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                        setCrawlOutputFormats(value as OutputFormats[]);
-                      }}
-                      renderValue={(selected) => {
-                        const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
-                        return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}…` : labels.join(', ');
-                      }}
-                    >
-                      {OUTPUT_FORMAT_OPTIONS.map((format) => (
-                        <MenuItem key={format} value={format}>
-                          <Checkbox checked={crawlOutputFormats.includes(format)} />
-                          {OUTPUT_FORMAT_LABELS[format]}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-
-                {crawlOutputFormats.includes('summary' as OutputFormats) && (
-                  <Box sx={{ width: '100%', mb: 2 }}>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel>Summary LLM Provider</InputLabel>
-                        <Select
-                          value={crawlSummaryLlmProvider}
-                          label="Summary LLM Provider"
-                          onChange={(e) => {
-                            applyLlmProvider(
-                              e.target.value as LlmProvider,
-                              crawlSummaryOpenAIPreset,
-                              setCrawlSummaryLlmProvider,
-                              setCrawlSummaryLlmModel,
-                              setCrawlSummaryLlmBaseUrl,
-                              setCrawlSummaryLlmApiKey
-                            );
-                          }}
-                        >
-                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                          <MenuItem value="openai">OpenAI-compatible</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <TextField
-                        sx={{ flex: 1 }}
-                        value={crawlSummaryLlmModel}
-                        label="Model"
-                        placeholder={getModelPlaceholder(crawlSummaryLlmProvider, crawlSummaryOpenAIPreset)}
-                        helperText={getModelHelperText(crawlSummaryLlmProvider, crawlSummaryOpenAIPreset)}
-                        onChange={(e) => setCrawlSummaryLlmModel(e.target.value)}
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                      />
-                    </Box>
-                    {crawlSummaryLlmProvider === 'openai' && (
-                      <OpenAICompatiblePresetFields
-                        presetId={crawlSummaryOpenAIPreset}
-                        onPresetChange={(id) => applyOpenAICompatiblePreset(
-                          id,
-                          setCrawlSummaryOpenAIPreset,
-                          setCrawlSummaryLlmModel,
-                          setCrawlSummaryLlmBaseUrl,
-                          setCrawlSummaryLlmApiKey
-                        )}
-                        baseUrl={crawlSummaryLlmBaseUrl}
-                        onBaseUrlChange={setCrawlSummaryLlmBaseUrl}
-                        apiKey={crawlSummaryLlmApiKey}
-                        onApiKeyChange={setCrawlSummaryLlmApiKey}
-                        bottomMargin={2}
-                      />
-                    )}
-                    {crawlSummaryLlmProvider === 'anthropic' && (
-                      <TextField
-                        placeholder="Anthropic API key"
-                        fullWidth
-                        type="password"
-                        value={crawlSummaryLlmApiKey}
-                        onChange={(e) => setCrawlSummaryLlmApiKey(e.target.value)}
-                        label="API Key"
-                        helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                        sx={{ mb: 2 }}
-                      />
-                    )}
-                    {crawlSummaryLlmProvider === 'ollama' && (
-                      <TextField
-                        fullWidth
-                        value={crawlSummaryLlmBaseUrl}
-                        onChange={(e) => setCrawlSummaryLlmBaseUrl(e.target.value)}
-                        label="Ollama Base URL (Optional)"
-                        placeholder={OLLAMA_DEFAULT_BASE_URL}
-                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
-                        sx={{ mb: 2 }}
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                      />
-                    )}
+              {crawlWantsSummary && (
+                <OptionsSection label="Summary model settings" defaultOpen>
+                  <Box sx={{ pt: 1 }}>
+                    <LlmSettings config={crawlSummaryLlm} providerLabel="Summary LLM provider" anthropicApiKeyHelperText={SUMMARY_API_KEY_HELPER} />
                   </Box>
-                )}
+                </OptionsSection>
+              )}
 
-                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mt: -2, ml: -1 }}>
-                  <Button
-                    onClick={() => setShowCrawlAdvanced(!showCrawlAdvanced)}
-                    sx={{
-                      color: theme => theme.palette.mode === 'dark' ? 'inherit' : theme.palette.common.black,
-                      textTransform: 'none',
-                      '&:hover': {
-                        background: 'inherit',
-                        color: 'inherit',
-                      },
-                    }}
-                  >
-                    {showCrawlAdvanced ? 'Hide Crawl Settings' : 'Crawl Settings'}
-                  </Button>
-                </Box>
-
-                <Collapse in={showCrawlAdvanced}>
-                  <Box sx={{ mt: 2, mb: 2 }}>
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>Crawl Scope</InputLabel>
-                      <Select
-                        value={crawlMode}
-                        label="Crawl Scope"
-                        onChange={(e) => setCrawlMode(e.target.value as any)}
-                      >
-                        <MenuItem value="domain">Same Domain Only</MenuItem>
-                        <MenuItem value="subdomain">Include Subdomains</MenuItem>
-                        <MenuItem value="path">Specific Path Only</MenuItem>
-                      </Select>
-                    </FormControl>
-
+              <OptionsSection label="Crawl options">
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2, pt: 1 }}>
+                  <OptionField>
                     <TextField
-                      label="Max Depth"
+                      select
+                      label="Scope"
+                      value={crawlMode}
+                      onChange={(e) => setCrawlMode(e.target.value as any)}
+                      {...smallFieldProps}
+                    >
+                      <MenuItem value="domain">Same domain only</MenuItem>
+                      <MenuItem value="subdomain">Include subdomains</MenuItem>
+                      <MenuItem value="path">Specific path only</MenuItem>
+                    </TextField>
+                  </OptionField>
+                  <OptionField>
+                    <TextField
+                      label="Link depth"
                       type="number"
-                      fullWidth
                       value={crawlMaxDepth}
-                      onChange={(e) => setCrawlMaxDepth(parseInt(e.target.value) || 3)}
-                      sx={{ mb: 2 }}
-                      helperText="How many links deep to follow (default: 3)"
-                      FormHelperTextProps={{ sx: { ml: 0 } }}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        setCrawlMaxDepth(isNaN(value) || value < 1 ? 1 : value);
+                      }}
+                      inputProps={{ min: 1 }}
+                      helperText="How many links away from the start page"
+                      {...smallFieldProps}
                     />
-
+                  </OptionField>
+                  <OptionField>
                     <TextField
-                      label="Include Paths"
-                      placeholder="Example: /products, /blog"
-                      fullWidth
+                      label="Only these paths"
+                      placeholder="/products, /blog"
                       value={crawlIncludePaths}
                       onChange={(e) => setCrawlIncludePaths(e.target.value)}
-                      sx={{ mb: 2 }}
-                      helperText="Only crawl URLs matching these paths (comma-separated)"
-                      FormHelperTextProps={{ sx: { ml: 0 } }}
+                      helperText="Comma-separated. Leave blank for all."
+                      {...smallFieldProps}
                     />
-
+                  </OptionField>
+                  <OptionField>
                     <TextField
-                      label="Exclude Paths"
-                      placeholder="Example: /admin, /login"
-                      fullWidth
+                      label="Skip these paths"
+                      placeholder="/admin, /login"
                       value={crawlExcludePaths}
                       onChange={(e) => setCrawlExcludePaths(e.target.value)}
-                      sx={{ mb: 2 }}
-                      helperText="Skip URLs matching these paths (comma-separated)"
-                      FormHelperTextProps={{ sx: { ml: 0 } }}
+                      helperText="Comma-separated."
+                      {...smallFieldProps}
                     />
-
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={crawlUseSitemap}
-                            onChange={(e) => setCrawlUseSitemap(e.target.checked)}
-                          />
-                        }
-                        label="Use sitemap.xml for URL discovery"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={crawlFollowLinks}
-                            onChange={(e) => setCrawlFollowLinks(e.target.checked)}
-                          />
-                        }
-                        label="Follow links on pages"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={crawlRespectRobots}
-                            onChange={(e) => setCrawlRespectRobots(e.target.checked)}
-                          />
-                        }
-                        label="Respect robots.txt"
-                      />
-                    </Box>
-                  </Box>
-                </Collapse>
-              </Box>
-
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleCreateCrawlRobot}
-                disabled={!crawlUrl.trim() || !crawlRobotName.trim() || crawlOutputFormats.length === 0 || isLoading}
-                sx={{
-                  bgcolor: '#ff00c3',
-                  py: 1.4,
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  maxWidth: 700,
-                  borderRadius: 2
-                }}
-                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-              >
-                {isLoading ? 'Creating...' : 'Create Robot'}
-              </Button>
+                  </OptionField>
+                </Box>
+                <OptionRow title="Use the sitemap" description="Find pages listed in the site's sitemap.xml." checked={crawlUseSitemap} onChange={setCrawlUseSitemap} />
+                <OptionRow title="Follow links" description="Discover more pages through the links on each page." checked={crawlFollowLinks} onChange={setCrawlFollowLinks} />
+                <OptionRow title="Respect robots.txt" description="Skip pages the site asks crawlers not to visit." checked={crawlRespectRobots} onChange={setCrawlRespectRobots} />
+              </OptionsSection>
             </Box>
-          </Card>
+          </CreatePanel>
         </TabPanel>
 
         <TabPanel value={tabValue} index={3}>
-          <Card sx={{ mb: 4, p: 2, textAlign: 'center' }}>
-            <Box display="flex" flexDirection="column" alignItems="center">
-              <img
-                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={70}
-                height={63}
-                style={{
-                  borderRadius: '5px',
-                  marginBottom: '10px',
-                  marginTop: '-10px',
-                }}
-                alt="Maxun Logo"
+          <CreatePanel>
+            <Box component="form" onSubmit={(e: React.FormEvent) => { e.preventDefault(); if (searchQuery.trim() && searchRobotName.trim() && !(searchMode === 'scrape' && searchOutputFormats.length === 0) && !isLoading) handleCreateSearchRobot(); }}>
+              <PanelHeading
+                description="Search the web and gather data from relevant results."
               />
-
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Search the web and gather data from relevant results.
-              </Typography>
-
-              <Box sx={{ width: '100%', maxWidth: 700, mb: 2 }}>
-                <TextField
-                  label="Name"
-                  placeholder="Example: AI News Monitor"
-                  fullWidth
-                  value={searchRobotName}
-                  onChange={(e) => setSearchRobotName(e.target.value)}
-                  sx={{ mb: 2 }}
-                />
-
-                <TextField
-                  label="Search Query"
-                  placeholder="Example: latest AI breakthroughs 2025"
-                  fullWidth
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  sx={{ mb: 2 }}
-                />
-
-                <TextField
-                  label="Number of Results"
-                  type="number"
-                  fullWidth
-                  value={searchLimit}
-                  onChange={(e) => setSearchLimit(parseInt(e.target.value) || 10)}
-                  sx={{ mb: 2 }}
-                />
-
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Mode</InputLabel>
-                    <Select
-                      value={searchMode}
-                      label="Mode"
-                      onChange={(e) => {
-                        const newMode = e.target.value as 'discover' | 'scrape';
-                        setSearchMode(newMode);
-                        if (newMode === 'discover') {
-                          setSearchOutputFormats([]);
-                        } else if (searchOutputFormats.length === 0) {
-                          setSearchOutputFormats(DEFAULT_OUTPUT_FORMATS);
-                        }
-                      }}
-                    >
-                      <MenuItem value="discover">Discover URLs Only</MenuItem>
-                      <MenuItem value="scrape">Extract Data from Results</MenuItem>
-                    </Select>
-                  </FormControl>
-
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Time Range</InputLabel>
-                    <Select
+              <ChoiceToggle
+                ariaLabel="What to collect"
+                value={searchMode}
+                onChange={handleSearchModeChange}
+                options={[
+                  { value: 'discover', label: 'Discover URLs Only', description: 'The title, link and snippet of each result.' },
+                  { value: 'scrape', label: 'Extract Data From Results', description: 'Also opens each result and collects its content.' },
+                ]}
+              />
+              <RequestBox
+                footer={
+                  <>
+                    <InlineNumber before="No. of results" after="Time range" value={searchLimit} onChange={setSearchLimit} min={1} ariaLabel="Number of results" />
+                    <InlineSelect
+                      ariaLabel="Time range"
                       value={searchTimeRange}
-                      label="Time Range"
-                      displayEmpty
-                      renderValue={(value) => {
-                        if (!value) {
-                          return 'All Time';
-                        }
-                        return {
-                          day: 'Past 24 Hours',
-                          week: 'Past Week',
-                          month: 'Past Month',
-                          year: 'Past Year',
-                        }[value];
-                      }}
-                      onChange={(e) =>
-                        setSearchTimeRange(
-                          e.target.value as 'day' | 'week' | 'month' | 'year' | ''
-                        )
-                      }
-                    >
-                      <MenuItem value="">All Time</MenuItem>
-                      <MenuItem value="day">Past 24 Hours</MenuItem>
-                      <MenuItem value="week">Past Week</MenuItem>
-                      <MenuItem value="month">Past Month</MenuItem>
-                      <MenuItem value="year">Past Year</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-
-                {searchMode === 'scrape' ? (
-                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel id="search-output-formats-label">Output Formats *</InputLabel>
-                      <Select
-                        labelId="search-output-formats-label"
-                        multiple
-                        value={searchOutputFormats}
-                        label="Output Formats *"
-                        onChange={(e) => {
-                          const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                          setSearchOutputFormats(value as OutputFormats[]);
-                        }}
-                        renderValue={(selected) => {
-                          const labels = selected.map(v => OUTPUT_FORMAT_LABELS[v] ?? v);
-                          return labels.length > 2 ? `${labels.slice(0, 2).join(', ')}…` : labels.join(', ');
-                        }}
-                      >
-                        {OUTPUT_FORMAT_OPTIONS.map((format) => (
-                          <MenuItem key={format} value={format}>
-                            <Checkbox checked={searchOutputFormats.includes(format)} />
-                            {OUTPUT_FORMAT_LABELS[format]}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Box>
-                ) : null}
-
-                {searchMode === 'scrape' && searchOutputFormats.includes('summary' as OutputFormats) && (
-                  <Box sx={{ width: '100%', mb: 2 }}>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                      <FormControl sx={{ flex: 1 }}>
-                        <InputLabel>Summary LLM Provider</InputLabel>
-                        <Select
-                          value={searchSummaryLlmProvider}
-                          label="Summary LLM Provider"
-                          onChange={(e) => {
-                            applyLlmProvider(
-                              e.target.value as LlmProvider,
-                              searchSummaryOpenAIPreset,
-                              setSearchSummaryLlmProvider,
-                              setSearchSummaryLlmModel,
-                              setSearchSummaryLlmBaseUrl,
-                              setSearchSummaryLlmApiKey
-                            );
-                          }}
-                        >
-                          <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                          <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                          <MenuItem value="openai">OpenAI-compatible</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <TextField
-                        sx={{ flex: 1 }}
-                        value={searchSummaryLlmModel}
-                        label="Model"
-                        placeholder={getModelPlaceholder(searchSummaryLlmProvider, searchSummaryOpenAIPreset)}
-                        helperText={getModelHelperText(searchSummaryLlmProvider, searchSummaryOpenAIPreset)}
-                        onChange={(e) => setSearchSummaryLlmModel(e.target.value)}
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                      />
-                    </Box>
-                    {searchSummaryLlmProvider === 'openai' && (
-                      <OpenAICompatiblePresetFields
-                        presetId={searchSummaryOpenAIPreset}
-                        onPresetChange={(id) => applyOpenAICompatiblePreset(
-                          id,
-                          setSearchSummaryOpenAIPreset,
-                          setSearchSummaryLlmModel,
-                          setSearchSummaryLlmBaseUrl,
-                          setSearchSummaryLlmApiKey
-                        )}
-                        baseUrl={searchSummaryLlmBaseUrl}
-                        onBaseUrlChange={setSearchSummaryLlmBaseUrl}
-                        apiKey={searchSummaryLlmApiKey}
-                        onApiKeyChange={setSearchSummaryLlmApiKey}
-                        bottomMargin={2}
-                      />
+                      onChange={setSearchTimeRange}
+                      options={[
+                        { value: '', label: 'All Time' },
+                        { value: 'day', label: 'Past 24 Hours' },
+                        { value: 'week', label: 'Past Week' },
+                        { value: 'month', label: 'Past Month' },
+                        { value: 'year', label: 'Past Year' },
+                      ]}
+                    />
+                    {searchMode === 'scrape' && (
+                      <OutputFormatsSelect value={searchOutputFormats} onChange={setSearchOutputFormats} options={OUTPUT_FORMAT_OPTIONS} />
                     )}
-                    {searchSummaryLlmProvider === 'anthropic' && (
-                      <TextField
-                        placeholder="Anthropic API key"
-                        fullWidth
-                        type="password"
-                        value={searchSummaryLlmApiKey}
-                        onChange={(e) => setSearchSummaryLlmApiKey(e.target.value)}
-                        label="API Key"
-                        helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                        sx={{ mb: 2 }}
-                      />
-                    )}
-                    {searchSummaryLlmProvider === 'ollama' && (
-                      <TextField
-                        fullWidth
-                        value={searchSummaryLlmBaseUrl}
-                        onChange={(e) => setSearchSummaryLlmBaseUrl(e.target.value)}
-                        label="Ollama Base URL (Optional)"
-                        placeholder={OLLAMA_DEFAULT_BASE_URL}
-                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
-                        sx={{ mb: 2 }}
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                      />
-                    )}
-                  </Box>
-                )}
-
-                {searchMode === 'discover' && (
-                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', mb: 2, alignItems: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Output formats are only available in "Extract Data from Results" mode
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleCreateSearchRobot}
-                disabled={!searchQuery.trim() || !searchRobotName.trim() || (searchMode === 'scrape' && searchOutputFormats.length === 0) || isLoading}
-                sx={{
-                  bgcolor: '#ff00c3',
-                  py: 1.4,
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  maxWidth: 700,
-                  borderRadius: 2
-                }}
-                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                  </>
+                }
+                action={
+                  <PrimaryAction
+                    type="submit"
+                    loading={isLoading}
+                    loadingLabel="Creating..."
+                    disabled={!searchQuery.trim() || !searchRobotName.trim() || (searchMode === 'scrape' && searchOutputFormats.length === 0)}
+                  >
+                    Create robot
+                  </PrimaryAction>
+                }
               >
-                {isLoading ? 'Creating...' : 'Create Robot'}
-              </Button>
+                <RequestInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="latest AI breakthroughs 2025"
+                  icon={<SearchIcon />}
+                  ariaLabel="Search query"
+                  inputMode="search"
+                  autoFocus
+                />
+              </RequestBox>
+              <HintLine tone="muted" sx={{ mt: 1.5 }}>
+                {searchMode === 'scrape' && searchOutputFormats.length === 0
+                  ? 'Choose at least one output format.'
+                  : ''}
+              </HintLine>
+
+              <RobotNameField value={searchRobotName} onChange={setSearchRobotName} placeholder="Example: AI News Monitor" />
+
+              {searchWantsSummary && (
+                <OptionsSection label="Summary model settings" defaultOpen>
+                  <Box sx={{ pt: 1 }}>
+                    <LlmSettings config={searchSummaryLlm} providerLabel="Summary LLM provider" anthropicApiKeyHelperText={SUMMARY_API_KEY_HELPER} />
+                  </Box>
+                </OptionsSection>
+              )}
             </Box>
-          </Card>
+          </CreatePanel>
         </TabPanel>
 
         <TabPanel value={tabValue} index={4}>
-          <Card sx={{ mb: 4, p: 2 }}>
-            <Box display="flex" flexDirection="column" alignItems="center">
-              <img
-                src="https://ik.imagekit.io/ys1blv5kv/maxunlogo.png"
-                width={70}
-                height={63}
-                style={{
-                  borderRadius: '5px',
-                  marginBottom: '10px',
-                  marginTop: '-10px',
-                }}
-                alt="Maxun Logo"
+          <CreatePanel>
+            <Box
+              component="form"
+              onSubmit={(e: React.FormEvent) => {
+                e.preventDefault();
+                if (!documentFile || !documentRobotName.trim() || isLoading) return;
+                if (documentMode === 'extract' ? documentPrompt.trim() : documentParseFormats.length > 0) {
+                  documentMode === 'extract' ? handleCreateDocumentRobot() : handleCreateDocumentParseRobot();
+                }
+              }}
+            >
+              <PanelHeading description="Extract and parse structured data from documents." />
+              <ChoiceToggle
+                ariaLabel="What to do with the document"
+                value={documentMode}
+                onChange={setDocumentMode}
+                options={[
+                  { value: 'extract', label: 'Extract', description: 'Extract structured data from docs with AI prompts.' },
+                  { value: 'parse', label: 'Parse', description: 'Parse docs to Markdown, HTML, links & summaries.' },
+                ]}
               />
-              <Box sx={{ width: '100%', maxWidth: 700 }}>
-                <Box sx={{ width: '100%', mb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Box sx={{ width: '100%', maxWidth: 700 }}>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 0.5 }}>
-                      <Card
-                        onClick={() => setDocumentMode('extract')}
-                        sx={{
-                          flex: 1,
-                          cursor: 'pointer',
-                          border: '2px solid',
-                          borderColor: documentMode === 'extract' ? '#ff00c3' : 'divider',
-                          transition: 'all 0.2s',
-                          '&:hover': { borderColor: '#ff00c3' },
-                        }}
-                      >
-                        <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AutoAwesome sx={{ fontSize: 17 }} />
-                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
-                              Extract
-                            </Typography>
-                          </Box>
-                          <Typography variant="caption" sx={{ mt: 0.25 }}>
-                            Extract structured data from docs with AI prompts.
-                          </Typography>
-                        </CardContent>
-                      </Card>
-
-                      <Card
-                        onClick={() => setDocumentMode('parse')}
-                        sx={{
-                          flex: 1,
-                          cursor: 'pointer',
-                          border: '2px solid',
-                          borderColor: documentMode === 'parse' ? '#ff00c3' : 'divider',
-                          transition: 'all 0.2s',
-                          '&:hover': { borderColor: '#ff00c3' },
-                        }}
-                      >
-                        <CardContent sx={{ py: 2, px: 2.5, color: 'text.secondary' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Article sx={{ fontSize: 17 }} />
-                            <Typography variant="subtitle1" fontWeight={500} color="text.primary">
-                              Parse
-                            </Typography>
-                          </Box>
-                          <Typography variant="caption" sx={{ mt: 0.25 }}>
-                            Parse docs to Markdown, HTML, links & summaries.
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Box>
-                  </Box>
-                </Box>
-
-                <TextField
-                  label="Robot Name"
-                  fullWidth
-                  value={documentRobotName}
-                  onChange={(e) => setDocumentRobotName(e.target.value)}
-                  sx={{ mb: 3 }}
+              <RequestBox
+                footer={
+                  documentMode === 'parse' ? (
+                    <OutputFormatsSelect value={documentParseFormats} onChange={setDocumentParseFormats} options={DOC_PARSE_FORMAT_OPTIONS} />
+                  ) : undefined
+                }
+                action={
+                  <PrimaryAction
+                    type="submit"
+                    loading={isLoading}
+                    loadingLabel="Creating..."
+                    disabled={
+                      !documentFile ||
+                      !documentRobotName.trim() ||
+                      (documentMode === 'extract' && !documentPrompt.trim()) ||
+                      (documentMode === 'parse' && documentParseFormats.length === 0)
+                    }
+                  >
+                    Create robot
+                  </PrimaryAction>
+                }
+              >
+                <FileDropZone
+                  file={documentFile}
+                  onFile={setDocumentFile}
+                  accept=".pdf,.docx,.csv,.xlsx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png"
+                  description="PDF, DOCX, XLSX, CSV, JPG or PNG, up to 10 MB"
                 />
-
-                <Box
-                  sx={{
-                    border: '1.5px dashed',
-                    borderColor: theme => theme.palette.mode === 'dark' ? 'divider' : '#0000004a',
-                    borderRadius: 2,
-                    p: 2,
-                    mb: 3,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    '&:hover': { borderColor: theme => theme.palette.mode === 'dark' ? 'divider' : '#0000004a' },
-                  }}
-                  onClick={() => document.getElementById('doc-upload-input')?.click()}
-                >
-                  <input
-                    id="doc-upload-input"
-                    type="file"
-                    accept=".pdf,.docx,.csv,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.jpg,.jpeg,.png,image/jpeg,image/png"
-                    style={{ display: 'none' }}
-                    onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
-                  />
-                  {documentFile ? (
-                    <Typography variant="body1">
-                      <InsertDriveFile sx={{ fontSize: 18, verticalAlign: "middle", mr: 0.5, mt: -0.5 }} />
-                      {documentFile.name}
-                    </Typography>
-                  ) : (
-                    <>
-                      <Upload sx={{ fontSize: 25, color: 'text.secondary', justifyContent: 'center', }} />
-                      <Typography variant="body2" fontWeight={500}>Upload PDF, DOCX, XLSX, CSV, JPG, or PNG </Typography>
-                      <Typography variant="caption" color="text.secondary">Max file size: 10 MB</Typography>
-                    </>
-                  )}
-                </Box>
-
                 {documentMode === 'extract' && (
-                  <>
-                    <TextField
-                      label="Extraction Prompt"
-                      fullWidth
-                      multiline
-                      rows={3}
+                  <Box sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                    <InputBase
                       value={documentPrompt}
                       onChange={(e) => setDocumentPrompt(e.target.value)}
-                      placeholder='e.g. "Extract invoice number, vendor name, total amount, and line items"'
-                      sx={{ mb: 3 }}
-                    />
-
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>LLM Provider</InputLabel>
-                      <Select
-                        value={documentLlmProvider}
-                        label="LLM Provider"
-                        onChange={(e) => {
-                          applyLlmProvider(
-                            e.target.value as LlmProvider,
-                            documentOpenAICompatiblePreset,
-                            setDocumentLlmProvider,
-                            setDocumentLlmModel,
-                            setDocumentLlmBaseUrl,
-                            setDocumentLlmApiKey
-                          );
-                        }}
-                      >
-                        <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                        <MenuItem value="openai">OpenAI-compatible</MenuItem>
-                        <MenuItem value="anthropic">Anthropic</MenuItem>
-                      </Select>
-                    </FormControl>
-
-                    <TextField
-                      label="Model"
-                      placeholder={getModelPlaceholder(documentLlmProvider, documentOpenAICompatiblePreset, DOCUMENT_MODEL_FIELD_TEXT)}
-                      helperText={getModelHelperText(documentLlmProvider, documentOpenAICompatiblePreset, DOCUMENT_MODEL_FIELD_TEXT)}
+                      placeholder="What should be extracted? For example: invoice number, vendor name, total amount and line items"
+                      multiline
+                      minRows={3}
+                      maxRows={10}
                       fullWidth
-                      value={documentLlmModel}
-                      onChange={(e) => setDocumentLlmModel(e.target.value)}
-                      sx={{ mb: 2 }}
-                      FormHelperTextProps={{ sx: { ml: 0.5 } }}
+                      inputProps={{ 'aria-label': 'What to extract' }}
+                      sx={{ px: 2.25, pt: 1.75, pb: 1.5, fontSize: 16, lineHeight: 1.5, alignItems: 'flex-start' }}
                     />
-
-                    {documentLlmProvider === 'openai' && (
-                      <OpenAICompatiblePresetFields
-                        presetId={documentOpenAICompatiblePreset}
-                        onPresetChange={(presetId) => applyOpenAICompatiblePreset(
-                          presetId,
-                          setDocumentOpenAICompatiblePreset,
-                          setDocumentLlmModel,
-                          setDocumentLlmBaseUrl,
-                          setDocumentLlmApiKey
-                        )}
-                        baseUrl={documentLlmBaseUrl}
-                        onBaseUrlChange={setDocumentLlmBaseUrl}
-                        apiKey={documentLlmApiKey}
-                        onApiKeyChange={setDocumentLlmApiKey}
-                      />
-                    )}
-
-                    {documentLlmProvider === 'anthropic' && (
-                      <TextField
-                        label="API Key"
-                        placeholder="Anthropic API key"
-                        fullWidth
-                        type="password"
-                        value={documentLlmApiKey}
-                        onChange={(e) => setDocumentLlmApiKey(e.target.value)}
-                        sx={{ mb: 2 }}
-                      />
-                    )}
-
-                    {documentLlmProvider === 'ollama' && (
-                      <TextField
-                        label="Ollama Base URL (Optional)"
-                        fullWidth
-                        value={documentLlmBaseUrl}
-                        onChange={(e) => setDocumentLlmBaseUrl(e.target.value)}
-                        placeholder={OLLAMA_DEFAULT_BASE_URL}
-                        helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
-                        sx={{ mb: 3 }}
-                        FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                      />
-                    )}
-                  </>
+                  </Box>
                 )}
+              </RequestBox>
+              <HintLine tone="muted" sx={{ mt: 1.5 }}>
+                {documentMode === 'parse' && documentParseFormats.length === 0
+                  ? 'Choose at least one output format.'
+                  : ''}
+              </HintLine>
 
-                {documentMode === 'parse' && (
-                  <>
-                    <FormControl fullWidth sx={{ mb: 3 }}>
-                      <InputLabel id="doc-parse-formats-label">Output Formats</InputLabel>
-                      <Select
-                        labelId="doc-parse-formats-label"
-                        multiple
-                        value={documentParseFormats}
-                        label="Output Formats"
-                        onChange={(e) => {
-                          const value = (typeof e.target.value === 'string'
-                            ? e.target.value.split(',')
-                            : e.target.value) as OutputFormats[];
-                          setDocumentParseFormats(value);
-                        }}
-                        renderValue={(selected) =>
-                          (selected as OutputFormats[]).length === 0
-                            ? <span style={{ color: '#999' }}>Select formats</span>
-                            : (selected as OutputFormats[]).map((v) => OUTPUT_FORMAT_LABELS[v] ?? v).join(', ')
-                        }
-                        MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
-                      >
-                        {DOC_PARSE_FORMAT_OPTIONS.map((format) => (
-                          <MenuItem key={format} value={format}>
-                            <Checkbox checked={documentParseFormats.includes(format)} />
-                            {OUTPUT_FORMAT_LABELS[format]}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+              <RobotNameField value={documentRobotName} onChange={setDocumentRobotName} placeholder="Example: Invoice Extractor" />
 
-                    {documentParseFormats.includes('summary' as OutputFormats) && (
-                      <Box sx={{ width: '100%', mb: 2 }}>
-                        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                          <FormControl sx={{ flex: 1 }}>
-                            <InputLabel>Summary LLM Provider</InputLabel>
-                            <Select
-                              value={docParseSummaryLlmProvider}
-                              label="Summary LLM Provider"
-                              onChange={(e) => {
-                                applyLlmProvider(
-                                  e.target.value as LlmProvider,
-                                  docParseSummaryOpenAIPreset,
-                                  setDocParseSummaryLlmProvider,
-                                  setDocParseSummaryLlmModel,
-                                  setDocParseSummaryLlmBaseUrl,
-                                  setDocParseSummaryLlmApiKey
-                                );
-                              }}
-                            >
-                              <MenuItem value="ollama">Ollama (Local)</MenuItem>
-                              <MenuItem value="anthropic">Anthropic (Claude)</MenuItem>
-                              <MenuItem value="openai">OpenAI-compatible</MenuItem>
-                            </Select>
-                          </FormControl>
-                          <TextField
-                            sx={{ flex: 1 }}
-                            value={docParseSummaryLlmModel}
-                            label="Model"
-                            placeholder={getModelPlaceholder(docParseSummaryLlmProvider, docParseSummaryOpenAIPreset)}
-                            helperText={getModelHelperText(docParseSummaryLlmProvider, docParseSummaryOpenAIPreset)}
-                            onChange={(e) => setDocParseSummaryLlmModel(e.target.value)}
-                            FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                          />
-                        </Box>
-                        {docParseSummaryLlmProvider === 'openai' && (
-                          <OpenAICompatiblePresetFields
-                            presetId={docParseSummaryOpenAIPreset}
-                            onPresetChange={(id) => applyOpenAICompatiblePreset(
-                              id,
-                              setDocParseSummaryOpenAIPreset,
-                              setDocParseSummaryLlmModel,
-                              setDocParseSummaryLlmBaseUrl,
-                              setDocParseSummaryLlmApiKey
-                            )}
-                            baseUrl={docParseSummaryLlmBaseUrl}
-                            onBaseUrlChange={setDocParseSummaryLlmBaseUrl}
-                            apiKey={docParseSummaryLlmApiKey}
-                            onApiKeyChange={setDocParseSummaryLlmApiKey}
-                            bottomMargin={2}
-                          />
-                        )}
-                        {docParseSummaryLlmProvider === 'anthropic' && (
-                          <TextField
-                            placeholder="Anthropic API key"
-                            fullWidth
-                            type="password"
-                            value={docParseSummaryLlmApiKey}
-                            onChange={(e) => setDocParseSummaryLlmApiKey(e.target.value)}
-                            label="API Key"
-                            helperText="Required for summary output. Alternatively, set ANTHROPIC_API_KEY in your server .env."
-                            FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                            sx={{ mb: 2 }}
-                          />
-                        )}
-                        {docParseSummaryLlmProvider === 'ollama' && (
-                          <TextField
-                            fullWidth
-                            value={docParseSummaryLlmBaseUrl}
-                            onChange={(e) => setDocParseSummaryLlmBaseUrl(e.target.value)}
-                            label="Ollama Base URL (Optional)"
-                            placeholder={OLLAMA_DEFAULT_BASE_URL}
-                            helperText="Defaults to http://localhost:11434. Use http://host.docker.internal:11434 if running via Docker"
-                            sx={{ mb: 2 }}
-                            FormHelperTextProps={{ sx: { ml: 0.5 } }}
-                          />
-                        )}
-                      </Box>
-                    )}
-                  </>
-                )}
+              {documentMode === 'extract' && (
+                <OptionsSection label="Model settings">
+                  <Box sx={{ pt: 1 }}>
+                    <LlmSettings config={documentLlm} modelText={DOCUMENT_MODEL_FIELD_TEXT} />
+                  </Box>
+                </OptionsSection>
+              )}
 
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={documentMode === 'extract' ? handleCreateDocumentRobot : handleCreateDocumentParseRobot}
-                  disabled={
-                    !documentFile ||
-                    !documentRobotName.trim() ||
-                    (documentMode === 'extract' && !documentPrompt.trim()) ||
-                    (documentMode === 'parse' && documentParseFormats.length === 0) ||
-                    isLoading
-                  }
-                  sx={{
-                    bgcolor: '#ff00c3',
-                    py: 1.4,
-                    fontSize: '1rem',
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    '&:hover': { bgcolor: '#d400a6' },
-                  }}
-                  startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-                >
-                  {isLoading ? 'Creating...' : 'Create Robot'}
-                </Button>
-              </Box>
+              {documentMode === 'parse' && docParseWantsSummary && (
+                <OptionsSection label="Summary model settings" defaultOpen>
+                  <Box sx={{ pt: 1 }}>
+                    <LlmSettings config={docParseSummaryLlm} providerLabel="Summary LLM provider" anthropicApiKeyHelperText={SUMMARY_API_KEY_HELPER} />
+                  </Box>
+                </OptionsSection>
+              )}
             </Box>
-          </Card>
+          </CreatePanel>
         </TabPanel>
       </Box>
 
@@ -2217,15 +1429,3 @@ const RobotCreate: React.FC = () => {
 };
 
 export default RobotCreate;
-
-const modalStyle = {
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '30%',
-  backgroundColor: 'background.paper',
-  p: 2,
-  height: 'fit-content',
-  display: 'block',
-  padding: '20px',
-};
