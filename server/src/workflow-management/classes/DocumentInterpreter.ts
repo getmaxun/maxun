@@ -31,6 +31,7 @@ const MAX_TABLES_IN_CONTEXT = 5;
 const MAX_TABLE_ROWS_IN_CONTEXT = 50;
 const MAX_TABLE_CONTEXT_CHARS = 8000;
 const CHUNK_HEADER_ALLOWANCE = 64;
+const MAX_PROMPT_CHUNK_HEADROOM = 2000;
 const MAX_PAGE_SUBCHUNKS = 20;
 const SCANNED_THRESHOLD_CHARS_PER_PAGE = 30;
 const MAX_TABLE_DETECTION_PAGES = 200;
@@ -463,6 +464,8 @@ const extractBalancedJson = (value: string): string | null => {
   for (let start = 0; start < value.length; start += 1) {
     const opener = value[start];
     if (opener !== '{' && opener !== '[') continue;
+    // "[see below]"-style brackets in prose aren't JSON; keep scanning.
+    if (!/^\s*(?:["{\[\]}\d-]|$)/.test(value.slice(start + 1, start + 20))) continue;
 
     const closer = closerFor[opener];
     let depth = 0;
@@ -486,7 +489,7 @@ const extractBalancedJson = (value: string): string | null => {
         if (depth === 0) return value.slice(start, i + 1);
       }
     }
-    // The outermost value never closed: the output was cut off. Don't fall
+    // The outermost JSON value never closed: the output was cut off. Don't fall
     // through to the first complete *inner* object, which silently turned a
     // truncated 100-item list into a single item.
     return null;
@@ -500,6 +503,9 @@ const extractBalancedJson = (value: string): string | null => {
  * `{"items":[{"a":1},{"a":2` → `{"items":[{"a":1}]}`.
  */
 const salvageTruncatedJson = (value: string): any | null => {
+  // Cut only between array elements or top-level fields, so a record that
+  // was still being written is dropped rather than kept with missing fields.
+  const isElementBoundary = (stack: string[]) => stack.length === 1 || stack[stack.length - 1] === ']';
   const start = value.search(/[{[]/);
   if (start < 0) return null;
   const text = value.slice(start);
@@ -523,9 +529,11 @@ const salvageTruncatedJson = (value: string): any | null => {
     else if (char === '}' || char === ']') {
       stack.pop();
       if (stack.length === 0) return null; // complete, not truncated
-      lastCut = i + 1;
-      stackAtCut = [...stack];
-    } else if (char === ',') {
+      if (isElementBoundary(stack)) {
+        lastCut = i + 1;
+        stackAtCut = [...stack];
+      }
+    } else if (char === ',' && isElementBoundary(stack)) {
       lastCut = i;
       stackAtCut = [...stack];
     }
@@ -1050,12 +1058,14 @@ const buildChunks = (pages: ParsedPage[], budget: number = MAX_CHUNK_CHARS): Arr
         ? `${pageName} (part ${index + 1}/${segments.length})`
         : pageName;
 
-      if (currentUnits.length > 0 && currentLength + segment.length > segmentBudget) {
+      // Count the label and separator each unit adds to the chunk text.
+      const unitLength = label.length + 1 + segment.length + 2;
+      if (currentUnits.length > 0 && currentLength + unitLength > budget) {
         flushCurrentUnits();
       }
 
       currentUnits.push({ label, text: segment });
-      currentLength += segment.length;
+      currentLength += unitLength;
     });
   }
 
@@ -2125,7 +2135,9 @@ export class DocumentInterpreter {
       partCount > 1
         ? `Document part ${partIndex + 1} of ${partCount} (${chunk.pageRange}):`
         : `Document (${chunk.pageRange}):`,
-      truncate(chunk.text, MAX_CHUNK_CHARS),
+      // Safety cap only: chunks are packed to the budget, but a carried table
+      // header can push one past it, and cutting here would drop its last rows.
+      truncate(chunk.text, MAX_CHUNK_CHARS + MAX_PROMPT_CHUNK_HEADROOM),
       tableContext,
     ].join('\n');
 
@@ -2275,11 +2287,13 @@ export class DocumentInterpreter {
       const halves = splitChunkInTwo(chunk);
       if (halves) {
         logger.info(`[DocumentInterpreter] Output cut off for ${chunk.pageRange}; re-extracting in two halves`);
-        const parts = await Promise.all(
-          halves.map((half) =>
-            this.extractChunk(prompt, schema, half, partIndex, partCount, contextTables, depth + 1, providers, llmConfig)
-          )
-        );
+        // One half at a time, so retries stay within EXTRACTION_CONCURRENCY.
+        const parts: Array<Record<string, any> | null> = [];
+        for (const half of halves) {
+          parts.push(
+            await this.extractChunk(prompt, schema, half, partIndex, partCount, contextTables, depth + 1, providers, llmConfig)
+          );
+        }
         let merged: Record<string, any> = {};
         for (const part of parts) {
           if (part) merged = mergeExtractionResults(merged, part, schema);
