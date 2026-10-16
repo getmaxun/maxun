@@ -898,7 +898,7 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDuplicate, handleDelet
         open={Boolean(anchorEl)}
         onClose={handleClose}
       >
-        {robotType !== 'scrape' && !isAgentRobot && (
+        {robotType === 'extract' && !isAgentRobot && (
           <MenuItem onClick={() => { handleRetrain(); handleClose(); }}>
             <ListItemIcon>
               <Refresh fontSize="small" />
