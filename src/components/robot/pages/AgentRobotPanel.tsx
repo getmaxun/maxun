@@ -35,24 +35,6 @@ interface AgentExample {
   url: string;
 }
 
-const EXAMPLES: AgentExample[] = [
-  {
-    label: 'Y Combinator companies',
-    prompt: 'Extract the top 10 company names and descriptions from the Y Combinator companies directory',
-    url: 'https://www.ycombinator.com/companies',
-  },
-  {
-    label: 'Hacker News front page',
-    prompt: 'Get the stories on the Hacker News front page with their title, points and link',
-    url: 'https://news.ycombinator.com',
-  },
-  {
-    label: 'GitHub trending',
-    prompt: "List today's trending repositories on GitHub with their name, language and star count",
-    url: 'https://github.com/trending',
-  },
-];
-
 const hostnameOf = (url?: string): string | null => {
   if (!url) return null;
   try {
@@ -190,26 +172,8 @@ const AgentComposer: React.FC<AgentRobotPanelProps> = ({
           ? urlError
           : promptTooShort
             ? `Describe what to collect in a bit more detail (at least ${MIN_AGENT_PROMPT_LENGTH} characters).`
-            : 'Leave the website empty and the agent will find one.'}
+            : ''}
       </HintLine>
-
-      {!trimmedPrompt && (
-        <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 2, rowGap: 0.5, mt: 2.5 }}>
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>Try an example:</Typography>
-          {EXAMPLES.map((example) => (
-            <Link
-              key={example.label}
-              component="button"
-              type="button"
-              onClick={() => applyExample(example)}
-              underline="none"
-              sx={{ fontSize: 13, color: 'text.primary', fontWeight: 500, textDecorationColor: (t) => alpha(t.palette.text.primary, 0.3), '&:hover': { textDecorationColor: 'currentColor' } }}
-            >
-              {example.label}
-            </Link>
-          ))}
-        </Box>
-      )}
 
       <RobotNameField value={name} onChange={onNameChange} error={nameError} placeholder="Example: YC Companies" />
 
