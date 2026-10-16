@@ -28,6 +28,10 @@ const TARGET_OUTPUT_CHARS = 9000;
 const MIN_CHUNK_CHARS = 2500;
 const MAX_FILE_SIZE_MB = 10;
 const MAX_TABLES_IN_CONTEXT = 5;
+const MAX_TABLE_ROWS_IN_CONTEXT = 50;
+const MAX_TABLE_CONTEXT_CHARS = 8000;
+const CHUNK_HEADER_ALLOWANCE = 64;
+const MAX_PAGE_SUBCHUNKS = 20;
 const SCANNED_THRESHOLD_CHARS_PER_PAGE = 30;
 const MAX_TABLE_DETECTION_PAGES = 200;
 const EXTRACTION_CONCURRENCY = 3;
@@ -125,7 +129,12 @@ const renderMarkdownTable = (rows: string[][]): string => {
 };
 
 const escapeHtml = (value: string): string =>
-  String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 const renderHtmlTable = (rows: string[][]): string => {
   const [head, ...body] = rows;
@@ -810,7 +819,8 @@ const normalizeValueBySchema = (value: any, field: ExtractionSchemaField): any =
       return typeof value === 'string' ? cleanText(value) : String(value);
   }
 };
-  /**
+
+/**
  * Models often wrap the answer ({"data": {...}}, {"result": {...}},
  * {"extracted": {...}}). Unwrap single-key envelopes until the schema keys
  * show up.
@@ -884,7 +894,7 @@ const mergeValues = (current: any, incoming: any, field: ExtractionSchemaField):
   if (!isMeaningful(incoming)) return current;
 
   if (field.type === 'array') {
-     const base = Array.isArray(current) ? current : [];
+    const base = Array.isArray(current) ? current : [];
     const additions = Array.isArray(incoming) ? incoming : [];
     const collected = new Map<string, number>();
     base.forEach((item) => {
@@ -946,6 +956,38 @@ const fallbackExtract = (text: string, schema: ExtractionSchema): Record<string,
     return acc;
   }, {});
 
+/**
+ * Splits a single page whose text exceeds the chunk budget into ordered
+ * segments, preferring paragraph boundaries, then line boundaries, then word
+ * boundaries, and only cutting mid-word when the text has no whitespace at all.
+ *
+ * Formats without intrinsic pagination (DOCX, CSV) parse to one page holding
+ * the entire document, so without this every such document was silently
+ * truncated to the first MAX_CHUNK_CHARS characters before extraction.
+ */
+const splitOversizedPageText = (text: string, limit: number): string[] => {
+  if (text.length <= limit) return [text];
+
+  const segments: string[] = [];
+  let remaining = text;
+  const minimumCut = Math.floor(limit / 2);
+
+  while (remaining.length > limit && segments.length < MAX_PAGE_SUBCHUNKS - 1) {
+    const candidates = [
+      remaining.lastIndexOf('\n\n', limit),
+      remaining.lastIndexOf('\n', limit),
+      remaining.lastIndexOf(' ', limit),
+    ];
+    const cut = candidates.find((index) => index >= minimumCut) ?? limit;
+
+    segments.push(remaining.slice(0, cut).trim());
+    remaining = remaining.slice(cut).trim();
+  }
+
+  if (remaining) segments.push(remaining);
+  return segments.filter(Boolean);
+};
+
 const TABLE_ROW = /^\|.*\|\s*$/;
 const TABLE_SEPARATOR = /^\|(\s*:?-{3,}:?\s*\|)+\s*$/;
 
@@ -970,33 +1012,54 @@ const carryTableHeaders = (segments: string[]): string[] => {
 
 const buildChunks = (pages: ParsedPage[], budget: number = MAX_CHUNK_CHARS): Array<{ pageRange: string; text: string }> => {
   const chunks: Array<{ pageRange: string; text: string }> = [];
-  let currentPages: ParsedPage[] = [];
+  const segmentBudget = budget - CHUNK_HEADER_ALLOWANCE;
+
+  let currentUnits: Array<{ label: string; text: string }> = [];
   let currentLength = 0;
+
+  const flushCurrentUnits = () => {
+    if (currentUnits.length === 0) return;
+
+    const firstLabel = currentUnits[0].label;
+    const lastLabel = currentUnits[currentUnits.length - 1].label;
+
+    chunks.push({
+      pageRange: firstLabel === lastLabel ? firstLabel : `${firstLabel} to ${lastLabel}`,
+      text: currentUnits.map((unit) => `${unit.label}\n${unit.text}`).join('\n\n'),
+    });
+
+    currentUnits = [];
+    currentLength = 0;
+  };
 
   for (const page of pages) {
     const pageText = cleanText(page.text);
     if (!pageText) continue;
+    const pageName = page.label ? `Sheet "${page.label}"` : `Page ${page.pageNumber}`;
 
-    const pageLength = pageText.length;
-    if (currentPages.length > 0 && currentLength + pageLength > MAX_CHUNK_CHARS) {
-      chunks.push({
-        pageRange: `${currentPages[0].pageNumber} to ${currentPages[currentPages.length - 1].pageNumber}`,
-        text: currentPages.map((p) => `Page ${p.pageNumber}\n${cleanText(p.text)}`).join('\n\n'),
-      });
-      currentPages = [];
-      currentLength = 0;
+    const segments = carryTableHeaders(splitOversizedPageText(pageText, segmentBudget));
+
+    if (segments.length >= MAX_PAGE_SUBCHUNKS) {
+      logger.warn(
+        `[DocumentInterpreter] Page ${page.pageNumber} exceeds ${MAX_PAGE_SUBCHUNKS} extraction chunks; content beyond that point is not sent to the model`
+      );
     }
 
-    currentPages.push(page);
-    currentLength += pageLength;
-  }
+    segments.forEach((segment, index) => {
+      const label = segments.length > 1
+        ? `${pageName} (part ${index + 1}/${segments.length})`
+        : pageName;
 
-  if (currentPages.length > 0) {
-    chunks.push({
-      pageRange: `${currentPages[0].pageNumber}-${currentPages[currentPages.length - 1].pageNumber}`,
-      text: currentPages.map((p) => `Page ${p.pageNumber}\n${cleanText(p.text)}`).join('\n\n'),
+      if (currentUnits.length > 0 && currentLength + segment.length > segmentBudget) {
+        flushCurrentUnits();
+      }
+
+      currentUnits.push({ label, text: segment });
+      currentLength += segment.length;
     });
   }
+
+  flushCurrentUnits();
 
   return chunks.length > 0 ? chunks : [{ pageRange: '1-1', text: '' }];
 };
@@ -1327,9 +1390,11 @@ class DocumentLLMClient {
       }
 
       const data = await response.json();
+      const parsed = parseModelJson(data.message?.content || '', data.done_reason === 'length');
       return {
-        payload: parseJsonLoose(data.message?.content || ''),
+        payload: parsed.payload,
         provider: `ollama:${model}`,
+        truncated: parsed.truncated,
       };
     } finally {
       clearTimeout(timeoutId);
@@ -1386,9 +1451,14 @@ class DocumentLLMClient {
     }
 
     const data = await response.json();
+    const parsed = parseModelJson(
+      data.choices?.[0]?.message?.content || '',
+      data.choices?.[0]?.finish_reason === 'length'
+    );
     return {
-      payload: parseJsonLoose(data.choices?.[0]?.message?.content || ''),
+      payload: parsed.payload,
       provider: `openai:${model}`,
+      truncated: parsed.truncated,
     };
   }
 
@@ -1411,9 +1481,11 @@ class DocumentLLMClient {
     });
 
     const content = (response.content?.[0] as any)?.text || '';
+    const parsed = parseModelJson(content, response.stop_reason === 'max_tokens');
     return {
-      payload: parseJsonLoose(content),
+      payload: parsed.payload,
       provider: `anthropic:${model}`,
+      truncated: parsed.truncated,
     };
   }
 
@@ -1660,20 +1732,34 @@ export class DocumentInterpreter {
         }
       }
 
-      const pageTexts = textResult.pages.map((page) => ({
-        pageNumber: page.num,
-        text: cleanText(page.text),
-      }));
-
-      let tables: string[][][] = [];
+      // Tables per page. This used to read `mergedTables`, which is only
+      // filled for tables merged across pages and is empty otherwise, and only
+      // looked at the first 5 pages, so ordinary tables never reached the
+      // model or the Markdown.
+      const tablesByPage = new Map<number, string[][][]>();
       try {
-        const tableResult = await parser.getTable({ first: Math.min(pageCount, MAX_TABLES_IN_CONTEXT) });
-        tables = tableResult.mergedTables.slice(0, MAX_TABLES_IN_CONTEXT);
+        const tableResult = await parser.getTable(
+          pageCount > MAX_TABLE_DETECTION_PAGES ? { first: MAX_TABLE_DETECTION_PAGES } : undefined
+        );
+        for (const page of tableResult.pages || []) {
+          const tables = (page.tables || []).filter((table) => table.length > 0);
+          if (tables.length > 0) tablesByPage.set(page.num, tables);
+        }
       } catch (error: any) {
         logger.warn(`[DocumentInterpreter] Table extraction skipped: ${error.message}`);
       }
 
-      return { text: combinedText, pageCount, pages: pageTexts, tables };
+      const pages: ParsedPage[] = textResult.pages.map((page) => {
+        const blocks = buildPdfPageBlocks(page.text, tablesByPage.get(page.num) || []);
+        return { pageNumber: page.num, text: renderBlocksMarkdown(blocks), blocks };
+      });
+
+      return {
+        text: pages.map((page) => page.text).filter(Boolean).join('\n\n'),
+        pageCount,
+        pages,
+        tables: [],
+      };
     } finally {
       await parser.destroy().catch(() => undefined);
     }
@@ -1747,26 +1833,18 @@ export class DocumentInterpreter {
 
       tables.push(normalizedRows);
 
-      const sheetText = normalizedRows.map((row) => row.join('\t')).join('\n');
-      if (sheetText) {
-        pages.push({ pageNumber: pages.length + 1, text: cleanText(sheetText) });
+      if (normalizedRows.length > 0) {
+        const blocks: ContentBlock[] = [{ type: 'table', rows: normalizedRows }];
+        pages.push({ pageNumber: pages.length + 1, label: sheetName, text: renderBlocksMarkdown(blocks), blocks });
       }
     }
 
-    const text = tables
-      .map((table) =>
-        table
-          .map((row) => row.join('\t'))
-          .join('\n')
-      )
-      .filter(Boolean)
-      .join('\n\n');
-
     return {
-      text: cleanText(text),
+      text: pages.map((page) => `Sheet "${page.label}"\n${page.text}`).join('\n\n'),
       pageCount: pages.length || workbook.SheetNames.length,
       pages,
-      tables,
+      tables: [],
+      isSpreadsheet: true,
     };
   }
 
@@ -1834,14 +1912,15 @@ export class DocumentInterpreter {
       };
     }
 
-    const sheetText = normalizedRows.map((row: string[]) => row.join('\t')).join('\n');
-    const text = cleanText(sheetText);
+    const blocks: ContentBlock[] = [{ type: 'table', rows: normalizedRows }];
+    const text = renderBlocksMarkdown(blocks);
 
     return {
       text,
       pageCount: 1,
-      pages: [{ pageNumber: 1, text }],
-      tables: [normalizedRows],
+      pages: [{ pageNumber: 1, text, blocks }],
+      tables: [],
+      isSpreadsheet: true,
     };
   }
 
@@ -1851,13 +1930,27 @@ export class DocumentInterpreter {
       mammoth.convertToHtml({ buffer }),
     ]);
 
-    const text = cleanText(rawTextResult.value || '');
+    const rawText = cleanText(rawTextResult.value || '');
+    const sourceHtml = (htmlResult.value || '').trim();
+
+    // Raw text flattens tables to one cell per line; Markdown keeps rows and
+    // columns, headings and lists for the model and the schema sample.
+    let text = rawText;
+    if (sourceHtml) {
+      try {
+        const markdown = promoteEmptyTableHeaders(await parseMarkdown(sourceHtml)).trim();
+        if (markdown.length >= rawText.length * 0.6) text = markdown;
+      } catch (error: any) {
+        logger.warn(`[DocumentInterpreter] DOCX Markdown conversion failed, using raw text: ${error.message}`);
+      }
+    }
+
     return {
       text,
       pageCount: 1,
       pages: [{ pageNumber: 1, text }],
       tables: [],
-      sourceHtml: (htmlResult.value || '').trim(),
+      sourceHtml,
     };
   }
 
@@ -1949,6 +2042,8 @@ export class DocumentInterpreter {
       '{"schema":{"field_key":{"label":"Field Label","type":"string|number|boolean|date|array|object","description":"...","required":true,"items":{"label":"...","type":"string"},"fields":{"nested_key":{"label":"...","type":"string"}}}}}',
       'Use concise snake_case keys.',
       'Prefer simple flat schemas unless the prompt clearly implies nested objects or arrays.',
+      'When the goal covers repeated records (line items, transactions, rows of a table, a list of people or products), model them as one array field whose items are objects with one field per column or attribute; keep header-level facts (numbers, dates, parties, totals) as separate top-level fields.',
+      'Tables in the sample are Markdown tables; use their column headers to name item fields.',
     ].join('\n');
 
     const userPrompt = [
@@ -1992,20 +2087,32 @@ export class DocumentInterpreter {
   private static buildExtractionPrompt(
     prompt: string,
     schema: ExtractionSchema,
-    chunk: { pageRange: string; text: string },
+    chunk: DocumentChunk,
+    partIndex: number,
+    partCount: number,
     tables: string[][][]
   ): { systemPrompt: string; userPrompt: string } {
     const systemPrompt = [
-      'You extract structured JSON from business documents.',
-      'Return only valid JSON.',
-      'Use the provided schema exactly for keys.',
-      'If a value is missing, return null.',
-      'For arrays, return arrays.',
-      'Do not invent values not grounded in the provided text.',
+      'You extract structured JSON from one part of a business document.',
+      'Return only a JSON object whose keys are exactly the schema keys.',
+      'Copy values as they appear in the text (keep currency, separators and date formats as written); do not calculate, convert or summarize.',
+      'For array fields, return every matching item that appears in this part, in document order. Never sample, summarize or stop early. In a Markdown table, each body row is one item; the header row is not an item.',
+      'If a value does not appear in this part, return null (an empty array for arrays). Do not invent values or carry them over from other parts.',
     ].join('\n');
 
-    const tableContext = tables.length > 0
-      ? `\nDetected tables:\n${tables.map((table, index) => `Table ${index + 1}\n${table.map((row) => row.join(' | ')).join('\n')}`).join('\n\n')}`
+    const boundedTables = tables
+      .slice(0, MAX_TABLES_IN_CONTEXT)
+      .map((table: string[][], index: number) => {
+        const rows = table.slice(0, MAX_TABLE_ROWS_IN_CONTEXT);
+        const omitted = table.length > MAX_TABLE_ROWS_IN_CONTEXT
+          ? `\n... (${table.length - MAX_TABLE_ROWS_IN_CONTEXT} more rows omitted)`
+          : '';
+        return `Table ${index + 1}\n${renderMarkdownTable(rows)}${omitted}`;
+      })
+      .join('\n\n');
+
+    const tableContext = boundedTables
+      ? truncate(`\nDetected tables:\n${boundedTables}`, MAX_TABLE_CONTEXT_CHARS)
       : '';
 
     const userPrompt = [
@@ -2013,7 +2120,11 @@ export class DocumentInterpreter {
       '',
       `Schema: ${JSON.stringify(schemaToJsonDefinition(schema), null, 2)}`,
       '',
-      `Document chunk pages: ${chunk.pageRange}`,
+      `Return JSON shaped like: ${JSON.stringify(schemaSkeleton(schema))}`,
+      '',
+      partCount > 1
+        ? `Document part ${partIndex + 1} of ${partCount} (${chunk.pageRange}):`
+        : `Document (${chunk.pageRange}):`,
       truncate(chunk.text, MAX_CHUNK_CHARS),
       tableContext,
     ].join('\n');
@@ -2091,29 +2202,30 @@ export class DocumentInterpreter {
   ): Promise<ExtractionResult> {
     const parsedDocument = await this.parseDocument(buffer, documentMimeType);
     const schema = sanitizeSchema(extractionSchema, prompt);
-    const chunks = buildChunks(parsedDocument.pages);
+    const collectsRecords = Object.values(schema).some(
+      (field) => field.type === 'array' && field.items?.type === 'object'
+    );
+    const chunks = buildChunks(parsedDocument.pages, collectsRecords ? recordChunkBudget(parsedDocument.pages, schema) : MAX_CHUNK_CHARS)
+      .filter((chunk) => chunk.text.trim());
+
+    // Tables now sit inside the page text where they belong. Only OCR'd
+    // single-page documents (images) still carry separate key/value tables;
+    // every chunk used to get the first 5 tables of the whole document, so
+    // models re-extracted page 1's rows in every chunk.
+    const contextTables = chunks.length <= 1 ? parsedDocument.tables : [];
+    if (chunks.length === 0 && contextTables.length > 0) {
+      chunks.push({ pageRange: '1', text: '' });
+    }
+    const providers: string[] = [];
+
+    // Chunks run in parallel (they were sequential) and merge in page order.
+    const results = await mapWithConcurrency(chunks, EXTRACTION_CONCURRENCY, (chunk, index) =>
+      this.extractChunk(prompt, schema, chunk, index, chunks.length, contextTables, 0, providers, llmConfig)
+    );
 
     let mergedData: Record<string, any> = {};
-    let providerLabel = 'heuristic-fallback';
-
-    for (const chunk of chunks) {
-      if (!chunk.text.trim() && parsedDocument.tables.length === 0) continue;
-
-      const { systemPrompt, userPrompt } = this.buildExtractionPrompt(
-        prompt,
-        schema,
-        chunk,
-        parsedDocument.tables
-      );
-
-      try {
-        const result = await DocumentLLMClient.callStructuredJson(systemPrompt, userPrompt, llmConfig);
-        const normalized = normalizeResultToSchema(result.payload, schema);
-        mergedData = mergeExtractionResults(mergedData, normalized, schema);
-        providerLabel = result.provider;
-      } catch (error: any) {
-        logger.warn(`[DocumentInterpreter] Chunk extraction failed for pages ${chunk.pageRange}: ${error.message}`);
-      }
+    for (const result of results) {
+      if (result) mergedData = mergeExtractionResults(mergedData, result, schema);
     }
 
     if (!Object.values(mergedData).some(isMeaningful)) {
@@ -2123,35 +2235,90 @@ export class DocumentInterpreter {
     return {
       data: normalizeExtractionData(mergedData),
       pageCount: parsedDocument.pageCount,
-      model: providerLabel,
+      model: providers[providers.length - 1] || 'heuristic-fallback',
       extractedAt: new Date().toISOString(),
       tabName: 'Document Data',
     };
   }
 
+  /**
+   * Extracts one chunk. When the model's answer was cut off by its output
+   * limit (long tables), the chunk is re-extracted as two halves, up to
+   * MAX_TRUNCATION_SPLITS levels deep. Previously the cut-off JSON failed to
+   * parse and every value in that chunk was lost.
+   */
+  private static async extractChunk(
+    prompt: string,
+    schema: ExtractionSchema,
+    chunk: DocumentChunk,
+    partIndex: number,
+    partCount: number,
+    contextTables: string[][][],
+    depth: number,
+    providers: string[],
+    llmConfig?: LLMConfig
+  ): Promise<Record<string, any> | null> {
+    const { systemPrompt, userPrompt } = this.buildExtractionPrompt(prompt, schema, chunk, partIndex, partCount, contextTables);
+
+    let result: ProviderResult;
+    try {
+      result = await DocumentLLMClient.callStructuredJson(systemPrompt, userPrompt, llmConfig);
+    } catch (error: any) {
+      logger.warn(`[DocumentInterpreter] Chunk extraction failed for ${chunk.pageRange}: ${error.message}`);
+      return null;
+    }
+    providers.push(result.provider);
+
+    const normalized = normalizeResultToSchema(unwrapPayload(result.payload, schema), schema);
+
+    if (result.truncated && depth < MAX_TRUNCATION_SPLITS) {
+      const halves = splitChunkInTwo(chunk);
+      if (halves) {
+        logger.info(`[DocumentInterpreter] Output cut off for ${chunk.pageRange}; re-extracting in two halves`);
+        const parts = await Promise.all(
+          halves.map((half) =>
+            this.extractChunk(prompt, schema, half, partIndex, partCount, contextTables, depth + 1, providers, llmConfig)
+          )
+        );
+        let merged: Record<string, any> = {};
+        for (const part of parts) {
+          if (part) merged = mergeExtractionResults(merged, part, schema);
+        }
+        // Keep scalars from the cut-off answer where the halves found none.
+        return mergeExtractionResults(merged, scalarsOnly(normalized, schema), schema);
+      }
+      logger.warn(`[DocumentInterpreter] Output cut off for ${chunk.pageRange}; keeping the complete part`);
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Markdown for parse robots. PDF tables appear where they sit on the page
+   * (they were missing entirely before); spreadsheets render as one table per
+   * sheet instead of a tab-separated dump followed by the same data again as
+   * a table.
+   */
   private static async toMarkdown(doc: ParsedDocument): Promise<string> {
     if (doc.sourceHtml) {
-      return parseMarkdown(doc.sourceHtml);
+      return promoteEmptyTableHeaders(await parseMarkdown(doc.sourceHtml));
     }
 
     const parts: string[] = [];
 
     for (const page of doc.pages) {
-      const text = cleanText(page.text);
-      if (!text) continue;
-      parts.push(doc.isImage ? text : `## Page ${page.pageNumber}\n\n${text}`);
+      const body = page.blocks ? renderBlocksMarkdown(page.blocks) : tidyLines(page.text);
+      if (!body) continue;
+      if (doc.isSpreadsheet) {
+        parts.push(page.label && doc.pages.length > 1 ? `## ${page.label}\n\n${body}` : body);
+      } else {
+        parts.push(doc.isImage ? body : `## Page ${page.pageNumber}\n\n${body}`);
+      }
     }
 
-    for (let i = 0; i < doc.tables.length; i++) {
-      const table = doc.tables[i];
-      if (table.length === 0) continue;
-      const header = table[0].map((cell) => cell.trim() || ' ').join(' | ');
-      const separator = table[0].map(() => '---').join(' | ');
-      const rows = table.slice(1).map((row) =>
-        row.map((cell) => cell.trim().replace(/\n/g, ' ') || ' ').join(' | ')
-      );
-      parts.push(`### Table ${i + 1}\n\n| ${header} |\n| ${separator} |\n${rows.map((r) => `| ${r} |`).join('\n')}`);
-    }
+    doc.tables.forEach((table, index) => {
+      if (table.length > 0) parts.push(`### Table ${index + 1}\n\n${renderMarkdownTable(table)}`);
+    });
 
     return parts.join('\n\n');
   }
@@ -2162,29 +2329,23 @@ export class DocumentInterpreter {
     const parts: string[] = ['<article>'];
 
     for (const page of doc.pages) {
-      const text = cleanText(page.text);
-      if (!text) continue;
-      const paragraphs = text
-        .split(/\n{2,}/)
-        .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`)
-        .join('\n');
+      const blocks: ContentBlock[] = page.blocks || [{ type: 'text', text: tidyLines(page.text) }];
+      const body = renderBlocksHtml(blocks);
+      if (!body.trim()) continue;
+      if (doc.isSpreadsheet) {
+        parts.push(page.label && doc.pages.length > 1 ? `<section>\n<h2>${escapeHtml(page.label)}</h2>\n${body}\n</section>` : body);
+      } else {
         parts.push(
           doc.isImage
-            ? paragraphs
-            : `<section data-page="${page.pageNumber}">\n<h2>Page ${page.pageNumber}</h2>\n${paragraphs}\n</section>`
+            ? body
+            : `<section data-page="${page.pageNumber}">\n<h2>Page ${page.pageNumber}</h2>\n${body}\n</section>`
         );
+      }
     }
 
-    for (let i = 0; i < doc.tables.length; i++) {
-      const table = doc.tables[i];
-      if (table.length === 0) continue;
-      const header = `<thead><tr>${table[0].map((cell) => `<th>${escapeHtml(cell.trim())}</th>`).join('')}</tr></thead>`;
-      const body = `<tbody>${table
-        .slice(1)
-        .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell.trim())}</td>`).join('')}</tr>`)
-        .join('\n')}</tbody>`;
-      parts.push(`<table>\n${header}\n${body}\n</table>`);
-    }
+    doc.tables.forEach((table) => {
+      if (table.length > 0) parts.push(renderHtmlTable(table));
+    });
 
     parts.push('</article>');
     return parts.join('\n');
