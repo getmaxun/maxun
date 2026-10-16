@@ -28,7 +28,7 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Website to API',
+      title: 'Maxun API',
       version: '1.0.0',
       description:
         'Maxun lets you get the data your robot extracted and run robots via API. All you need to do is input the Maxun API key by clicking Authorize below.',
