@@ -12,7 +12,7 @@ if (fs.existsSync(apiDir)) {
   const files = fs.readdirSync(apiDir);
   const hasJsFiles = files.some(file => file.endsWith('.js'));
   const hasTsFiles = files.some(file => file.endsWith('.ts'));
-  
+
   if (hasJsFiles) {
     apis = [jsGlobPattern];
   } else if (hasTsFiles) {
@@ -28,10 +28,12 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Website to API',
+      title: 'Maxun API',
       version: '1.0.0',
       description:
-        'Maxun lets you get the data your robot extracted and run robots via API. All you need to do is input the Maxun API key by clicking Authorize below.',
+        'Fetch, run, and schedule Maxun robots over HTTP. Authenticate with '
+        + '`x-api-key`.'
+        + 'Find your API key in the "API Key" section of the Maxun dashboard. Read full guide: <a href="https://docs.maxun.dev/category/api-reference" target="_blank">API Reference</a>.'
     },
     components: {
       securitySchemes: {
