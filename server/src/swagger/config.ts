@@ -33,7 +33,7 @@ const options = {
       description:
 'Fetch, run, and schedule Maxun robots over HTTP. Authenticate with '
         + '`x-api-key`.'
-        + 'Find your API key in the "API Key" section of the Maxun dashboard. Full guide: https://docs.maxun.dev/category/api-reference.' },
+        + 'Find your API key in the "API Key" section of the Maxun dashboard. Read full guide: <a href="https://docs.maxun.dev/category/api-reference" target="_blank">API Reference</a>.'},
     components: {
       securitySchemes: {
         api_key: {
