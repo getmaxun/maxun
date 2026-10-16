@@ -31,8 +31,9 @@ const options = {
       title: 'Maxun API',
       version: '1.0.0',
       description:
-        'Maxun lets you get the data your robot extracted and run robots via API. All you need to do is input the Maxun API key by clicking Authorize below.',
-    },
+'Fetch, run, and schedule Maxun robots over HTTP. Authenticate with '
+        + '`x-api-key`.'
+        + 'Find your API key in the "API Key" section of the Maxun dashboard. Full guide: https://docs.maxun.dev/category/api-reference.' },
     components: {
       securitySchemes: {
         api_key: {
