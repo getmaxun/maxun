@@ -117,6 +117,8 @@ export const SaveRecording = ({ fileName }: SaveRecordingProps) => {
         userId: user.id,
         isLogin: isLogin,
         robotId: retrainRobotId,
+        // Monitoring chosen on the create page; only applies to a new robot.
+        compareRuns: !retrainRobotId && window.sessionStorage.getItem('compareRuns') === 'true',
       };
       socket?.emit('save', payload);
       setWaitingForSave(true);

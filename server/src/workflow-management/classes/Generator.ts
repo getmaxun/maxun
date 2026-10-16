@@ -110,6 +110,7 @@ interface MetaData {
   params: string[],
   type?: 'extract' | 'scrape' | 'crawl' | 'search' | 'doc-extract' | 'doc-parse';
   isLogin?: boolean;
+  compareRuns?: boolean;
 }
 
 interface InputState {
@@ -233,9 +234,9 @@ export class WorkflowGenerator {
    */
   private registerEventHandlers = (socket: Socket) => {
     socket.on('save', (data) => {
-      const { fileName, userId, isLogin, robotId } = data;
+      const { fileName, userId, isLogin, robotId, compareRuns } = data;
       logger.log('debug', `Saving workflow ${fileName} for user ID ${userId}`);
-      this.saveNewWorkflow(fileName, userId, isLogin, robotId);
+      this.saveNewWorkflow(fileName, userId, isLogin, robotId, compareRuns === true);
   });
     socket.on('new-recording', (data) => {
       this.workflowRecord = {
@@ -1055,7 +1056,7 @@ export class WorkflowGenerator {
    * @param fileName The name of the file.
    * @returns {Promise<void>}
    */
-  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string) => {
+  public saveNewWorkflow = async (fileName: string, userId: number, isLogin: boolean, robotId?: string, compareRuns?: boolean) => {
     const recording = this.optimizeWorkflow(this.workflowRecord);
     let actionType = 'saved'; 
     
@@ -1111,6 +1112,7 @@ export class WorkflowGenerator {
           params: this.getParams() || [],
           type: this.recordingMeta.type || 'extract',
           isLogin: isLogin,
+          ...(compareRuns ? { compareRuns: true } : {}),
         }
         const robot = await Robot.create({
           userId,
