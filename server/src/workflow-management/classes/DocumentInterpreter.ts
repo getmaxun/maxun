@@ -16,9 +16,22 @@ import * as XLSX from 'xlsx';
 
 const MAX_SCHEMA_SAMPLE_CHARS = 16000;
 const MAX_CHUNK_CHARS = 12000;
+/**
+ * Chunk size when the schema collects records (an array of objects). The JSON
+ * for a table is about as long as the table, and the models stop at ~4k
+ * output tokens (~12k chars), so 12k-char chunks of rows were routinely cut
+ * off. Smaller chunks fit in one answer instead of being redone in halves.
+ */
+const MAX_RECORD_CHUNK_CHARS = 6000;
+/** Target answer size per chunk, under the ~12k-char (4k-token) output cap. */
+const TARGET_OUTPUT_CHARS = 9000;
+const MIN_CHUNK_CHARS = 2500;
 const MAX_FILE_SIZE_MB = 10;
 const MAX_TABLES_IN_CONTEXT = 5;
 const SCANNED_THRESHOLD_CHARS_PER_PAGE = 30;
+const MAX_TABLE_DETECTION_PAGES = 200;
+const EXTRACTION_CONCURRENCY = 3;
+const MAX_TRUNCATION_SPLITS = 3;
 
 export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
@@ -42,19 +55,29 @@ interface ExtractionSchemaField {
 
 type ExtractionSchema = Record<string, ExtractionSchemaField>;
 
+/** Page content in reading order: running text and tables, kept apart so tables keep their columns. */
+type ContentBlock = { type: 'text'; text: string } | { type: 'table'; rows: string[][] };
+
 interface ParsedPage {
   pageNumber: number;
+  /** Markdown-ish text of the page; tables are rendered as Markdown tables. */
   text: string;
+  /** Sheet name for spreadsheets. */
+  label?: string;
+  blocks?: ContentBlock[];
 }
 
 interface ParsedDocument {
   text: string;
   pageCount: number;
   pages: ParsedPage[];
+  /** Document-level tables that aren't tied to a page block (OCR key/value tables). */
   tables: string[][][];
   sourceHtml?: string;
   /** True when the document came from a flat image, which has no page structure. */
   isImage?: boolean;
+  /** XLSX/CSV: every page is one table. */
+  isSpreadsheet?: boolean;
 }
 
 interface ExtractionResult {
@@ -76,6 +99,8 @@ export interface ParsedOutput {
 interface ProviderResult {
   payload: any;
   provider: string;
+  /** The model hit its output limit; the payload (if any) was salvaged from cut-off JSON. */
+  truncated?: boolean;
 }
 
 const normalizeWhitespace = (value: string): string =>
@@ -84,13 +109,119 @@ const normalizeWhitespace = (value: string): string =>
 const cleanText = (value: string): string =>
   normalizeWhitespace(value.replace(/\x00/g, ''));
 
+const escapeTableCell = (cell: string): string =>
+  String(cell ?? '').replace(/\s*\n\s*/g, ' ').replace(/\|/g, '\\|').replace(/\s+/g, ' ').trim();
+
+/** Markdown table from rows; the first row is the header. Ragged rows are padded. */
+const renderMarkdownTable = (rows: string[][]): string => {
+  const width = Math.max(1, ...rows.map((row) => row.length));
+  const cells = (row: string[]) => Array.from({ length: width }, (_, i) => escapeTableCell(row[i] ?? '') || ' ');
+  const [head, ...body] = rows;
+  return [
+    `| ${cells(head || []).join(' | ')} |`,
+    `| ${Array(width).fill('---').join(' | ')} |`,
+    ...body.map((row) => `| ${cells(row).join(' | ')} |`),
+  ].join('\n');
+};
+
 const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const renderHtmlTable = (rows: string[][]): string => {
+  const [head, ...body] = rows;
+  const headHtml = `<thead><tr>${(head || []).map((cell) => `<th>${escapeHtml(cell.trim())}</th>`).join('')}</tr></thead>`;
+  const bodyHtml = `<tbody>${body.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell.trim())}</td>`).join('')}</tr>`).join('\n')}</tbody>`;
+  return `<table>\n${headHtml}\n${bodyHtml}\n</table>`;
+};
+
+/**
+ * Word tables rarely mark a header row, so HTML→Markdown gives them an empty
+ * header (`|  |  |` + separator) above the real first row. Promote that row.
+ */
+const promoteEmptyTableHeaders = (markdown: string): string =>
+  markdown.replace(
+    /^\|(?:[ \t]*\|)+[ \t]*\n(\|(?:[ \t]*:?-{3,}:?[ \t]*\|)+)[ \t]*\n(\|.*\|)[ \t]*$/gm,
+    '$2\n$1'
+  );
+
+const renderBlocksMarkdown = (blocks: ContentBlock[]): string =>
+  blocks
+    .map((block) => (block.type === 'text' ? block.text : renderMarkdownTable(block.rows)))
+    .filter((part) => part.trim())
+    .join('\n\n');
+
+const renderBlocksHtml = (blocks: ContentBlock[]): string =>
+  blocks
+    .map((block) =>
+      block.type === 'text'
+        ? block.text.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('\n')
+        : renderHtmlTable(block.rows)
+    )
+    .join('\n');
+
+/** Trim every line (PDF text lines carry padding) and collapse blank runs. */
+const tidyLines = (value: string): string =>
+  cleanText(value)
+    .split('\n')
+    .map((line) => line.trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+const normalizeCellForMatch = (cell: string): string => cell.replace(/\s+/g, ' ').trim().toLowerCase();
+
+/**
+ * Lays out a PDF page as text and tables in reading order.
+ *
+ * pdf-parse returns the page text with a table's cells separated only by
+ * runs of spaces, which cleanText then collapsed into single spaces, so
+ * "Widget B1 | 6 | $379.41" reached the model as "Widget B1 6 $379.41". The
+ * detected tables are matched back to their text lines (a line whose
+ * space-separated cells equal a table row) and replace them in place, so
+ * each table appears once, with its columns, where it sits on the page.
+ * A table whose rows can't be found in the text is appended to the page.
+ */
+const buildPdfPageBlocks = (rawText: string, tables: string[][][]): ContentBlock[] => {
+  const signature = (cells: string[]) => {
+    const parts = cells.map(normalizeCellForMatch).filter(Boolean);
+    return parts.length >= 2 ? parts.join('\u0001') : '';
+  };
+  const rowOwner = new Map<string, number>();
+  tables.forEach((table, tableIndex) => {
+    table.forEach((row) => {
+      const sig = signature(row);
+      if (sig && !rowOwner.has(sig)) rowOwner.set(sig, tableIndex);
+    });
+  });
+
+  const blocks: ContentBlock[] = [];
+  const emitted = new Set<number>();
+  let textLines: string[] = [];
+  const flushText = () => {
+    const text = tidyLines(textLines.join('\n'));
+    if (text) blocks.push({ type: 'text', text });
+    textLines = [];
+  };
+
+  for (const line of rawText.replace(/\r/g, '').replace(/\u0000/g, '').split('\n')) {
+    const owner = rowOwner.get(signature(line.trim().split(/\t|\s{2,}/)));
+    if (owner === undefined) {
+      textLines.push(line);
+      continue;
+    }
+    if (!emitted.has(owner)) {
+      flushText();
+      blocks.push({ type: 'table', rows: tables[owner] });
+      emitted.add(owner);
+    }
+  }
+  flushText();
+
+  tables.forEach((table, tableIndex) => {
+    if (!emitted.has(tableIndex) && table.length > 0) blocks.push({ type: 'table', rows: table });
+  });
+  return blocks;
+};
 
 const OCR_ASCII_NOISE_THRESHOLD = 0.80;
 
@@ -346,9 +477,58 @@ const extractBalancedJson = (value: string): string | null => {
         if (depth === 0) return value.slice(start, i + 1);
       }
     }
+    // The outermost value never closed: the output was cut off. Don't fall
+    // through to the first complete *inner* object, which silently turned a
+    // truncated 100-item list into a single item.
+    return null;
+  }
+  return null;
+};
+
+/**
+ * Recovers the complete part of JSON that was cut off mid-output: drops the
+ * partial trailing element and closes the open brackets.
+ * `{"items":[{"a":1},{"a":2` → `{"items":[{"a":1}]}`.
+ */
+const salvageTruncatedJson = (value: string): any | null => {
+  const start = value.search(/[{[]/);
+  if (start < 0) return null;
+  const text = value.slice(start);
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  let lastCut = -1;
+  let stackAtCut: string[] = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === '{') stack.push('}');
+    else if (char === '[') stack.push(']');
+    else if (char === '}' || char === ']') {
+      stack.pop();
+      if (stack.length === 0) return null; // complete, not truncated
+      lastCut = i + 1;
+      stackAtCut = [...stack];
+    } else if (char === ',') {
+      lastCut = i;
+      stackAtCut = [...stack];
+    }
   }
 
-  return null;
+  if (lastCut < 0) return null;
+  const candidate = text.slice(0, lastCut).replace(/,\s*$/, '') + [...stackAtCut].reverse().join('');
+  try {
+    return JSON.parse(repairJsonText(candidate));
+  } catch {
+    return null;
+  }
 };
 
 const extractJsonText = (value: string): string => {
@@ -372,6 +552,22 @@ const parseJsonLoose = (value: string): any => {
   }
 };
 
+/** Parse model output; salvage the complete part when it was cut off. */
+const parseModelJson = (content: string, hitOutputLimit: boolean): { payload: any; truncated: boolean } => {
+  const cleaned = stripCodeFences(stripReasoning(content));
+  if (hitOutputLimit) {
+    const salvaged = salvageTruncatedJson(cleaned);
+    if (salvaged !== null) return { payload: salvaged, truncated: true };
+  }
+  try {
+    return { payload: parseJsonLoose(content), truncated: hitOutputLimit };
+  } catch (error) {
+    const salvaged = salvageTruncatedJson(cleaned);
+    if (salvaged !== null) return { payload: salvaged, truncated: true };
+    throw error;
+  }
+};
+
 const isMeaningful = (value: any): boolean => {
   if (value === null || value === undefined) return false;
   if (typeof value === 'string') return value.trim().length > 0;
@@ -380,13 +576,57 @@ const isMeaningful = (value: any): boolean => {
   return true;
 };
 
+/**
+ * Numbers as written in documents: currency symbols and codes, thousands
+ * separators in western (1,234,567.89), European (1.234.567,89) and Indian
+ * (1,23,456) styles, accounting negatives "(1,200.00)" and trailing minus.
+ * The old version stripped everything but digits, dots and minus, so
+ * "1.234,56" became 1.23456 and "(500)" became +500. Ranges ("10-20") give null.
+ */
 const parseNumericValue = (value: any): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value !== 'string') return null;
-  const cleaned = value.replace(/[^0-9.-]+/g, '');
-  if (!cleaned || cleaned === '-' || cleaned === '.') return null;
+  const raw = value.trim();
+  if (!raw) return null;
+
+  const negative = /^\(.*\)$/.test(raw) || /^[^\d]*-/.test(raw) || /-\s*$/.test(raw);
+  let cleaned = raw.replace(/[^0-9.,-]/g, '');
+  if (/\d-\d/.test(cleaned)) return null;
+  cleaned = cleaned.replace(/-/g, '');
+  if (!/\d/.test(cleaned)) return null;
+
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastDot = cleaned.lastIndexOf('.');
+  if (lastComma > -1 && lastDot > -1) {
+    cleaned = lastComma > lastDot
+      ? cleaned.replace(/\./g, '').replace(',', '.')
+      : cleaned.replace(/,/g, '');
+  } else if (lastComma > -1) {
+    const parts = cleaned.split(',');
+    // One comma followed by other than 3 digits is a decimal comma ("12,5").
+    cleaned = parts.length === 2 && parts[1].length !== 3 ? parts.join('.') : parts.join('');
+  } else if ((cleaned.match(/\./g) || []).length > 1) {
+    cleaned = cleaned.replace(/\./g, '');
+  }
   const parsed = Number(cleaned);
-  return Number.isFinite(parsed) ? parsed : null;
+  if (!Number.isFinite(parsed)) return null;
+  return negative ? -Math.abs(parsed) : parsed;
+};
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * ISO date for a date as written. Date-only values stay dates: "March 15,
+ * 2024" used to go through toISOString(), which on a server east of UTC
+ * gave "2024-03-14T18:30:00.000Z", a day early.
+ */
+const normalizeDateValue = (value: string): string => {
+  const normalized = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime()) || !/\d/.test(normalized)) return normalized;
+  if (/\d{1,2}:\d{2}/.test(normalized)) return parsed.toISOString();
+  return `${parsed.getFullYear()}-${pad2(parsed.getMonth() + 1)}-${pad2(parsed.getDate())}`;
 };
 
 const parseBooleanValue = (value: any): boolean | null => {
@@ -433,22 +673,13 @@ const sanitizeSchemaField = (input: any, fallbackLabel: string): ExtractionSchem
   return field;
 };
 
-const isRecordArray = (value: any): boolean =>
-  Array.isArray(value) &&
-  value.length > 0 &&
-  value.every((item) => item !== null && typeof item === 'object' && !Array.isArray(item));
-
-const normalizeExtractionData = (data: any): any => {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
-
-  const listEntries = Object.entries(data).filter(([, value]) => isRecordArray(value));
-  if (listEntries.length === 0) return data;
-
-  return listEntries.reduce<Record<string, any>>((acc, [key, value]) => {
-    acc[key] = value;
-    return acc;
-  }, {});
-};
+/**
+ * Final result shape. This used to keep only the list fields whenever the
+ * result had any, so an invoice came back as its line items without the
+ * invoice number, date, vendor or totals. The run view, API and integrations
+ * all handle scalar fields next to lists, so the result is kept whole.
+ */
+const normalizeExtractionData = (data: any): any => data;
 
 const sanitizeSchema = (input: any, prompt?: string): ExtractionSchema => {
   const candidate =
@@ -547,8 +778,7 @@ const normalizeValueBySchema = (value: any, field: ExtractionSchemaField): any =
     case 'boolean': return parseBooleanValue(value);
     case 'date': {
       if (typeof value !== 'string') return null;
-      const parsed = new Date(value.trim());
-      return Number.isNaN(parsed.getTime()) ? value.trim() : parsed.toISOString();
+      return normalizeDateValue(value) || null;
     }
     case 'array': {
       const items = Array.isArray(value)
@@ -580,23 +810,96 @@ const normalizeValueBySchema = (value: any, field: ExtractionSchemaField): any =
       return typeof value === 'string' ? cleanText(value) : String(value);
   }
 };
+  /**
+ * Models often wrap the answer ({"data": {...}}, {"result": {...}},
+ * {"extracted": {...}}). Unwrap single-key envelopes until the schema keys
+ * show up.
+ */
+const unwrapPayload = (payload: any, schema: ExtractionSchema): any => {
+  const schemaKeys = Object.keys(schema).map(toFieldKey);
+  let current = payload;
+  for (let depth = 0; depth < 3; depth++) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) break;
+    const keys = Object.keys(current);
+    if (keys.some((key) => schemaKeys.includes(toFieldKey(key)))) return current;
+    if (keys.length !== 1 || !current[keys[0]] || typeof current[keys[0]] !== 'object') break;
+    current = current[keys[0]];
+  }
+  return payload;
+};
 
-const normalizeResultToSchema = (raw: any, schema: ExtractionSchema): Record<string, any> =>
-  Object.entries(schema).reduce<Record<string, any>>((acc, [key, field]) => {
-    const sourceValue = raw?.[key] ?? raw?.[field.label] ?? raw?.[field.label.toLowerCase()] ?? null;
+const normalizeResultToSchema = (raw: any, schema: ExtractionSchema): Record<string, any> => {
+  // Match keys loosely too: "Invoice Number", "invoiceNumber", "invoice-number".
+  const byLooseKey = new Map<string, any>();
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [key, value] of Object.entries(raw)) {
+      byLooseKey.set(toFieldKey(key.replace(/([a-z])([A-Z])/g, '$1_$2')), value);
+    }
+  }
+  return Object.entries(schema).reduce<Record<string, any>>((acc, [key, field]) => {
+    const sourceValue =
+      raw?.[key] ??
+      raw?.[field.label] ??
+      raw?.[field.label.toLowerCase()] ??
+      byLooseKey.get(key) ??
+      byLooseKey.get(toFieldKey(field.label)) ??
+      null;
     acc[key] = normalizeValueBySchema(sourceValue, field);
     return acc;
   }, {});
+};
 
+/** Comparison key for an extracted item: case, spacing and number formatting don't make a new item. */
+const itemKey = (item: any): string => {
+  const norm = (value: any): any => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const numeric = /\d/.test(value) && /^[\s$€£₹¥(+-]*[\d.,\s]+[)%]?\s*$/.test(value) ? parseNumericValue(value) : null;
+      return numeric !== null ? numeric : value.replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+    if (Array.isArray(value)) return value.map(norm);
+    if (typeof value === 'object') {
+      return Object.keys(value).sort().reduce<Record<string, any>>((acc, key) => {
+        acc[key] = norm(value[key]);
+        return acc;
+      }, {});
+    }
+    return value;
+  };
+  return JSON.stringify(norm(item));
+};
+
+/**
+ * Chunks are merged in document order.
+ *  - Scalars: the first chunk that has the value wins (headers, parties and
+ *    dates sit early). Previously the longest string from any chunk won,
+ *    which let a later chunk's rambling or wrong value replace a correct one.
+ *  - Arrays: items are appended in order. An item already collected from an
+ *    earlier chunk isn't added again, but genuinely repeated items within one
+ *    chunk (two identical line items) are kept.
+ */
 const mergeValues = (current: any, incoming: any, field: ExtractionSchemaField): any => {
   if (!isMeaningful(current)) return incoming;
   if (!isMeaningful(incoming)) return current;
 
   if (field.type === 'array') {
-    const combined = [...(Array.isArray(current) ? current : []), ...(Array.isArray(incoming) ? incoming : [])];
-    return combined.filter((item, index) =>
-      combined.findIndex((c) => JSON.stringify(c) === JSON.stringify(item)) === index
-    );
+     const base = Array.isArray(current) ? current : [];
+    const additions = Array.isArray(incoming) ? incoming : [];
+    const collected = new Map<string, number>();
+    base.forEach((item) => {
+      const key = itemKey(item);
+      collected.set(key, (collected.get(key) ?? 0) + 1);
+    });
+    const seenInChunk = new Map<string, number>();
+    const merged = [...base];
+    for (const item of additions) {
+      const key = itemKey(item);
+      const n = (seenInChunk.get(key) ?? 0) + 1;
+      seenInChunk.set(key, n);
+      if (n > (collected.get(key) ?? 0)) merged.push(item);
+    }
+    return merged;
   }
 
   if (field.type === 'object' && field.fields) {
@@ -606,8 +909,7 @@ const mergeValues = (current: any, incoming: any, field: ExtractionSchemaField):
     }, {});
   }
 
-  if (field.type === 'string') return String(incoming).length > String(current).length ? incoming : current;
-  return current ?? incoming;
+  return current;
 };
 
 const mergeExtractionResults = (
@@ -644,7 +946,29 @@ const fallbackExtract = (text: string, schema: ExtractionSchema): Record<string,
     return acc;
   }, {});
 
-const buildChunks = (pages: ParsedPage[]): Array<{ pageRange: string; text: string }> => {
+const TABLE_ROW = /^\|.*\|\s*$/;
+const TABLE_SEPARATOR = /^\|(\s*:?-{3,}:?\s*\|)+\s*$/;
+
+/**
+ * When a Markdown table is split across segments, repeat its header row at
+ * the top of the next segment. Without it a later chunk of a spreadsheet or
+ * a long PDF table reached the model as bare rows with no column names.
+ */
+const carryTableHeaders = (segments: string[]): string[] => {
+  let header: string[] | null = null;
+  return segments.map((segment) => {
+    const lines = segment.split('\n');
+    const continuesTable = header && TABLE_ROW.test(lines[0] || '') && !TABLE_SEPARATOR.test(lines[1] || '');
+    const out = continuesTable ? [...header!, ...lines] : lines;
+    for (let i = 0; i < lines.length; i++) {
+      if (TABLE_SEPARATOR.test(lines[i]) && i > 0 && TABLE_ROW.test(lines[i - 1])) header = [lines[i - 1], lines[i]];
+      else if (!TABLE_ROW.test(lines[i])) header = lines[i].trim() ? null : header;
+    }
+    return out.join('\n');
+  });
+};
+
+const buildChunks = (pages: ParsedPage[], budget: number = MAX_CHUNK_CHARS): Array<{ pageRange: string; text: string }> => {
   const chunks: Array<{ pageRange: string; text: string }> = [];
   let currentPages: ParsedPage[] = [];
   let currentLength = 0;
@@ -656,7 +980,7 @@ const buildChunks = (pages: ParsedPage[]): Array<{ pageRange: string; text: stri
     const pageLength = pageText.length;
     if (currentPages.length > 0 && currentLength + pageLength > MAX_CHUNK_CHARS) {
       chunks.push({
-        pageRange: `${currentPages[0].pageNumber}-${currentPages[currentPages.length - 1].pageNumber}`,
+        pageRange: `${currentPages[0].pageNumber} to ${currentPages[currentPages.length - 1].pageNumber}`,
         text: currentPages.map((p) => `Page ${p.pageNumber}\n${cleanText(p.text)}`).join('\n\n'),
       });
       currentPages = [];
@@ -676,6 +1000,95 @@ const buildChunks = (pages: ParsedPage[]): Array<{ pageRange: string; text: stri
 
   return chunks.length > 0 ? chunks : [{ pageRange: '1-1', text: '' }];
 };
+
+type DocumentChunk = { pageRange: string; text: string };
+
+/**
+ * Halves a chunk whose extraction was cut off by the model's output limit,
+ * at a blank line near the middle where possible; a table split in two keeps
+ * its header in both halves.
+ */
+const splitChunkInTwo = (chunk: DocumentChunk): [DocumentChunk, DocumentChunk] | null => {
+  if (chunk.text.length < 1500) return null;
+  const lines = chunk.text.split('\n');
+  if (lines.length < 4) return null;
+  const mid = Math.floor(lines.length / 2);
+  let cut = mid;
+  for (let d = 0; d < lines.length / 4; d++) {
+    if (lines[mid + d] !== undefined && !lines[mid + d].trim()) { cut = mid + d; break; }
+    if (lines[mid - d] !== undefined && !lines[mid - d].trim()) { cut = mid - d; break; }
+  }
+  const [first, second] = carryTableHeaders([lines.slice(0, cut).join('\n'), lines.slice(cut).join('\n')]);
+  if (!first.trim() || !second.trim()) return null;
+  return [
+    { pageRange: `${chunk.pageRange} (first half)`, text: first },
+    { pageRange: `${chunk.pageRange} (second half)`, text: second },
+  ];
+};
+
+const mapWithConcurrency = async <T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> => {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+};
+
+/** The JSON shape the model should return, with placeholder types. */
+const schemaSkeleton = (schema: ExtractionSchema): Record<string, any> =>
+  Object.entries(schema).reduce<Record<string, any>>((acc, [key, field]) => {
+    if (field.type === 'array') {
+      const items = field.items;
+      acc[key] = [items?.type === 'object' && items.fields ? schemaSkeleton(items.fields) : `${items?.type || 'string'}`];
+    } else if (field.type === 'object' && field.fields) {
+      acc[key] = schemaSkeleton(field.fields);
+    } else {
+      acc[key] = `${field.type} or null`;
+    }
+    return acc;
+  }, {});
+
+/**
+ * Input chunk size for record extraction, from the document's own tables:
+ * each table row comes back as a JSON object holding the same values plus
+ * every field name and quoting, so narrow rows with long field names produce
+ * output twice the size of the input.
+ */
+const recordChunkBudget = (pages: ParsedPage[], schema: ExtractionSchema): number => {
+  const itemFields = Object.values(schema)
+    .filter((field) => field.type === 'array' && field.items?.type === 'object' && field.items.fields)
+    .map((field) => Object.keys(field.items!.fields!));
+  if (itemFields.length === 0) return MAX_RECORD_CHUNK_CHARS;
+  const overheadPerItem = Math.max(...itemFields.map((keys) => keys.reduce((sum, key) => sum + key.length + 9, 4)));
+
+  let rowChars = 0;
+  let rowCount = 0;
+  for (const page of pages) {
+    for (const block of page.blocks || []) {
+      if (block.type !== 'table') continue;
+      for (const row of block.rows.slice(1)) {
+        rowChars += row.reduce((sum, cell) => sum + String(cell).length + 3, 2);
+        rowCount++;
+      }
+    }
+  }
+  if (rowCount === 0) return MAX_RECORD_CHUNK_CHARS;
+
+  const avgRow = rowChars / rowCount;
+  const rowsPerChunk = TARGET_OUTPUT_CHARS / (avgRow + overheadPerItem);
+  return Math.round(Math.min(MAX_CHUNK_CHARS, Math.max(MIN_CHUNK_CHARS, rowsPerChunk * avgRow)));
+};
+
+const scalarsOnly = (data: Record<string, any>, schema: ExtractionSchema): Record<string, any> =>
+  Object.entries(schema).reduce<Record<string, any>>((acc, [key, field]) => {
+    acc[key] = field.type === 'array' ? [] : data[key];
+    return acc;
+  }, {});
 
 const PADDLE_MODEL_BASE = 'https://media.githubusercontent.com/media/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main';
 const PADDLE_DICT_BASE  = 'https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/ppu-paddle-ocr-models/main';
