@@ -1097,7 +1097,7 @@ const RobotCreate: React.FC = () => {
               <RobotNameField value={scrapeRobotName} onChange={setScrapeRobotName} placeholder="Example: YC Companies Scraper" />
 
               <OptionsSection label="Model settings">
-                <Typography sx={{ fontSize: 13, color: 'text.secondary', pt: 1 }}>
+                <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 2, mb: 2 }}>
                   Used for Smart Queries and summary output.
                 </Typography>
                 <LlmSettings config={scrapePromptLlm} anthropicApiKeyHelperText={SUMMARY_API_KEY_HELPER} />
