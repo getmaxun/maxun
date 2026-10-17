@@ -4,7 +4,7 @@
  * they entered, other pages are never loaded, and the saved robot runs in
  * maxun-core's interpreter.
  */
-import { FixtureSite, launchChromium, lineId, scriptedModel, startFixtureSite } from './helpers';
+import { FixtureSite, launchChromium, lineId, productName, scriptedModel, startFixtureSite } from './helpers';
 import assert from 'assert';
 import { after, before, describe, it } from 'node:test';
 import { Browser, Page } from 'playwright-core';
@@ -253,6 +253,45 @@ describe('AI Extract in a browser', () => {
       await guard.dispose();
     });
     assert.deepStrictEqual(otherPagesRequested(site.requests, ['/shoes']), []);
+  });
+
+  it('uses the next-page control only when a count beyond the first page is requested', async (t) => {
+    if (!browser) return t.skip('Chromium not available');
+    const spec = (limit: number | null) => ({
+      shape: 'list', name: 'Products', limit,
+      fields: [{ name: 'Name', type: 'text' }, { name: 'Price', type: 'price' }, { name: 'ID', type: 'text' }],
+    });
+    const extract = { items: [{ Name: 'Product 01', Price: '$1.00', ID: 'SKU-1001' }, { Name: 'Product 02', Price: '$2.00', ID: 'SKU-1002' }] };
+    const url = `${site.origin}/products`;
+
+    // "Extract 6 products": 4 on the page, so the robot pages on.
+    site.requests.length = 0;
+    const result = await withPage((page) => generateAiExtractWorkflow({ page, url, prompt: 'Extract 6 products with their name, price and id', llm: scriptedModel({ spec: spec(6), extract }), revealOptions: FAST_REVEAL }));
+    assert.strictEqual(result.success, true, result.reason);
+    const list = result.workflow![0].what.find((s: any) => s.action === 'scrapeList');
+    assert.strictEqual(list.args[0].pagination.type, 'clickNext');
+    assert.strictEqual(list.args[0].limit, 6);
+    // Creating the robot still read only the first page.
+    assert.deepStrictEqual(otherPagesRequested(site.requests, ['/products']), []);
+
+    // The robot reads page 1 and 2, stops at 6 items, and opens nothing else.
+    site.requests.length = 0;
+    const run = await runRobot(result.workflow!);
+    assert.deepStrictEqual(run.scrapeList.Products.map((r: any) => r.Name), [1, 2, 3, 4, 5, 6].map(productName));
+    assert.strictEqual(run.scrapeList.Products[5].ID, 'SKU-1006');
+    assert.deepStrictEqual(otherPagesRequested(site.requests, ['/products', '/products?page=2']), []);
+
+    // No count, or a count the page already satisfies: no pagination.
+    for (const limit of [null, 3]) {
+      const r = await withPage((page) => generateAiExtractWorkflow({ page, url, prompt: 'Extract the products with their name, price and id', llm: scriptedModel({ spec: spec(limit), extract }), revealOptions: FAST_REVEAL }));
+      assert.strictEqual(r.success, true, r.reason);
+      assert.strictEqual(r.workflow![0].what.find((s: any) => s.action === 'scrapeList').args[0].pagination.type, 'none', `limit ${limit}`);
+    }
+
+    // A next link to another site is not used.
+    const offsite = await withPage((page) => generateAiExtractWorkflow({ page, url: `${site.origin}/offsite-products`, prompt: 'Extract 6 products with their name, price and id', llm: scriptedModel({ spec: spec(6), extract }), revealOptions: FAST_REVEAL }));
+    assert.strictEqual(offsite.success, true, offsite.reason);
+    assert.strictEqual(offsite.workflow![0].what.find((s: any) => s.action === 'scrapeList').args[0].pagination.type, 'none');
   });
 
   it('follows a same-site redirect but refuses one to another site', async (t) => {

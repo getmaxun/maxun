@@ -29,6 +29,22 @@ const PAGES: Record<string, string> = {
   '/team': 'traps.html',
 };
 
+/** 12 products over 3 pages of 4, each page linking to the next through `nextBase`. */
+export const PRODUCT_PAGES = 3;
+export const productName = (n: number) => `Product ${String(n).padStart(2, '0')}`;
+
+function productsPage(pageNumber: number, nextBase: string): string {
+  const cards = [1, 2, 3, 4].map((i) => {
+    const n = (pageNumber - 1) * 4 + i;
+    return `<div class="product"><h3 class="name"><a href="/item/${n}">${productName(n)}</a></h3><span class="price">$${n}.00</span><span class="sku">SKU-${1000 + n}</span></div>`;
+  }).join('');
+  const next = pageNumber < PRODUCT_PAGES ? `<a class="next" href="${nextBase}?page=${pageNumber + 1}">Next</a>` : '';
+  return `<!doctype html><html><head><title>Products page ${pageNumber}</title></head><body>
+<h1>Products</h1><div class="products">${cards}</div>
+<nav class="pagination">${next}</nav>
+<footer><a href="/about">About us</a></footer></body></html>`;
+}
+
 export async function startFixtureSite(): Promise<FixtureSite> {
   const requests: string[] = [];
   let port = 0;
@@ -45,6 +61,12 @@ export async function startFixtureSite(): Promise<FixtureSite> {
     }
     if (url === '/offsite') {
       res.writeHead(302, { Location: `http://localhost:${port}/shoes` }).end();
+      return;
+    }
+    const paged = url.match(/^\/(products|offsite-products)(?:\?page=(\d+))?$/);
+    if (paged) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(productsPage(Number(paged[2] || 1), paged[1] === 'offsite-products' ? `http://localhost:${port}/products` : `/${paged[1]}`));
       return;
     }
     const file = PAGES[url];

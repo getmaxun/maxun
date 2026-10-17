@@ -180,7 +180,7 @@ describe('page scope', () => {
     assert.strictEqual(isSameSite('https://example.com/a', 'https://example.org/a'), false);
   });
 
-  it('rejects a robot that would open another page or paginate by link', () => {
+  it('rejects a robot that would open another page or paginate without a requested count', () => {
     const url = 'https://example.com/shoes';
     const step = (what: any[]) => [{ where: { url }, what: [{ action: 'goto', args: [url] }, ...what] }];
     const list = (type: string) => ({ action: 'scrapeList', args: [{ fields: {}, listSelector: '//li', pagination: { type, selector: '.next' }, limit: 5 }] });
@@ -190,6 +190,11 @@ describe('page scope', () => {
     for (const type of ['clickNext', 'clickLoadMore', 'scrollUp']) {
       assert.throws(() => assertWorkflowInScope(step([list(type)]), url), /would leave the extraction page/);
     }
+    // Next-page pagination only for an explicit count, capped at that count.
+    assert.doesNotThrow(() => assertWorkflowInScope(step([list('clickNext')]), url, { requestedCount: 5 }));
+    assert.doesNotThrow(() => assertWorkflowInScope(step([list('clickLoadMore')]), url, { requestedCount: 5 }));
+    assert.throws(() => assertWorkflowInScope(step([list('clickNext')]), url, { requestedCount: 50 }), /would leave/);
+    assert.throws(() => assertWorkflowInScope(step([list('scrollUp')]), url, { requestedCount: 5 }), /would leave/);
     assert.throws(() => assertWorkflowInScope(step([{ action: 'goto', args: ['https://example.com/shoes?page=2'] }]), url), /not the extraction page/);
   });
 });

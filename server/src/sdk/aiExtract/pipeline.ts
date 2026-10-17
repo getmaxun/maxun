@@ -14,6 +14,10 @@
  * page's own structure (its lists and groups) is only used to turn the
  * extracted examples into selectors; it never decides what is extracted.
  *
+ * Pagination: when the user asked for a specific number of items and the
+ * page shows fewer, the robot may click the page's own next-page control
+ * (see pagination.ts). Creating the robot still never leaves the page.
+ *
  * The result is an ordinary robot in the recorder's format, plus the spec and
  * sample rows (saved in recording_meta.aiExtract). There is no fallback: when
  * the requested data is not on the page, the caller gets a clear reason
@@ -29,6 +33,7 @@ import { extractGrounded, PageSnapshot } from './extract';
 import { JsonLLM } from './llmClient';
 import { documentKey, PageScopeGuard } from './pageScope';
 import { revealPageContent, RevealReport } from './reveal';
+import { detectNextPage, IN_PAGE_PAGINATION, ListPagination, NEXT_PAGE_PAGINATION } from './pagination';
 
 export interface AiExtractMeta {
   version: 2;
@@ -57,8 +62,6 @@ const DEFAULT_LIMIT = 100;
 /** Overall LLM time for one robot. */
 const DEFAULT_BUDGET_MS = 180_000;
 const MIN_EXAMPLE_COVERAGE = 0.8;
-/** Pagination that stays on the page. Link and button pagination would load other pages. */
-const IN_PAGE_PAGINATION = new Set(['none', 'scrollDown']);
 
 const norm = (s: unknown) => String(s ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
 
@@ -133,10 +136,11 @@ function baseWorkflow(url: string, actions: any[]): any[] {
 }
 
 /**
- * Last check before a robot is returned: it loads only the user's page and
- * any pagination stays on that page. Throws when either is not true.
+ * Last check before a robot is returned: it loads only the user's page, and
+ * its pagination either stays on that page or, for an explicit item count,
+ * is next-page pagination capped at that count. Throws otherwise.
  */
-export function assertWorkflowInScope(workflow: any[], url: string): void {
+export function assertWorkflowInScope(workflow: any[], url: string, options: { requestedCount?: number | null } = {}): void {
   const target = documentKey(url);
   for (const pair of workflow) {
     for (const step of pair.what || []) {
@@ -145,7 +149,10 @@ export function assertWorkflowInScope(workflow: any[], url: string): void {
       }
       if (step.action === 'scrapeList') {
         const type = step.args?.[0]?.pagination?.type || 'none';
-        if (!IN_PAGE_PAGINATION.has(type)) {
+        if (IN_PAGE_PAGINATION.has(type)) continue;
+        // Next-page pagination only for an explicit count, and never past it.
+        const count = options.requestedCount;
+        if (!NEXT_PAGE_PAGINATION.has(type) || !count || step.args?.[0]?.limit !== count) {
           throw new Error(`Generated robot uses "${type}" pagination, which would leave the extraction page`);
         }
       }
@@ -155,6 +162,7 @@ export function assertWorkflowInScope(workflow: any[], url: string): void {
 
 async function buildListRobot(
   page: Page,
+  pageUrl: string,
   spec: ExtractionSpec,
   rows: any[],
   reveal: RevealReport,
@@ -187,11 +195,23 @@ async function buildListRobot(
     logger.info(`[AiExtract] Candidate ${candidate.listSelector}: ${scraped.length} rows, reproduces ${Math.round(coverage * 100)}% of ${compiled.examples.length} examples`);
     if (coverage < MIN_EXAMPLE_COVERAGE || scraped.length < compiled.examples.length) continue;
 
-    // Only scrolling may load more items: it stays on the page. Next-page
-    // links and load-more buttons are never used.
-    const pagination = reveal.grewOnScroll && candidate.itemCount < limit
-      ? { type: 'scrollDown', selector: '' }
-      : { type: 'none', selector: '' };
+    // More items than the page shows: scroll when the page loads more as it
+    // scrolls; otherwise, only for an explicit count, use the page's own
+    // next-page control.
+    let pagination: ListPagination = { type: 'none', selector: '' };
+    if (candidate.itemCount < limit) {
+      if (reveal.grewOnScroll) {
+        pagination = { type: 'scrollDown', selector: '' };
+      } else if (spec.limit) {
+        const next = await detectNextPage(page, candidate.listSelector, pageUrl);
+        if (next) {
+          pagination = next;
+          logger.info(`[AiExtract] ${spec.limit} items requested, ${candidate.itemCount} on the page; the robot will use ${next.type} (${next.selector})`);
+        } else {
+          logger.warn(`[AiExtract] ${spec.limit} items requested but only ${candidate.itemCount} on the page, and no next-page control was found`);
+        }
+      }
+    }
 
     const fields: Record<string, any> = {};
     for (const name of fieldNames) {
@@ -286,7 +306,7 @@ export async function generateAiExtractWorkflow(params: {
 
     const built = spec.shape === 'single'
       ? await buildSingleRobot(page, spec, grounded.rows[0])
-      : await buildListRobot(page, spec, grounded.rows, reveal);
+      : await buildListRobot(page, resolvedUrl, spec, grounded.rows, reveal);
 
     // A click during extraction must not have moved the page either.
     if (!(await guard.ensureInScope())) {
@@ -299,7 +319,7 @@ export async function generateAiExtractWorkflow(params: {
     }
 
     const workflow = baseWorkflow(url, built.actions);
-    assertWorkflowInScope(workflow, url);
+    assertWorkflowInScope(workflow, url, { requestedCount: spec.limit });
 
     if (built.missingFields?.length) {
       logger.warn(`[AiExtract] Not found on the page: ${built.missingFields.join(', ')}`);
