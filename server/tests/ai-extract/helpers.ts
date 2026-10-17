@@ -33,15 +33,37 @@ const PAGES: Record<string, string> = {
 export const PRODUCT_PAGES = 3;
 export const productName = (n: number) => `Product ${String(n).padStart(2, '0')}`;
 
-function productsPage(pageNumber: number, nextBase: string): string {
+/**
+ * Pagination markup styles: "plain" is a bare "Next" link; the others are
+ * common markups the generic detector misses ("Next →", page numbers only,
+ * an arrow-only rel=next link).
+ */
+function pagerHtml(pageNumber: number, nextBase: string, style: string): string {
+  const href = (n: number) => `${nextBase}?page=${n}`;
+  const hasNext = pageNumber < PRODUCT_PAGES;
+  if (style === 'arrow') {
+    return `<ul class="pagination"><li class="page-item"><a class="page-link" href="${href(Math.max(1, pageNumber - 1))}">← Previous</a></li>` +
+      (hasNext ? `<li class="page-item"><a class="page-link" href="${href(pageNumber + 1)}">Next →</a></li>` : '') + '</ul>';
+  }
+  if (style === 'numbers') {
+    const pages = Array.from({ length: PRODUCT_PAGES }, (_, i) => i + 1)
+      .map((n) => (n === pageNumber ? `<span aria-current="page">${n}</span>` : `<a href="${href(n)}">${n}</a>`)).join(' ');
+    return `<nav class="pagination" aria-label="Pagination">${pages}</nav>`;
+  }
+  if (style === 'rel') {
+    return `<div class="pager">${hasNext ? `<a rel="next" href="${href(pageNumber + 1)}">»</a>` : ''}</div>`;
+  }
+  return `<nav class="pagination">${hasNext ? `<a class="next" href="${href(pageNumber + 1)}">Next</a>` : ''}</nav>`;
+}
+
+function productsPage(pageNumber: number, nextBase: string, style = 'plain'): string {
   const cards = [1, 2, 3, 4].map((i) => {
     const n = (pageNumber - 1) * 4 + i;
     return `<div class="product"><h3 class="name"><a href="/item/${n}">${productName(n)}</a></h3><span class="price">$${n}.00</span><span class="sku">SKU-${1000 + n}</span></div>`;
   }).join('');
-  const next = pageNumber < PRODUCT_PAGES ? `<a class="next" href="${nextBase}?page=${pageNumber + 1}">Next</a>` : '';
   return `<!doctype html><html><head><title>Products page ${pageNumber}</title></head><body>
 <h1>Products</h1><div class="products">${cards}</div>
-<nav class="pagination">${next}</nav>
+${pagerHtml(pageNumber, nextBase, style)}
 <footer><a href="/about">About us</a></footer></body></html>`;
 }
 
@@ -63,10 +85,11 @@ export async function startFixtureSite(): Promise<FixtureSite> {
       res.writeHead(302, { Location: `http://localhost:${port}/shoes` }).end();
       return;
     }
-    const paged = url.match(/^\/(products|offsite-products)(?:\?page=(\d+))?$/);
+    const paged = url.match(/^\/(products|offsite-products|products-arrow|products-numbers|products-rel)(?:\?page=(\d+))?$/);
     if (paged) {
+      const style = paged[1].replace(/^(offsite-)?products-?/, '') || 'plain';
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(productsPage(Number(paged[2] || 1), paged[1] === 'offsite-products' ? `http://localhost:${port}/products` : `/${paged[1]}`));
+      res.end(productsPage(Number(paged[2] || 1), paged[1] === 'offsite-products' ? `http://localhost:${port}/products` : `/${paged[1]}`, style));
       return;
     }
     const file = PAGES[url];

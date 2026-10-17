@@ -553,5 +553,110 @@
     return { fields, expected, unmatched };
   }
 
-  window.__mxAiExtract = { snapshot, compileList, compileSchema, matchScore };
+  // ---- next-page control ----
+
+  const NEXT_LABEL = /^(next|next page|next results|older|older posts|older entries|more results|weiter|nächste|siguiente|suivant|suivante|próximo|volgende|avanti)$/i;
+  const LOAD_MORE_LABEL = /^(load more|show more|view more|see more|more results|load more results)$/i;
+  const ARROWS = /[›»→>⟩❯▶▸⇨⟶➔➜➝➞]/g;
+
+  function labelOf(el) {
+    return collapse(el.innerText || el.textContent || '') || collapse(el.getAttribute('aria-label') || '') || collapse(el.getAttribute('title') || '');
+  }
+
+  function isUsableControl(el) {
+    if (!el || !isVisible(el)) return false;
+    if (el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true') return false;
+    if (/\bdisabled\b/i.test(typeof el.className === 'string' ? el.className : '')) return false;
+    const li = el.closest('li');
+    if (li && /\bdisabled\b/i.test(li.className)) return false;
+    return true;
+  }
+
+  const inPager = (el) => !!el.closest('nav, .pagination, .pager, [class*="paginat"], [class*="pager"], [aria-label*="paginat" i], [role="navigation"]');
+
+  // Comma-free selectors only: the runtime splits the selector chain on commas.
+  const commaFree = (sel) => !!sel && !sel.includes(',');
+
+  /** Selectors that should find the same control on the next page as well. */
+  function controlSelectors(el, label) {
+    const tag = el.tagName.toLowerCase();
+    const out = [];
+    const rel = el.getAttribute('rel');
+    if (rel && /\bnext\b/i.test(rel)) out.push(`${tag}[rel~="next"]`);
+    const aria = el.getAttribute('aria-label');
+    if (aria && !/["\\]/.test(aria)) out.push(`${tag}[aria-label="${aria}"]`);
+    if (el.id && /^[A-Za-z][\w-]*$/.test(el.id)) out.push(`#${el.id}`);
+    const text = collapse(el.innerText || el.textContent || '');
+    if (text && text.length <= 40 && !/['"]/.test(text)) out.push(`//${tag}[normalize-space()='${text}']`);
+    const classes = goodClasses(el).filter((c) => !/\b(active|current|disabled)\b/i.test(c));
+    if (classes.length) out.push(`${tag}.${classes.map((c) => CSS.escape(c)).join('.')}`);
+    return out.filter(commaFree);
+  }
+
+  /** The selector chain only if its first match is `el` (as the runtime would click). */
+  function verifiedChain(el, selectors) {
+    const good = selectors.filter((sel) => {
+      const m = sel.startsWith('//') ? xpathAll(sel) : (() => { try { return Array.from(document.querySelectorAll(sel)); } catch (e) { return null; } })();
+      return !!m && m.length > 0 && m[0] === el;
+    });
+    return good.length ? good.join(',') : null;
+  }
+
+  /**
+   * The page's own control for the next page of the list at `listSelector`:
+   * a rel=next link, a "Next" / "Load more" control (arrows ignored), or the
+   * link after the current page number. Returns { type, selector, how } or
+   * { reason } explaining why none was found.
+   */
+  function findNextPageControl(listSelector) {
+    const items = xpathAll(listSelector) || [];
+    const insideItem = (el) => items.some((item) => item.contains(el));
+    const clickables = Array.from(document.querySelectorAll('a[href], button, [role="button"], input[type="button"], input[type="submit"]'))
+      .filter((el) => !insideItem(el) && isUsableControl(el));
+
+    const pick = (candidates, type, how) => {
+      // Controls inside a pagination container first.
+      candidates.sort((a, b) => Number(inPager(b)) - Number(inPager(a)));
+      for (const el of candidates) {
+        const selector = verifiedChain(el, controlSelectors(el, labelOf(el)));
+        if (selector) return { type, selector, how, label: labelOf(el).slice(0, 40) };
+      }
+      return null;
+    };
+
+    const rel = pick(clickables.filter((el) => /\bnext\b/i.test(el.getAttribute('rel') || '')), 'clickNext', 'rel=next link');
+    if (rel) return rel;
+
+    const stripped = (el) => labelOf(el).replace(ARROWS, ' ').replace(/\s+/g, ' ').trim();
+    const arrowOnly = (el) => { const l = labelOf(el); return !!l && l.length <= 3 && l.replace(ARROWS, '').trim() === ''; };
+
+    // A "Load more" link with a real address loads the next page like "Next" does.
+    const navigates = (el) => el.tagName === 'A' && !/^(#|javascript:)/i.test(el.getAttribute('href') || '');
+
+    const next = pick(clickables.filter((el) =>
+      NEXT_LABEL.test(stripped(el)) || (arrowOnly(el) && inPager(el)) || (navigates(el) && LOAD_MORE_LABEL.test(stripped(el)))), 'clickNext', 'next control');
+    if (next) return next;
+
+    const more = pick(clickables.filter((el) => !navigates(el) && LOAD_MORE_LABEL.test(stripped(el))), 'clickLoadMore', 'load-more control');
+    if (more) return more;
+
+    // Numbered pages: the link right after the current page marker.
+    const markers = [
+      ['//*[@aria-current=\'page\']', document.querySelector('[aria-current="page"]')],
+      ...['active', 'current', 'selected'].map((cls) => [`//*[@class='${cls}']`, document.querySelector(`[class="${cls}"]`)]),
+    ];
+    for (const [markerXPath, marker] of markers) {
+      if (!marker || !inPager(marker) || !/^\d+$/.test(labelOf(marker))) continue;
+      const selector = `${markerXPath}/following::a[1]`;
+      const link = (xpathAll(selector) || [])[0];
+      if (link && isUsableControl(link) && /^\d+$/.test(labelOf(link)) && Number(labelOf(link)) === Number(labelOf(marker)) + 1) {
+        return { type: 'clickNext', selector, how: 'link after the current page number', label: labelOf(link) };
+      }
+    }
+
+    const pagerLabels = clickables.filter(inPager).map(labelOf).filter(Boolean).slice(0, 12);
+    return { reason: pagerLabels.length ? `no next control among pagination links: ${pagerLabels.map((l) => JSON.stringify(l)).join(' ')}` : 'no pagination links near the list' };
+  }
+
+  window.__mxAiExtract = { snapshot, compileList, compileSchema, matchScore, findNextPageControl };
 })();

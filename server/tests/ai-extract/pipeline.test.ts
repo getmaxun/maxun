@@ -294,6 +294,28 @@ describe('AI Extract in a browser', () => {
     assert.strictEqual(offsite.workflow![0].what.find((s: any) => s.action === 'scrapeList').args[0].pagination.type, 'none');
   });
 
+  for (const style of ['arrow', 'numbers', 'rel']) {
+    it(`finds the next-page control in "${style}" pagination markup`, async (t) => {
+      if (!browser) return t.skip('Chromium not available');
+      const url = `${site.origin}/products-${style}`;
+      const llm = scriptedModel({
+        spec: { shape: 'list', name: 'Products', limit: 6, fields: [{ name: 'Name', type: 'text' }, { name: 'Price', type: 'price' }] },
+        extract: { items: [{ Name: 'Product 01', Price: '$1.00' }, { Name: 'Product 02', Price: '$2.00' }] },
+      });
+      site.requests.length = 0;
+      const result = await withPage((page) => generateAiExtractWorkflow({ page, url, prompt: 'Extract 6 products with their name and price', llm, revealOptions: FAST_REVEAL }));
+      assert.strictEqual(result.success, true, result.reason);
+      const list = result.workflow![0].what.find((s: any) => s.action === 'scrapeList');
+      assert.strictEqual(list.args[0].pagination.type, 'clickNext', JSON.stringify(list.args[0].pagination));
+      assert.deepStrictEqual(otherPagesRequested(site.requests, [`/products-${style}`]), []);
+
+      site.requests.length = 0;
+      const run = await runRobot(result.workflow!);
+      assert.deepStrictEqual(run.scrapeList.Products.map((r: any) => r.Name), [1, 2, 3, 4, 5, 6].map(productName));
+      assert.deepStrictEqual(otherPagesRequested(site.requests, [`/products-${style}`, `/products-${style}?page=2`]), []);
+    });
+  }
+
   it('follows a same-site redirect but refuses one to another site', async (t) => {
     if (!browser) return t.skip('Chromium not available');
     const answers = {

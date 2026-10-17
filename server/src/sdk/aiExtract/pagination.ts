@@ -39,9 +39,15 @@ async function controlStaysOnSite(page: Page, selector: string, pageUrl: string)
     const home = site(pageUrl);
     let found = 0;
     for (const part of selector.split(',')) {
+      const sel = part.trim();
       let elements: Element[] = [];
       try {
-        elements = Array.from(document.querySelectorAll(part.trim()));
+        if (sel.startsWith('//') || sel.startsWith('(')) {
+          const snap = document.evaluate(sel, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+          for (let i = 0; i < snap.snapshotLength; i++) elements.push(snap.snapshotItem(i) as Element);
+        } else {
+          elements = Array.from(document.querySelectorAll(sel));
+        }
       } catch {
         continue;
       }
@@ -60,20 +66,41 @@ async function controlStaysOnSite(page: Page, selector: string, pageUrl: string)
 
 /**
  * The page's next-page control for the list at `listSelector`, or null.
- * Requires pageAnalyzer.js in the page.
+ * Tries AI Extract's own finder (rel=next, "Next"/"Load more" labels with or
+ * without arrows, the link after the current page number), then the generic
+ * detector. Requires pageAnalyzer.js and aiExtractPage.js in the page.
  */
 export async function detectNextPage(page: Page, listSelector: string, pageUrl: string): Promise<ListPagination | null> {
-  const detected: any = await page.evaluate((selector: string) => {
+  const found: any = await page.evaluate(
+    (selector: string) => (window as any).__mxAiExtract.findNextPageControl(selector),
+    listSelector,
+  ).catch((error) => ({ reason: `finder failed: ${error?.message || error}` }));
+
+  const accept = async (candidate: { type: string; selector: string; how: string }): Promise<ListPagination | null> => {
+    if (await controlStaysOnSite(page, candidate.selector, pageUrl)) {
+      logger.info(`[AiExtract] Next-page control via ${candidate.how}: ${candidate.type} ${candidate.selector}`);
+      return { type: candidate.type as ListPagination['type'], selector: candidate.selector };
+    }
+    logger.info(`[AiExtract] Ignoring pagination control ${candidate.selector} (${candidate.how}): it is missing or leads to another site`);
+    return null;
+  };
+
+  if (found?.selector) {
+    const accepted = await accept({ type: found.type, selector: found.selector, how: `${found.how} "${found.label}"` });
+    if (accepted) return accepted;
+  } else {
+    logger.info(`[AiExtract] Next-page finder: ${found?.reason || 'nothing found'}`);
+  }
+
+  const generic: any = await page.evaluate((selector: string) => {
     const win = window as any;
     return typeof win.autoDetectPagination === 'function' ? win.autoDetectPagination(selector) : null;
   }, listSelector).catch(() => null);
-  // Scrolling back keeps the page as the reveal step left it.
+  // The generic detector scrolls controls into view; scroll back.
   await page.evaluate(() => window.scrollTo(0, 0)).catch(() => undefined);
-
-  if (!detected?.type || !NEXT_PAGE_PAGINATION.has(detected.type) || !detected.selector) return null;
-  if (!(await controlStaysOnSite(page, detected.selector, pageUrl))) {
-    logger.info(`[AiExtract] Ignoring pagination control ${detected.selector}: it is missing or leads to another site`);
-    return null;
+  if (generic?.type && NEXT_PAGE_PAGINATION.has(generic.type) && generic.selector) {
+    return accept({ type: generic.type, selector: generic.selector, how: 'generic detector' });
   }
-  return { type: detected.type, selector: detected.selector };
+  logger.info(`[AiExtract] Generic pagination detector: ${generic?.type ? `found ${generic.type}, not a next-page control` : 'nothing found'}`);
+  return null;
 }
