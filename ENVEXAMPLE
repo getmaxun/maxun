@@ -48,3 +48,8 @@ MAXUN_TELEMETRY=true
 BROWSER_WS_PORT=3001
 BROWSER_HEALTH_PORT=3002
 BROWSER_WS_HOST=browser
+# Ollama for AI Extract (optional). Defaults to a local server at http://localhost:11434.
+# For Ollama Cloud: OLLAMA_BASE_URL=https://ollama.com, an API key, and a cloud model such as gpt-oss:20b.
+# OLLAMA_BASE_URL=http://localhost:11434
+# OLLAMA_API_KEY=
+# OLLAMA_MODEL=

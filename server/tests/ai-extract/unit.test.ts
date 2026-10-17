@@ -5,6 +5,8 @@
  */
 import './helpers';
 import assert from 'assert';
+import http from 'http';
+import { AddressInfo } from 'net';
 import { describe, it } from 'node:test';
 import { checkAiExtractInput } from '../../src/sdk/aiExtract/target';
 import { normalizeSpec } from '../../src/sdk/aiExtract/spec';
@@ -117,6 +119,50 @@ describe('model replies', () => {
     assert.deepStrictEqual(parseJsonLoose('<think>hmm {not json}</think>\nSure! ```json\n{"a": {"b": 1}}\n```'), { a: { b: 1 } });
     assert.deepStrictEqual(parseJsonLoose('Answer: {"x": "}"} trailing'), { x: '}' });
     assert.throws(() => parseJsonLoose('no json here'));
+  });
+
+  it('authenticates to a hosted Ollama server and explains its errors', async () => {
+    const seen: Array<{ auth?: string; model: string }> = [];
+    const server = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (c) => { body += c; });
+      req.on('end', () => {
+        const { model } = JSON.parse(body);
+        seen.push({ auth: req.headers.authorization, model });
+        if (model !== 'gpt-oss:20b') {
+          res.writeHead(404, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: `model '${model}' not found` }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ message: { content: '{"ok": true}' } }));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+    const saved = { key: process.env.OLLAMA_API_KEY, model: process.env.OLLAMA_MODEL };
+    try {
+      process.env.OLLAMA_API_KEY = 'cloud-key';
+      delete process.env.OLLAMA_MODEL;
+      const call = { label: 'spec', system: 's', user: 'u' };
+
+      // No model configured: the local default is not on the server, and the error says so.
+      await assert.rejects(createJsonLLM({ provider: 'ollama', baseUrl })(call), (error: any) => {
+        assert.match(error.message, /ollama request failed with status 404 \(http:\/\/127\.0\.0\.1:\d+\/api\/chat\): model 'llama3\.2' not found\./);
+        assert.match(error.message, /OLLAMA_MODEL/);
+        return true;
+      });
+
+      process.env.OLLAMA_MODEL = 'gpt-oss:20b';
+      const result = await createJsonLLM({ provider: 'ollama', baseUrl })(call);
+      assert.deepStrictEqual(result.json, { ok: true });
+      assert.deepStrictEqual(seen.map((r) => r.auth), ['Bearer cloud-key', 'Bearer cloud-key']);
+      assert.strictEqual(seen[1].model, 'gpt-oss:20b');
+    } finally {
+      server.close();
+      for (const [name, value] of [['OLLAMA_API_KEY', saved.key], ['OLLAMA_MODEL', saved.model]] as const) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
   });
 
   it('does not call the provider once the time budget is spent', async () => {

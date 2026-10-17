@@ -144,8 +144,10 @@ async function callProvider(config: AiExtractLlmConfig, opts: JsonCallOptions, s
   }
 
   if (provider === 'ollama') {
-    const baseUrl = guardLlmBaseUrl(config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
-    const model = resolveLlmModel(config.model, 'ollama', { textOnly: true });
+    const baseUrl = guardLlmBaseUrl((config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, ''));
+    const model = resolveLlmModel(config.model || process.env.OLLAMA_MODEL, 'ollama', { textOnly: true });
+    // Ollama Cloud (https://ollama.com) and authenticated proxies need a key; a local server ignores it.
+    const apiKey = config.apiKey || process.env.OLLAMA_API_KEY;
     const response = await axios.post(`${baseUrl}/api/chat`, {
       model,
       messages: [
@@ -155,12 +157,44 @@ async function callProvider(config: AiExtractLlmConfig, opts: JsonCallOptions, s
       stream: false,
       format: 'json',
       options: { temperature: 0, num_predict: maxTokens },
-    }, { signal: signal as any, ...LLM_AGENTS });
+    }, {
+      headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
+      signal: signal as any,
+      ...LLM_AGENTS,
+    });
     const message = response.data?.message || {};
     return { text: message.content || message.thinking || '', provider: `ollama:${model}` };
   }
 
   throw new Error(`Unsupported LLM provider: ${provider}`);
+}
+
+/**
+ * Turns a failed provider call into a message that says what to fix: the
+ * provider's own error ("model 'x' not found", "unauthorized") and where the
+ * request went, instead of axios's bare "Request failed with status code 404".
+ */
+export function describeLlmError(error: any, config: AiExtractLlmConfig): Error {
+  const status = error?.response?.status ?? error?.status;
+  if (!status) return error instanceof Error ? error : new Error(String(error));
+
+  const body = error?.response?.data ?? error?.error;
+  const detail = typeof body === 'string'
+    ? body
+    : body?.error?.message || body?.error || body?.message || '';
+  const provider = config.provider || 'ollama';
+  const target = error?.config?.url ? ` (${error.config.url})` : '';
+  let hint = '';
+  if (status === 401 || status === 403) {
+    hint = provider === 'ollama'
+      ? ' Check OLLAMA_API_KEY; Ollama Cloud requires it.'
+      : ' Check the API key.';
+  } else if (status === 404) {
+    hint = provider === 'ollama'
+      ? ' Check that the base URL is an Ollama server (Ollama Cloud is https://ollama.com) and that the model exists there; set it in Model settings or OLLAMA_MODEL (e.g. gpt-oss:20b on Ollama Cloud).'
+      : ' Check the base URL and the model name.';
+  }
+  return new Error(`${provider} request failed with status ${status}${target}${detail ? `: ${String(detail).slice(0, 300)}` : ''}.${hint}`);
 }
 
 /** A JsonLLM backed by the robot's configured provider. */
@@ -169,7 +203,8 @@ export function createJsonLLM(config: AiExtractLlmConfig = {}): JsonLLM {
     if (opts.deadline && Date.now() >= opts.deadline) {
       throw new Error(`[AiExtract] ${opts.label}: time budget exhausted before the call`);
     }
-    const { text, provider } = await withTimeout(callTimeout(opts), (signal) => callProvider(config, opts, signal));
+    const { text, provider } = await withTimeout(callTimeout(opts), (signal) => callProvider(config, opts, signal))
+      .catch((error) => { throw describeLlmError(error, config); });
     const json = parseJsonLoose(text);
     logger.info(`[AiExtract] ${opts.label}: answered by ${provider}`);
     return { json, provider };
