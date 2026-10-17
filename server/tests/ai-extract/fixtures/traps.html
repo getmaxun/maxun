@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><title>Team directory</title>
+<style>#promo { position: fixed; bottom: 0; left: 0; right: 0; background: #eee; }</style></head><body>
+<div id="promo" class="newsletter-popup"><a href="/signup">Close</a><p>Sign up for our newsletter</p></div>
+<h1>Our team</h1>
+<ul class="team">
+  <li class="member"><span class="person">Ada Lovelace</span> <span class="role">Engineering lead</span></li>
+  <li class="member"><span class="person">Grace Hopper</span> <span class="role">Compiler engineer</span></li>
+  <li class="member"><span class="person">Alan Turing</span> <span class="role">Research scientist</span></li>
+</ul>
+<button id="more-js" aria-expanded="false" onclick="location.href='/team/page-2'">Show more members</button>
+<button id="more-popup" aria-expanded="false" onclick="window.open('/team/popup')">Open full list</button>
+<button id="more-spa" aria-expanded="false" onclick="history.pushState({}, '', '/team/alumni'); this.setAttribute('aria-expanded','true')">Show alumni</button>
+<a href="/team/page-2" class="next">Next</a>
+</body></html>

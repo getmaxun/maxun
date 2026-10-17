@@ -2,6 +2,7 @@ import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../storage/db';
 import { WhereWhatPair } from 'maxun-core';
 import { OutputFormats } from '../constants/output-formats';
+import type { AiExtractMeta } from '../sdk/aiExtract/pipeline';
 
 interface RobotMeta {
   name: string;
@@ -22,6 +23,8 @@ interface RobotMeta {
   promptLlmApiKey?: string;
   promptLlmBaseUrl?: string;
   status?: 'creating' | 'ready' | 'failed';
+  /** AI Extract robots: the extraction spec, sample rows and fields not found on the page. */
+  aiExtract?: AiExtractMeta;
 }
 
 interface RobotWorkflow {

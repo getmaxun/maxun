@@ -576,18 +576,20 @@ const RobotCreate: React.FC = () => {
       return;
     }
 
-    let targetUrl = '';
-    if (agentUrl.trim()) {
-      targetUrl = normalizeUrl(agentUrl);
-      setAgentUrl(targetUrl);
-      if (!isValidUrl(targetUrl)) {
-        setAgentUrlError(INVALID_URL_MESSAGE);
-        return;
-      }
+    // AI Extract reads only this page, so it is required.
+    if (!agentUrl.trim()) {
+      setAgentUrlError('Enter the website to extract from (e.g. https://example.com)');
+      return;
+    }
+    const targetUrl = normalizeUrl(agentUrl);
+    setAgentUrl(targetUrl);
+    if (!isValidUrl(targetUrl)) {
+      setAgentUrlError(INVALID_URL_MESSAGE);
+      return;
     }
 
     const startedAt = Date.now();
-    const baseState = { startedAt, robotName, prompt, url: targetUrl || undefined };
+    const baseState = { startedAt, robotName, prompt, url: targetUrl };
     setAgentCreation({ ...baseState, phase: 'building' });
 
     // Keep the robot visible in the list while it builds, in case the user goes there.
@@ -602,7 +604,7 @@ const RobotCreate: React.FC = () => {
         pairs: 0,
         params: [],
         type: 'extract',
-        url: targetUrl || '(auto-detecting...)',
+        url: targetUrl,
       },
       recording: { workflow: [] },
       isLoading: true,
@@ -622,7 +624,7 @@ const RobotCreate: React.FC = () => {
 
     try {
       const result = await createLLMRobot(
-        targetUrl || undefined,
+        targetUrl,
         prompt,
         agentLlm.provider,
         agentLlm.model.trim() || undefined,
@@ -635,7 +637,7 @@ const RobotCreate: React.FC = () => {
       invalidateRecordings();
 
       if (!result || !result.robot) {
-        fail('The agent could not create this robot. Please check your LLM configuration, or try describing the data differently or adding the website.');
+        fail('Could not create this robot. Please check your LLM configuration, or try describing the data as it appears on the page.');
         return;
       }
 
