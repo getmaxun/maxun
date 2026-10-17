@@ -13,7 +13,7 @@ import { readFileSync } from "fs";
 import { InterpreterSettings } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
-import { getDecryptedProxyConfig } from '../../routes/proxy';
+import { getDecryptedProxyConfig, expandSessionPlaceholder, newProxySessionId } from '../../routes/proxy';
 import { getInjectableScript } from 'idcac-playwright';
 import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
@@ -46,6 +46,13 @@ interface PageNavigationState {
  * @category BrowserManagement
  */
 export class RemoteBrowser {
+
+    /**
+     * Per-run sticky proxy session id, generated lazily on first proxy use.
+     * Stashed on the instance so every browser context of this run reuses one
+     * exit IP (and retries/resume do not rotate mid-run).
+     */
+    private proxySessionId?: string;
 
     /**
      * Playwright's [browser](https://playwright.dev/docs/api/class-browser) instance.
@@ -586,7 +593,7 @@ export class RemoteBrowser {
                 proxyOptions = {
                   server: proxyConfig.proxy_url,
                   ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: proxyConfig.proxy_username,
+                    username: expandSessionPlaceholder(proxyConfig.proxy_username, (this.proxySessionId ??= newProxySessionId())),
                     password: proxyConfig.proxy_password,
                   }),
                 };

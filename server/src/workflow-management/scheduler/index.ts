@@ -5,7 +5,7 @@ import { browserPool, io as serverIo } from "../../server";
 import { addGoogleSheetUpdateTask, processGoogleSheetUpdates } from "../integrations/gsheet";
 import Robot from "../../models/Robot";
 import Run from "../../models/Run";
-import { getDecryptedProxyConfig } from "../../routes/proxy";
+import { getDecryptedProxyConfig, expandSessionPlaceholder } from "../../routes/proxy";
 import { BinaryOutputService } from "../../storage/mino";
 import { capture } from "../../utils/analytics";
 import { WorkflowFile } from "maxun-core";
@@ -63,7 +63,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string) {
       proxyOptions = {
         server: proxyConfig.proxy_url,
         ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-          username: proxyConfig.proxy_username,
+          username: expandSessionPlaceholder(proxyConfig.proxy_username),
           password: proxyConfig.proxy_password,
         }),
       };
