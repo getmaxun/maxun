@@ -108,16 +108,20 @@ export async function startFixtureSite(): Promise<FixtureSite> {
   };
 }
 
-/** Chromium from CHROMIUM_PATH, the sandbox's pre-installed browser, or Playwright's own download. */
+/**
+ * Chromium from CHROMIUM_PATH, the sandbox's pre-installed browser, or an
+ * installed Playwright browser. A launch failure fails the browser tests, so
+ * the suite can't pass without checking the generated workflows. Set
+ * AI_EXTRACT_SKIP_BROWSER=1 to skip them explicitly where no browser is available.
+ */
 export async function launchChromium(): Promise<Browser | null> {
-  const candidates = [process.env.CHROMIUM_PATH, '/opt/pw-browsers/chromium'].filter(Boolean) as string[];
-  const executablePath = candidates.find((p) => fs.existsSync(p));
-  try {
-    return await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
-  } catch (error: any) {
-    console.warn(`Skipping browser tests: could not launch Chromium (${error?.message?.split('\n')[0]})`);
+  if (process.env.AI_EXTRACT_SKIP_BROWSER === '1') {
+    console.warn('Skipping browser tests: AI_EXTRACT_SKIP_BROWSER=1');
     return null;
   }
+  const candidates = [process.env.CHROMIUM_PATH, '/opt/pw-browsers/chromium'].filter(Boolean) as string[];
+  const executablePath = candidates.find((p) => fs.existsSync(p));
+  return chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 }
 
 export interface ScriptedAnswers {

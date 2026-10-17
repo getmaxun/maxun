@@ -138,27 +138,35 @@ describe('model replies', () => {
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
-    const saved = { key: process.env.OLLAMA_API_KEY, model: process.env.OLLAMA_MODEL };
+    const saved = { key: process.env.OLLAMA_API_KEY, model: process.env.OLLAMA_MODEL, base: process.env.OLLAMA_BASE_URL };
     try {
+      // The operator's endpoint and key, as set in the environment.
+      process.env.OLLAMA_BASE_URL = baseUrl;
       process.env.OLLAMA_API_KEY = 'cloud-key';
       delete process.env.OLLAMA_MODEL;
       const call = { label: 'spec', system: 's', user: 'u' };
 
       // No model configured: the local default is not on the server, and the error says so.
-      await assert.rejects(createJsonLLM({ provider: 'ollama', baseUrl })(call), (error: any) => {
+      await assert.rejects(createJsonLLM({ provider: 'ollama' })(call), (error: any) => {
         assert.match(error.message, /ollama request failed with status 404 \(http:\/\/127\.0\.0\.1:\d+\/api\/chat\): model 'llama3\.2' not found\./);
         assert.match(error.message, /OLLAMA_MODEL/);
         return true;
       });
 
       process.env.OLLAMA_MODEL = 'gpt-oss:20b';
-      const result = await createJsonLLM({ provider: 'ollama', baseUrl })(call);
+      const result = await createJsonLLM({ provider: 'ollama' })(call);
       assert.deepStrictEqual(result.json, { ok: true });
-      assert.deepStrictEqual(seen.map((r) => r.auth), ['Bearer cloud-key', 'Bearer cloud-key']);
       assert.strictEqual(seen[1].model, 'gpt-oss:20b');
+
+      // A base URL chosen per request that is not the operator's never receives the operator's key...
+      const otherBaseUrl = baseUrl.replace('127.0.0.1', 'localhost');
+      await createJsonLLM({ provider: 'ollama', baseUrl: otherBaseUrl })(call);
+      // ...but a key given with the request is sent.
+      await createJsonLLM({ provider: 'ollama', baseUrl: otherBaseUrl, apiKey: 'own-key' })(call);
+      assert.deepStrictEqual(seen.map((r) => r.auth), ['Bearer cloud-key', 'Bearer cloud-key', undefined, 'Bearer own-key']);
     } finally {
       server.close();
-      for (const [name, value] of [['OLLAMA_API_KEY', saved.key], ['OLLAMA_MODEL', saved.model]] as const) {
+      for (const [name, value] of [['OLLAMA_API_KEY', saved.key], ['OLLAMA_MODEL', saved.model], ['OLLAMA_BASE_URL', saved.base]] as const) {
         if (value === undefined) delete process.env[name];
         else process.env[name] = value;
       }

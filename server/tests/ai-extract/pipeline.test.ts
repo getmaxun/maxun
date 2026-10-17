@@ -69,7 +69,7 @@ const otherPagesRequested = (requests: string[], allowed: string[]) => requests.
 
 describe('AI Extract in a browser', () => {
   it('builds a robot for the requested fields from the specified page only', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     site.requests.length = 0;
     const url = `${site.origin}/shoes`;
     const llm = scriptedModel({
@@ -117,7 +117,7 @@ describe('AI Extract in a browser', () => {
   });
 
   it('extracts what the prompt asks for, not the most prominent list', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     const url = `${site.origin}/shoes`;
     const llm = scriptedModel({
       spec: { shape: 'list', name: 'Store News', fields: [{ name: 'Headline', type: 'text' }], limit: null },
@@ -136,7 +136,7 @@ describe('AI Extract in a browser', () => {
   });
 
   it('extracts a single value as a schema field', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     const llm = scriptedModel({
       spec: { shape: 'single', name: 'Contact', fields: [{ name: 'Email', type: 'email' }], limit: null },
       extract: { values: { Email: 'help@example.com' } },
@@ -150,7 +150,7 @@ describe('AI Extract in a browser', () => {
   });
 
   it('reports requested fields the page does not have and still returns the rest', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     site.requests.length = 0;
     const llm = scriptedModel({
       spec: { shape: 'list', name: 'Shoes', fields: [{ name: 'Name', type: 'text' }, { name: 'Price', type: 'price' }, { name: 'Color', type: 'text' }], limit: null },
@@ -163,7 +163,7 @@ describe('AI Extract in a browser', () => {
   });
 
   it('fails with a clear reason when the data is not on the page, without browsing elsewhere', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     site.requests.length = 0;
     const url = `${site.origin}/shoes`;
     const llm = scriptedModel({
@@ -179,7 +179,7 @@ describe('AI Extract in a browser', () => {
   });
 
   it('scrolls, closes overlays and expands sections on the same page', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     site.requests.length = 0;
     const url = `${site.origin}/catalog`;
 
@@ -217,7 +217,7 @@ describe('AI Extract in a browser', () => {
   });
 
   it('blocks clicks, scripts and popups that would navigate to another URL', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     site.requests.length = 0;
     const url = `${site.origin}/team`;
     const llm = scriptedModel({
@@ -239,7 +239,7 @@ describe('AI Extract in a browser', () => {
   });
 
   it('aborts a pagination link click on the extraction page', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     site.requests.length = 0;
     const url = `${site.origin}/shoes`;
     await withPage(async (page) => {
@@ -256,7 +256,7 @@ describe('AI Extract in a browser', () => {
   });
 
   it('uses the next-page control only when a count beyond the first page is requested', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     const spec = (limit: number | null) => ({
       shape: 'list', name: 'Products', limit,
       fields: [{ name: 'Name', type: 'text' }, { name: 'Price', type: 'price' }, { name: 'ID', type: 'text' }],
@@ -296,7 +296,7 @@ describe('AI Extract in a browser', () => {
 
   for (const style of ['arrow', 'numbers', 'rel']) {
     it(`finds the next-page control in "${style}" pagination markup`, async (t) => {
-      if (!browser) return t.skip('Chromium not available');
+      if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
       const url = `${site.origin}/products-${style}`;
       const llm = scriptedModel({
         spec: { shape: 'list', name: 'Products', limit: 6, fields: [{ name: 'Name', type: 'text' }, { name: 'Price', type: 'price' }] },
@@ -317,7 +317,7 @@ describe('AI Extract in a browser', () => {
   }
 
   it('follows a same-site redirect but refuses one to another site', async (t) => {
-    if (!browser) return t.skip('Chromium not available');
+    if (!browser) return t.skip('Browser tests skipped (AI_EXTRACT_SKIP_BROWSER=1)');
     const answers = {
       spec: SHOES_SPEC,
       extract: { items: [{ Name: 'Air Court Pro', Price: '$129.99', Rating: '4.6 out of 5' }, { Name: 'Hoop Elite 3', Price: '$149.00', Rating: '4.8 out of 5' }] },

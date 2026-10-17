@@ -857,8 +857,10 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
       await stubRobot.reload();
 
       logger.log('info', `LLM robot ready with id: ${stubRobot.id}`);
+      // aiExtract holds rows scraped from the page; keep them out of telemetry.
+      const { aiExtract: _aiExtract, ...telemetryMeta } = stubRobot.recording_meta as any;
       capture('maxun-oss-llm-robot-created', {
-        robot_meta: stubRobot.recording_meta,
+        robot_meta: telemetryMeta,
         recording: stubRobot.recording,
         llm_provider: llmProvider || 'ollama',
         prompt: trimmedPrompt,

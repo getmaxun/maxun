@@ -171,12 +171,12 @@
     }
   };
 
-  // Paths are relative to the list item being analyzed, so this cache is
-  // only valid within one getChildSelectors call; it is reset per call.
+  // Paths and common classes are relative to the list being analyzed, so
+  // these caches are only valid within one call; they are reset per call.
   let pathCache = new WeakMap();
   const descendantsCache = new WeakMap();
   const meaningfulCache = new WeakMap();
-  const classCache = new Map();
+  let classCache = new Map();
 
   /**
    * Main entry point - returns detected fields for a list selector.
@@ -189,6 +189,7 @@
     try {
       const enhanced = !!(options && options.enhanced);
       pathCache = new WeakMap();
+      classCache = new Map();
 
       const parentElements = evaluateXPath(parentSelector, document);
 
@@ -537,6 +538,7 @@
   // needs the same per-item field paths the list detector produces.
   window.__mxBuildFieldXPath = function (targetElement, listSelector, listElement, otherListElements) {
     pathCache = new WeakMap();
+    classCache = new Map();
     return buildOptimizedAbsoluteXPath(targetElement, listSelector, listElement, otherListElements || []);
   };
 

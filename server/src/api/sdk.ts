@@ -1469,8 +1469,9 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
 
         const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(targetUrl, input.prompt, user.id, llmConfig);
 
+        // 400 as before, so existing SDK clients keep handling generation failures the same way.
         if (!workflowResult.success || !workflowResult.workflow) {
-            return res.status(422).json({
+            return res.status(400).json({
                 error: workflowResult.errors?.[0] || "Failed to generate workflow from prompt",
                 details: workflowResult.errors
             });
@@ -1533,8 +1534,10 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
 
         logger.info(`[SDK] Persistent robot created: ${metaId} for LLM extraction`);
 
+        // aiExtract holds rows scraped from the page; keep them out of telemetry.
+        const { aiExtract: _aiExtract, ...telemetryMeta } = robot.recording_meta as any;
         capture("maxun-oss-llm-robot-created", {
-            robot_meta: robot.recording_meta,
+            robot_meta: telemetryMeta,
             recording: robot.recording,
             prompt: prompt
         });

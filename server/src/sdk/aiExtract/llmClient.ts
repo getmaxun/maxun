@@ -147,7 +147,11 @@ async function callProvider(config: AiExtractLlmConfig, opts: JsonCallOptions, s
     const baseUrl = guardLlmBaseUrl((config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, ''));
     const model = resolveLlmModel(config.model || process.env.OLLAMA_MODEL, 'ollama', { textOnly: true });
     // Ollama Cloud (https://ollama.com) and authenticated proxies need a key; a local server ignores it.
-    const apiKey = config.apiKey || process.env.OLLAMA_API_KEY;
+    // The operator's OLLAMA_API_KEY is only sent to the operator's endpoint, never to a
+    // base URL chosen per request.
+    const operatorBaseUrl = (process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, '');
+    const usesOperatorEndpoint = !config.baseUrl || config.baseUrl.replace(/\/+$/, '') === operatorBaseUrl;
+    const apiKey = config.apiKey || (usesOperatorEndpoint ? process.env.OLLAMA_API_KEY : undefined);
     const response = await axios.post(`${baseUrl}/api/chat`, {
       model,
       messages: [
