@@ -1,8 +1,8 @@
 /**
  * Anthropic Tool Call Helper
- * Calls Anthropic with tool_choice forced to a single named tool and returns
- * the tool's structured input directly, instead of parsing JSON out of a
- * free-form text completion.
+ * Calls Anthropic with tool_choice forced to a single named tool (or left to
+ * the model, for models that reject forcing) and returns the tool's structured
+ * input directly, instead of parsing JSON out of a free-form text completion.
  *
  * None of the tools this helper is used with set `strict: true`, so
  * `tool_use.input` is never validated server-side against the schema.
@@ -19,6 +19,29 @@ import type {
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/messages';
 import { z } from 'zod';
+
+// Prefixes of models that answer `temperature` (and other sampling settings) with a 400.
+const MODELS_REJECTING_SAMPLING = [
+  'claude-fable-5',
+  'claude-mythos-5',
+  'claude-opus-4-7',
+  'claude-opus-4-8',
+  'claude-opus-5',
+  'claude-sonnet-5',
+  'claude-haiku-5-5',
+];
+
+// Prefixes of models that answer a forced `tool_choice` (`tool` or `any`) with a 400.
+const MODELS_REJECTING_FORCED_TOOL_CHOICE = [
+  'claude-fable-5-1',
+  'claude-mythos-5-1',
+  'claude-opus-5-5',
+  'claude-sonnet-5-5',
+];
+
+function matchesAny(model: string, prefixes: string[]): boolean {
+  return prefixes.some((prefix) => model.startsWith(prefix));
+}
 
 export class AnthropicToolCallError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -68,11 +91,11 @@ export async function callAnthropicWithTool<T>(
 ): Promise<T> {
   const anthropic = new Anthropic({ apiKey: opts.apiKey || process.env.ANTHROPIC_API_KEY });
 
-  const toolChoice: ToolChoice = {
-    type: 'tool',
-    name: opts.tool.name,
-    disable_parallel_tool_use: true,
-  };
+  // Models that reject forcing pick the tool themselves; a reply without it
+  // still raises AnthropicToolCallError below.
+  const toolChoice: ToolChoice = matchesAny(opts.model, MODELS_REJECTING_FORCED_TOOL_CHOICE)
+    ? { type: 'auto', disable_parallel_tool_use: true }
+    : { type: 'tool', name: opts.tool.name, disable_parallel_tool_use: true };
 
   const messages: MessageParam[] = [
     { role: 'user', content: opts.userMessage },
@@ -81,7 +104,7 @@ export async function callAnthropicWithTool<T>(
   const response = await anthropic.messages.create({
     model: opts.model,
     max_tokens: opts.maxTokens,
-    temperature: opts.temperature,
+    ...(matchesAny(opts.model, MODELS_REJECTING_SAMPLING) ? {} : { temperature: opts.temperature }),
     system: opts.system,
     messages,
     tools: [opts.tool],
