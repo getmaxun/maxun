@@ -320,7 +320,14 @@ export async function generateAiExtractWorkflow(params: {
       },
     };
   } catch (error: any) {
-    logger.warn(`[AiExtract] Extraction failed: ${error?.message || error}`);
+    logger.error('[AiExtract] Extraction failed', {
+      message: error.message,
+      status: error.response?.status,
+      url: error.config?.url,
+      method: error.config?.method,
+      baseURL: error.config?.baseURL,
+      response: error.response?.data,
+    });
     return { success: false, reason: error?.message || String(error), blockedNavigations: guard.blocked };
   } finally {
     await removeSnapshotIds(page);
