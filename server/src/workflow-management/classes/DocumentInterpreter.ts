@@ -11,6 +11,7 @@ import { parseMarkdown } from '../../markdownify/markdown';
 import { DOCX_MIME_TYPE, PDF_MIME_TYPE, XLSX_MIME_TYPE, CSV_MIME_TYPE, 
   PNG_MIME_TYPE, isImageMimeType } from '../../utils/document/documentFile';
 import { assertLlmBaseUrlAllowed, resolveOpenAiApiKey } from '../../utils/llm-endpoint';
+import { resolveLlmModel } from '../../utils/llm-models';
 
 import * as XLSX from 'xlsx';
 
@@ -1475,7 +1476,7 @@ class DocumentLLMClient {
     const apiKey = config.apiKey || process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error('Anthropic API key not configured');
 
-    const model = config.model || 'claude-3-5-haiku-20241022';
+    const model = resolveLlmModel(config.model, 'anthropic', { textOnly: true });
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({

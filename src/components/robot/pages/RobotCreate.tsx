@@ -181,8 +181,8 @@ const getModelHelperText = (
 const DOCUMENT_MODEL_FIELD_TEXT: ModelFieldTextOptions = {
   ollamaPlaceholder: 'e.g. llama3.2:latest',
   ollamaHelperText: 'Leave blank to use default: llama3.2:latest',
-  anthropicPlaceholder: 'e.g. claude-3-5-haiku-20241022',
-  anthropicHelperText: 'Leave blank to use default: claude-3-5-haiku-20241022',
+  anthropicPlaceholder: 'e.g. claude-sonnet-5',
+  anthropicHelperText: 'Leave blank to use default: claude-sonnet-5',
 };
 
 
