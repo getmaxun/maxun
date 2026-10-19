@@ -40,7 +40,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 <tr>
 <td width="20%" align="center" valign="middle">
 <a href="https://proxy-seller.com/?partner=224ED2B5F5D24719">
-  <img src="https://github.com/user-attachments/assets/ac862778-464d-49ae-af7e-69712d9b74a4" alt="Proxy-Seller" width="300" height="130">
+  <img src="https://github.com/user-attachments/assets/ac862778-464d-49ae-af7e-69712d9b74a4" alt="Proxy-Seller" width="300" height="150">
 </a>
 </td>
 <td width="80%" valign="middle">
