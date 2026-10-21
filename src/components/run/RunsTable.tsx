@@ -645,7 +645,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                       isCrawlRobot(robotMetaId) ||
                       isExtractRobot(robotMetaId)) && (
                         <IconButton
-                          color="error"
                           size="small"
                           onClick={(event) => {
                             event.stopPropagation();
