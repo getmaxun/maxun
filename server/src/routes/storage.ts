@@ -1084,21 +1084,27 @@ router.delete('/runs/robot/:robotMetaId', requireSignIn, async (req: Authenticat
 
   try {
     const robot = await Robot.findOne({
-      where: { 'recording_meta.id': req.params.robotMetaId, userId: req.user.id },
+      where: {
+        'recording_meta.id': req.params.robotMetaId,
+        userId: req.user.id,
+      },
     });
+
     if (!robot) {
       return res.status(404).json({ error: 'Robot not found.' });
     }
-    const robotType = robot.recording_meta?.type;
-    if (robotType !== 'scrape' && robotType !== 'doc-extract' && robotType !== 'doc-parse' && robotType !== 'search' && robotType !== 'crawl' && robotType !== 'extract') {
-      return res.status(400).json({ error: 'Runs can only be bulk-deleted for scrape, document, search, crawl, and extract robots.' });
-    }
 
-    await Run.destroy({ where: { robotMetaId: req.params.robotMetaId } });
+    await Run.destroy({
+      where: { robotMetaId: req.params.robotMetaId },
+    });
+
     return res.send(true);
   } catch (e) {
     const { message } = e as Error;
-    logger.log('error', `Error while deleting runs for robot ${req.params.robotMetaId}: ${message}`);
+    logger.log(
+      'error',
+      `Error while deleting runs for robot ${req.params.robotMetaId}: ${message}`,
+    );
     return res.status(500).send(false);
   }
 });
