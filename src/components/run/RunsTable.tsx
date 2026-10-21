@@ -425,28 +425,7 @@ export const RunsTable: React.FC<RunsTableProps> = ({
       setIsDeletingAllRuns(false);
     }
   };
-
-  const isScrapeRobot = (robotMetaId: string) => recordings.some(
-    (recording: any) => recording?.recording_meta?.id === robotMetaId && recording.recording_meta.type === 'scrape'
-  );
-
-  const isDocumentRobot = (robotMetaId: string) => recordings.some(
-    (recording: any) => recording?.recording_meta?.id === robotMetaId &&
-      ['doc-extract', 'doc-parse'].includes(recording.recording_meta.type)
-  );
-
-  const isSearchRobot = (robotMetaId: string) => recordings.some(
-    (recording: any) => recording?.recording_meta?.id === robotMetaId && recording.recording_meta.type === 'search'
-  );
-
-  const isCrawlRobot = (robotMetaId: string) => recordings.some(
-    (recording: any) => recording?.recording_meta?.id === robotMetaId && recording.recording_meta.type === 'crawl'
-  );
-
-  const isExtractRobot = (robotMetaId: string) => recordings.some(
-    (recording: any) => recording?.recording_meta?.id === robotMetaId && recording.recording_meta.type === 'extract'
-  );
-
+  
   const parseDateString = (dateStr: string): Date => {
     try {
       if (dateStr.includes('PM') || dateStr.includes('AM')) {
@@ -638,12 +617,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                     <Typography variant="h6" sx={{ flexGrow: 1 }}>
                       {getRunGroupName(robotNames, robotMetaId, data)}
                     </Typography>
-
-                    {(isScrapeRobot(robotMetaId) ||
-                      isDocumentRobot(robotMetaId) ||
-                      isSearchRobot(robotMetaId) ||
-                      isCrawlRobot(robotMetaId) ||
-                      isExtractRobot(robotMetaId)) && (
                         <IconButton
                           size="small"
                           onClick={(event) => {
@@ -655,7 +628,6 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                         >
                           <DeleteForever fontSize="small" />
                         </IconButton>
-                      )}
                   </AccordionSummary>
                   <AccordionDetails>
                     <Table stickyHeader aria-label="sticky table">
