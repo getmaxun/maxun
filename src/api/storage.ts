@@ -280,6 +280,16 @@ export const deleteRunFromStorage = async (id: string): Promise<boolean> => {
   }
 };
 
+export const deleteAllRunsFromStorage = async (robotMetaId: string): Promise<boolean> => {
+  try {
+    const response = await axios.delete(`${apiUrl}/storage/runs/robot/${robotMetaId}`);
+    return response.status === 200 && response.data === true;
+  } catch (error: any) {
+    console.error('Error deleting runs for robot:', error);
+    return false;
+  }
+};
+
 export const editRecordingFromStorage = async (browserId: string, id: string): Promise<WorkflowFile | null> => {
   try {
     const response = await axios.put(`${apiUrl}/workflow/${browserId}/${id}`);
