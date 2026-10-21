@@ -9,7 +9,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, Tooltip, CircularProgress, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Typography, Box, TextField, Tooltip, CircularProgress, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteForever from '@mui/icons-material/DeleteForever';
@@ -629,14 +629,13 @@ export const RunsTable: React.FC<RunsTableProps> = ({
                   <AccordionDetails>
                     {(isScrapeRobot(robotMetaId) || isDocumentRobot(robotMetaId) || isSearchRobot(robotMetaId) || isCrawlRobot(robotMetaId) || isExtractRobot(robotMetaId)) && (
                       <Box display="flex" justifyContent="flex-end" mb={1}>
-                        <Button
+                        <IconButton
                           color="error"
                           size="small"
-                          startIcon={<DeleteForever />}
                           onClick={() => setDeleteAllRobotMetaId(robotMetaId)}
                         >
-                          {t('runstable.delete_all_runs', { defaultValue: 'Delete all runs' })}
-                        </Button>
+                          <DeleteForever fontSize="small" />
+                        </IconButton>
                       </Box>
                     )}
                     <Table stickyHeader aria-label="sticky table">
