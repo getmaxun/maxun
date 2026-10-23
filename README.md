@@ -106,6 +106,8 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </tr>
 </table>
 
+[![Deploy to Railyard](https://app.railyard.run/deploy/badge)](https://app.railyard.run/deploy?repo=https://github.com/getmaxun/maxun)
+
 ## What Maxun Does
 
 - **[Extract](https://docs.maxun.dev/category/extract)** – Extract structured data from any website by emulating real user behavior.
