@@ -63,17 +63,6 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 
 <tr>
 <td width="20%" align="center" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=getmaxun">
-  <img src="https://github.com/user-attachments/assets/74ba8f9e-a8a8-4c6a-b06c-cd048a118117" alt="Thordata" width="250" height="130">
-</a>
-</td>
-<td width="80%" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=getmaxun"><strong>Thordata – Reliable Proxies for Web Scraping & AI Data Collection </strong></a> offers Residential, Mobile, ISP & Datacenter Proxies · 190+ countries with city-level targeting · Sticky and rotating sessions for flexible workflows · Fast, stable proxy infrastructure for developers. <strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off.
-</td>
-</tr>
-
-<tr>
-<td width="20%" align="center" valign="middle">
 <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">
   <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Mango Proxy" width="250" height="130">
 </a>
