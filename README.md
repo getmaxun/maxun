@@ -39,6 +39,18 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 
 <tr>
 <td width="20%" align="center" valign="middle">
+<a href="https://proxy-seller.com/?partner=224ED2B5F5D24719">
+  <img src="https://github.com/user-attachments/assets/ac862778-464d-49ae-af7e-69712d9b74a4" alt="Proxy-Seller" width="300" height="150">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://proxy-seller.com/?partner=224ED2B5F5D24719"><strong>Proxy-Seller</strong></a> gives you reliable proxy infrastructure for any workflow: private residential, mobile (4G/5G/LTE), ISP, and datacenter IPv4/IPv6 proxies, all with HTTP(S) and SOCKS5 support. Tap into 47M+ residential IPs across 220+ locations, target exactly the country, city, or ISP you need, and count on 99.7% uptime backed by 24/7 support.
+<strong>Discount:</strong> <code>MAXUNDEV</code> - Get 15% off.
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
 <a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship">
   <img src="https://github.com/user-attachments/assets/f3f7ea4a-a965-4ff9-aab6-8d257da3b18c" alt="Byteful" width="280" height="130">
 </a>

@@ -72,7 +72,7 @@ export const createScrapeRobot = async (
 };
 
 export const createLLMRobot = async (
-  url: string | undefined,
+  url: string,
   prompt: string,
   llmProvider?: 'anthropic' | 'openai' | 'ollama',
   llmModel?: string,
@@ -84,7 +84,7 @@ export const createLLMRobot = async (
     const response = await axios.post(
       `${apiUrl}/storage/recordings/llm`,
       {
-        url: url || undefined,
+        url,
         prompt,
         llmProvider,
         llmModel,
@@ -276,6 +276,16 @@ export const deleteRunFromStorage = async (id: string): Promise<boolean> => {
     }
   } catch (error: any) {
     console.log(error);
+    return false;
+  }
+};
+
+export const deleteAllRunsFromStorage = async (robotMetaId: string): Promise<boolean> => {
+  try {
+    const response = await axios.delete(`${apiUrl}/storage/runs/robot/${robotMetaId}`);
+    return response.status === 200 && response.data === true;
+  } catch (error: any) {
+    console.error('Error deleting runs for robot:', error);
     return false;
   }
 };

@@ -1,5 +1,7 @@
 import Interpreter, { WorkflowFile } from "maxun-core";
 import logger from "../../logger";
+// Swap maxun-core's bundled HTML → Markdown converter for main-content isolation.
+import "../../markdownify/markdown";
 import { Socket } from "socket.io";
 import { Page } from "playwright-core";
 import { InterpreterSettings } from "../../types";

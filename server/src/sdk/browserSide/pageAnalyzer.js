@@ -171,16 +171,26 @@
     }
   };
 
-  const pathCache = new WeakMap();
+  // Paths and common classes are relative to the list being analyzed, so
+  // these caches are only valid within one call; they are reset per call.
+  let pathCache = new WeakMap();
   const descendantsCache = new WeakMap();
   const meaningfulCache = new WeakMap();
-  const classCache = new Map();
+  let classCache = new Map();
 
   /**
-   * Main entry point - returns detected fields for a list selector
+   * Main entry point - returns detected fields for a list selector.
+   *
+   * options.enhanced turns on AI Extract-only field detection (an item's own
+   * text, fields in each item's following sibling). Without it the output
+   * matches the SDK and recorder behaviour.
    */
-  window.getChildSelectors = function (parentSelector) {
+  window.getChildSelectors = function (parentSelector, options) {
     try {
+      const enhanced = !!(options && options.enhanced);
+      pathCache = new WeakMap();
+      classCache = new Map();
+
       const parentElements = evaluateXPath(parentSelector, document);
 
       if (parentElements.length === 0) {
@@ -208,11 +218,15 @@
 
       const childSelectors = Array.from(new Set(allChildSelectors)).sort()
 
-      const fields = createFieldsFromSelectors(
+      const detectedFields = createFieldsFromSelectors(
         childSelectors,
         limitedParents,
         parentSelector
       );
+
+      const fields = enhanced
+        ? addFollowingSiblingFields(addItemTextField(detectedFields, limitedParents, parentSelector), limitedParents, parentSelector)
+        : detectedFields;
 
       return fields;
     } catch (error) {
@@ -220,6 +234,125 @@
       return {};
     }
   };
+
+  /**
+   * Length of text sitting directly inside an element, outside any child element.
+   */
+  function ownTextLength(element) {
+    let length = 0;
+    for (const node of element.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        length += (node.textContent || '').replace(/\s+/g, ' ').trim().length;
+      }
+    }
+    return length;
+  }
+
+  /**
+   * Adds a field for each list item's own full text when that text lives
+   * directly in the item rather than in a child element.
+   *
+   * Field detection only walks descendants, so a list of plain-text items
+   * (<li>Some text</li>) yields no fields at all, and an item like
+   * <li><b>Name</b> description</li> yields only "Name" and silently loses the
+   * description. The item-text field uses the list selector itself, which the
+   * scrapeList runtime resolves to each item.
+   *
+   * Only added when bare text is a real share of most items, so card-style
+   * items whose content is all in child elements are left unchanged.
+   */
+  function addItemTextField(fields, listElements, parentSelector) {
+    if (!listElements || listElements.length === 0) return fields;
+
+    const alreadyCovered = Object.values(fields).some(
+      (f) => f && f.selector === parentSelector && f.attribute === 'innerText'
+    );
+    if (alreadyCovered) return fields;
+
+    const MIN_OWN_TEXT_CHARS = 15;
+    const MIN_OWN_TEXT_SHARE = 0.4;
+
+    const textHeavyItems = listElements.filter((el) => {
+      const total = (el.textContent || '').replace(/\s+/g, ' ').trim().length;
+      if (total === 0) return false;
+      // Leaf items (<h3>Title</h3>, <span>$5</span>) have nothing to detect
+      // below them; their own text is the only possible field.
+      if (el.children.length === 0) return true;
+      const own = ownTextLength(el);
+      return own >= MIN_OWN_TEXT_CHARS && own / total >= MIN_OWN_TEXT_SHARE;
+    });
+
+    if (textHeavyItems.length < Math.ceil(listElements.length / 2)) return fields;
+
+    const itemField = {
+      selector: parentSelector,
+      attribute: 'innerText',
+      tag: listElements[0].tagName.toUpperCase(),
+      isShadow: listElements[0].getRootNode() instanceof ShadowRoot,
+    };
+
+    // Item text goes first: it's the row's primary value. Renumber the
+    // placeholders so names stay sequential.
+    const result = { 'Label 1': itemField };
+    let counter = 2;
+    for (const field of Object.values(fields)) {
+      result[`Label ${counter++}`] = field;
+    }
+    return result;
+  }
+
+  /**
+   * Adds fields from each item's next sibling when every item is followed by
+   * the same kind of element that is not itself an item: <dt> then <dd>, or a
+   * story row then its score row. Field detection otherwise only looks inside
+   * the item, so the definition or the score would be lost.
+   *
+   * Selectors use `following-sibling::tag[1]` after the list selector, which
+   * the scrapeList runtime indexes per item like any other field.
+   */
+  function addFollowingSiblingFields(fields, listElements, parentSelector) {
+    if (!listElements || listElements.length < 2) return fields;
+    const itemSet = new Set(listElements);
+    const partners = listElements.map((el) => el.nextElementSibling);
+    if (partners.some((n) => !n || itemSet.has(n))) return fields;
+    const tag = partners[0].tagName;
+    if (partners.some((n) => n.tagName !== tag)) return fields;
+    if (/^(SCRIPT|STYLE|TEMPLATE|BR|HR)$/.test(tag)) return fields;
+    if (partners.every((n) => !(n.textContent || '').trim() && !n.querySelector('img,a[href]'))) return fields;
+
+    const siblingSelector = `${parentSelector}/following-sibling::${tag.toLowerCase()}[1]`;
+    let siblingFields = {};
+    if (partners[0].children.length === 0) {
+      siblingFields = {
+        'Label 1': { selector: siblingSelector, attribute: 'innerText', tag, isShadow: false },
+      };
+    } else {
+      const selectorObjects = [];
+      partners.forEach((partner, i) => {
+        selectorObjects.push(...generateOptimizedChildXPaths(partner, siblingSelector, partners.filter((_, j) => j !== i)));
+      });
+      const unique = [];
+      const seen = new Set();
+      for (const obj of selectorObjects) {
+        if (seen.has(obj.primary)) continue;
+        seen.add(obj.primary);
+        unique.push(obj);
+      }
+      unique.sort((a, b) => (a.primary < b.primary ? -1 : 1));
+      siblingFields = addItemTextField(createFieldsFromSelectors(unique, partners, siblingSelector), partners, siblingSelector);
+    }
+
+    const existingContent = new Set(Object.values(fields).map((f) => `${f.selector}::${f.attribute}`));
+    const result = Object.assign({}, fields);
+    let counter = Object.keys(fields).length + 1;
+    for (const field of Object.values(siblingFields)) {
+      const key = `${field.selector}::${field.attribute}`;
+      if (existingContent.has(key)) continue;
+      existingContent.add(key);
+      result[`Label ${counter++}`] = field;
+    }
+    return result;
+  }
 
   /**
    * Generate optimized XPath selectors for all meaningful children
@@ -400,6 +533,14 @@
       return { primary: null, fallback };
     }
   }
+
+  // Exposed for AI Extract's example-driven compiler (aiExtractPage.js), which
+  // needs the same per-item field paths the list detector produces.
+  window.__mxBuildFieldXPath = function (targetElement, listSelector, listElement, otherListElements) {
+    pathCache = new WeakMap();
+    classCache = new Map();
+    return buildOptimizedAbsoluteXPath(targetElement, listSelector, listElement, otherListElements || []);
+  };
 
   /**
    * Get optimized structural path from element to root

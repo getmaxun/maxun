@@ -47,7 +47,7 @@
     "graphile-worker": "^0.16.6",
     "i18next": "^24.0.2",
     "i18next-browser-languagedetector": "^8.0.0",
-    "i18next-http-backend": "^3.0.1",
+    "i18next-http-backend": "^4.0.4",
     "idcac-playwright": "^0.1.3",
     "joi": "^17.6.0",
     "joplin-turndown-plugin-gfm": "^1.0.12",
@@ -111,6 +111,7 @@
     "seed:undo:all": "sequelize-cli db:seed:undo:all",
     "migration:generate": "sequelize-cli migration:generate --name",
     "mcp:build": "tsc --project server/tsconfig.mcp.json",
+    "test:ai-extract": "cross-env TS_NODE_PROJECT=server/tsconfig.json TS_NODE_TRANSPILE_ONLY=1 node --test -r ts-node/register server/tests/ai-extract/unit.test.ts server/tests/ai-extract/pipeline.test.ts",
     "test:proxy": "cross-env TS_NODE_PROJECT=server/tsconfig.json TS_NODE_TRANSPILE_ONLY=1 node --test -r ts-node/register server/tests/proxy/proxySession.test.ts"
   },
   "eslintConfig": {

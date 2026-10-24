@@ -12,6 +12,8 @@ import { encrypt } from '../utils/auth';
 import { resolveOpenAiApiKey } from '../utils/llm-endpoint';
 import { LLM_AGENTS, guardLlmBaseUrl } from '../utils/llm-endpoint';
 import { callAnthropicWithTool } from './anthropicToolHelper';
+import { generateAiExtractWorkflow, AiExtractMeta } from './aiExtract/pipeline';
+import { createJsonLLM } from './aiExtract/llmClient';
 import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool, selectBestUrlTool, classifyMultiSitePromptTool, selectMultipleUrlsTool } from './anthropicTools';
 
 interface SimplifiedAction {
@@ -275,7 +277,13 @@ export class WorkflowEnricher {
 
 
   /**
-   * Generate workflow from natural language prompt using LLM with vision
+   * AI Extract: build a robot that extracts what `prompt` asks for from the
+   * page at `url`, and only that page.
+   *
+   * The prompt is turned into an extraction spec first; the page is then read
+   * for data that answers it. The browser is held to `url` throughout (see
+   * aiExtract/pageScope.ts). When the data is not on the page this returns an
+   * error rather than a robot for some other list on the page.
    */
   static async generateWorkflowFromPrompt(
     url: string,
@@ -287,66 +295,38 @@ export class WorkflowEnricher {
       apiKey?: string;
       baseUrl?: string;
     },
-  ): Promise<{ success: boolean; workflow?: any[]; url?: string; errors?: string[] }> {
+  ): Promise<{ success: boolean; workflow?: any[]; url?: string; errors?: string[]; aiExtract?: AiExtractMeta }> {
     let browserId: string | null = null;
-    const validator = new SelectorValidator();
 
     try {
-      logger.info(`Generating workflow from prompt for URL: ${url}`);
-      logger.info(`Prompt: ${prompt}`);
+      logger.info(`[AiExtract] Building robot for ${url}`);
+      logger.info(`[AiExtract] Prompt: ${prompt}`);
 
-      logger.info('Creating RemoteBrowser for LLM workflow generation');
       const { browserId: id, page } = await createRemoteBrowserForValidation(userId);
       browserId = id;
 
-      await validator.initialize(page as any, url);
-
-      const validatorPage = (validator as any).page;
-      const screenshotBuffer = await page.screenshot({ 
-        fullPage: true, 
-        type: 'jpeg',
-        quality: 85
-      });
-      const screenshotBase64 = screenshotBuffer.toString('base64');
-
-      const elementGroups = await this.analyzePageGroups(validator);
-      logger.info(`Found ${elementGroups.length} element groups`);
-
-      const pageHTML = await validatorPage.content();
-
-      const llmDecision = await this.getLLMDecisionWithVision(
+      const result = await generateAiExtractWorkflow({
+        page: page as any,
+        url,
         prompt,
-        screenshotBase64,
-        elementGroups,
-        pageHTML,
-        llmConfig
-      );
-      logger.info(`LLM decided action type: ${llmDecision.actionType}`);
+        llm: createJsonLLM(llmConfig),
+      });
 
-      const workflow = await this.tryGroupCandidates(llmDecision, elementGroups, url, validator, prompt, llmConfig);
-
-      await validator.close();
-
-      if (browserId) {
-        await destroyRemoteBrowser(browserId, userId);
-        logger.info('RemoteBrowser cleaned up after LLM workflow generation');
+      if (!result.success || !result.workflow) {
+        return { success: false, errors: [result.reason || 'AI Extract could not build a robot for this page'] };
       }
-
-      return { success: true, workflow, url };
+      return { success: true, workflow: result.workflow, url, aiExtract: result.aiExtract };
     } catch (error: any) {
-      await validator.close();
-
+      logger.error('Error generating workflow from prompt:', error);
+      return { success: false, errors: [error.message] };
+    } finally {
       if (browserId) {
         try {
           await destroyRemoteBrowser(browserId, userId);
-          logger.info('RemoteBrowser cleaned up after LLM generation error');
         } catch (cleanupError) {
           logger.warn('Failed to cleanup RemoteBrowser:', cleanupError);
         }
       }
-
-      logger.error('Error generating workflow from prompt:', error);
-      return { success: false, errors: [error.message] };
     }
   }
 
