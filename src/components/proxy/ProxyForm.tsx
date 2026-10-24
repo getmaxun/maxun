@@ -279,7 +279,7 @@ const ProxyForm: React.FC = () => {
                                             fullWidth
                                             required={requiresAuth}
                                             error={!!errors.username}
-                                            helperText={errors.username || ''}
+                                            helperText={errors.username || t('proxy.username_hint')}
                                         />
                                     </Box>
                                     <Box sx={{ mb: 2 }}>
