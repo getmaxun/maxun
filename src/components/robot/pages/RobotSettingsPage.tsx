@@ -20,6 +20,7 @@ interface RobotMeta {
   url?: string;
   formats?: OutputFormats[];
   isLLM?: boolean;
+  prompt?: string;
   compareRuns?: boolean;
 }
 
@@ -73,6 +74,8 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   const [compareRunsSaving, setCompareRunsSaving] = useState(false);
   const compareRunsRequestId = useRef(0);
   const { recordingId, notify } = useGlobalInfoStore();
+
+  console.log("robot recording", robot?.recording_meta);
 
   useEffect(() => {
     getRobot();
@@ -160,6 +163,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
   }, [robot?.userId]);
 
   const targetUrl = getTargetUrl();
+  const isAgentRobot = robot?.recording_meta?.isLLM === true;
 
   return (
     <RobotConfigPage
@@ -172,7 +176,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
         <Box style={{ display: "flex", flexDirection: "column" }}>
           {robot && (
             <>
-              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && (
+              {!['search', 'doc-parse', 'doc-extract'].includes(robot.recording_meta.type || '') && !isAgentRobot && (
                 <TextField
                   label={t("robot_settings.target_url")}
                   key="Target URL"
@@ -206,6 +210,7 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                     return argsWithLimit.map((arg, limitIndex) => {
                       const labelName = action.name || `List ${listCounter++}`;
                       return (
+                        !isAgentRobot && (
                         <TextField
                           key={`limit-${wfIndex}-${actionIndex}-${limitIndex}`}
                           label={`${t("robot_settings.robot_limit")} (${labelName})`}
@@ -216,11 +221,27 @@ export const RobotSettingsPage = ({ handleStart }: RobotSettingsProps) => {
                           }}
                           style={{ marginBottom: "20px" }}
                         />
+                        )
                       );
                     });
                   })
                 );
               })()}
+
+              {robot.recording_meta.isLLM && robot.recording_meta.prompt && (
+                <TextField
+                  label={t("robot_settings.agent_prompt", { defaultValue: "Prompt" })}
+                  key="Prompt"
+                  value={robot.recording_meta.prompt}
+                  multiline
+                  minRows={2}
+                  maxRows={10}
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  style={{ marginBottom: "20px" }}
+                />
+              )}
 
               <TextField
                 label={t("robot_settings.created_by_user")}

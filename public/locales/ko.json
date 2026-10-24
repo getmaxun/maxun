@@ -115,6 +115,7 @@
     "server_url_helper": "모든 로봇에 사용할 프록시입니다. HTTP 및 SOCKS 프록시를 지원합니다. 예: http://myproxy.com:3128 또는 socks5://myproxy.com:3128. myproxy.com:3128과 같은 축약 형식은 HTTP 프록시로 간주됩니다.",
     "requires_auth": "인증이 필요한가요?",
     "username": "사용자 이름",
+    "username_hint": "선택 사항: 공급자가 세션 ID를 요구하는 위치에 {session}을 넣으면(예: user-session-{session}) 실행할 때마다 새 고정 IP를 받습니다.",
     "password": "비밀번호",
     "add_proxy": "프록시 추가",
     "test_proxy": "프록시 테스트",

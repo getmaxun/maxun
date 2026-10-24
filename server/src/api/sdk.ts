@@ -26,6 +26,7 @@ import {
 } from '../constants/output-formats';
 import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
+import { checkAiExtractInput } from '../sdk/aiExtract/target';
 import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig, toPromptLlmMeta } from '../utils/llm-config-validation';
 import multer from 'multer';
@@ -41,6 +42,7 @@ import {
     serializeCapturedLists,
     serializeCapturedText,
 } from '../utils/run-comparison';
+import { withSnakeCaseCapturedKeys, withSnakeCaseKeys, withSnakeCaseOutput } from "../../../src/helpers/jsonKeys";
 
 const router = Router();
 
@@ -675,13 +677,21 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
 
         logger.info(`[SDK] Starting execution for robot ${robotId}`);
 
-        const runSource = req.headers['x-run-source'] === 'cli' ? 'cli' : 'sdk';
+        const sourceHeader = req.headers['x-run-source'];
+        const runSource = sourceHeader === 'cli' || sourceHeader === 'mcp' ? sourceHeader : 'sdk';
         const promptInstructions = req.body?.promptInstructions;
         const requestedFormats = req.body?.formats as OutputFormats[] | undefined;
         
         const runId = await handleRunRecording(robotId, user.id.toString(), runSource, requestedFormats, promptInstructions);
         if (!runId) {
             throw new Error('Failed to start robot execution');
+        }
+
+        // `wait: false` returns as soon as the run is queued; poll the run for its output.
+        if (req.body?.wait === false) {
+            return res.status(202).json({
+                data: { runId, status: 'running' }
+            });
         }
 
         const run = await waitForRunCompletion(runId);
@@ -769,8 +779,8 @@ router.post("/sdk/robots/:id/execute", requireAPIKey, async (req: AuthenticatedR
                 hasChanges: !!run.hasChanges,
                 changedFormats: (run.serializableOutput as any)?._comparison?.changedFormats || [],
                 data: {
-                    textData: run.serializableOutput?.scrapeSchema || {},
-                    listData: listData,
+                    textData: withSnakeCaseCapturedKeys(run.serializableOutput?.scrapeSchema || {}),
+                    listData: withSnakeCaseKeys(listData),
                     crawlData: crawlData,
                     searchData: searchData,
                     text: text,
@@ -846,7 +856,7 @@ router.get("/sdk/robots/:id/runs", requireAPIKey, async (req: AuthenticatedReque
         });
 
         return res.status(200).json({
-            data: runs
+            data: runs.map((run: any) => ({ ...run, serializableOutput: withSnakeCaseOutput(run.serializableOutput) }))
         });
     } catch (error: any) {
         logger.error("[SDK] Error getting runs:", error);
@@ -891,8 +901,9 @@ router.get("/sdk/robots/:id/runs/:runId", requireAPIKey, async (req: Authenticat
             });
         }
 
+        const plainRun: any = run.toJSON();
         return res.status(200).json({
-            data: run
+            data: { ...plainRun, serializableOutput: withSnakeCaseOutput(plainRun.serializableOutput) }
         });
     } catch (error: any) {
         logger.error("[SDK] Error getting run:", error);
@@ -1021,7 +1032,10 @@ router.post("/sdk/robots/:id/runs/:runId/abort", requireAPIKey, async (req: Auth
 
         return res.status(200).json({
             message: "Run abortion initiated",
-            data: run
+            data: (() => {
+                const plainRun: any = run.toJSON();
+                return { ...plainRun, serializableOutput: withSnakeCaseOutput(plainRun.serializableOutput) };
+            })()
         });
     } catch (error: any) {
         logger.error("[SDK] Error aborting run:", error);
@@ -1427,9 +1441,9 @@ router.post("/sdk/search", requireAPIKey, async (req: AuthenticatedRequest, res:
 });
 
 /**
- * LLM-based extraction - generate workflow from natural language prompt
+ * AI Extract - generate a robot from a natural language prompt for one page
  * POST /api/sdk/extract/llm
- * URL is optional - if not provided, the system will search for the target website based on the prompt
+ * Both url and prompt are required; the robot extracts from that page only.
  */
 router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -1439,11 +1453,12 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             return res.status(400).json({ error: 'compareRuns must be a boolean' });
         }
 
-        if (!prompt) {
-            return res.status(400).json({
-                error: "Prompt is required"
-            });
+        // The SDK has always accepted short prompts; only the URL requirement is new.
+        const input = checkAiExtractInput(url, prompt, { requireDetailedPrompt: false });
+        if (!input.ok) {
+            return res.status(400).json({ error: input.error });
         }
+        const targetUrl = input.url;
 
         const llmValidationError = validateRequiredLlmConfig(
             readLlmConfig(req.body),
@@ -1453,16 +1468,6 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             return res.status(400).json(llmValidationError);
         }
 
-        if (url) {
-            try {
-                normalizeRobotUrl(url);
-            } catch (err) {
-                return res.status(400).json({
-                    error: "Invalid URL format"
-                });
-            }
-        }
-
         const llmConfig = {
             provider: llmProvider,
             model: llmModel,
@@ -1470,20 +1475,12 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             baseUrl: llmBaseUrl
         };
 
-        let workflowResult: any;
-        let finalUrl: string;
+        const workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(targetUrl, input.prompt, user.id, llmConfig);
 
-        if (url) {
-            workflowResult = await WorkflowEnricher.generateWorkflowFromPrompt(url, prompt, user.id, llmConfig);
-            finalUrl = workflowResult.url || url;
-        } else {
-            workflowResult = await WorkflowEnricher.generateWorkflowFromPromptWithSearch(prompt, user.id, llmConfig);
-            finalUrl = workflowResult.url || '';
-        }
-
+        // 400 as before, so existing SDK clients keep handling generation failures the same way.
         if (!workflowResult.success || !workflowResult.workflow) {
             return res.status(400).json({
-                error: "Failed to generate workflow from prompt",
+                error: workflowResult.errors?.[0] || "Failed to generate workflow from prompt",
                 details: workflowResult.errors
             });
         }
@@ -1491,9 +1488,7 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         const robotId = uuid();
         const metaId = uuid();
 
-        if (finalUrl) {
-            finalUrl = normalizeRobotUrl(finalUrl);
-        }
+        const finalUrl = targetUrl;
 
         const finalRobotName = robotName || `LLM Extract: ${prompt.substring(0, 50)}`;
 
@@ -1531,7 +1526,9 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
             type: 'extract',
             url: finalUrl,
             ...(compareRuns !== undefined ? { compareRuns } : {}),
-            isLLM: true
+            isLLM: true,
+            // Spec, sample rows and fields not found on the page.
+            ...(workflowResult.aiExtract ? { aiExtract: workflowResult.aiExtract } : {}),
         };
 
         const robot = await Robot.create({
@@ -1545,8 +1542,10 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
 
         logger.info(`[SDK] Persistent robot created: ${metaId} for LLM extraction`);
 
+        // aiExtract holds rows scraped from the page; keep them out of telemetry.
+        const { aiExtract: _aiExtract, ...telemetryMeta } = robot.recording_meta as any;
         capture("maxun-oss-llm-robot-created", {
-            robot_meta: robot.recording_meta,
+            robot_meta: telemetryMeta,
             recording: robot.recording,
             prompt: prompt
         });

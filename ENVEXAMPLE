@@ -48,3 +48,10 @@ MAXUN_TELEMETRY=true
 BROWSER_WS_PORT=3001
 BROWSER_HEALTH_PORT=3002
 BROWSER_WS_HOST=browser
+# Ollama for AI Extract (optional). With Docker Compose the server reaches Ollama on the
+# host at http://host.docker.internal:11434 (the default); use http://localhost:11434 only
+# when the server itself runs on the host.
+# For Ollama Cloud: OLLAMA_BASE_URL=https://ollama.com, an API key, and a cloud model such as gpt-oss:20b.
+# OLLAMA_BASE_URL=http://host.docker.internal:11434
+# OLLAMA_API_KEY=
+# OLLAMA_MODEL=

@@ -8,6 +8,7 @@
     </div>
     Turn Any Website Into A Structured API
 </h3>
+<p align="center"><b>English</b> | <a href="./README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
 The open-source web data platform for real-time web scraping, crawling, search, monitoring and AI data extraction.
@@ -34,6 +35,18 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </td>
 <td width="80%" valign="middle">
 <a href="https://www.webshare.io/?referral_code=wwhk524ynls2"><strong>Webshare</strong></a> gives you instant access to a proxy pool of 80M+ ethically-sourced IPs across 195+ countries, with rotating residential, static ISP, and datacenter options plus a full API. It includes a 100+ Gbps backbone, country/city/state/ZIP/ASN-level targeting, and requires no credit card to start. <strong>Free tier:</strong> 10 proxies + 1GB/month · <strong>Discount:</strong> <code>MAXUN20</code> - 20% off your first purchase.
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
+<a href="https://proxy-seller.com/?partner=224ED2B5F5D24719">
+  <img src="https://github.com/user-attachments/assets/ac862778-464d-49ae-af7e-69712d9b74a4" alt="Proxy-Seller" width="300" height="150">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://proxy-seller.com/?partner=224ED2B5F5D24719"><strong>Proxy-Seller</strong></a> gives you reliable proxy infrastructure for any workflow: private residential, mobile (4G/5G/LTE), ISP, and datacenter IPv4/IPv6 proxies, all with HTTP(S) and SOCKS5 support. Tap into 47M+ residential IPs across 220+ locations, target exactly the country, city, or ISP you need, and count on 99.7% uptime backed by 24/7 support.
+<strong>Discount:</strong> <code>MAXUNDEV</code> - Get 15% off.
 </td>
 </tr>
 

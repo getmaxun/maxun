@@ -159,6 +159,7 @@ const TableRowMemoized = memo(({ row, columns, handlers }: any) => {
                     handleDuplicate={() => handlers.handleDuplicateRobot(row.id, row.name, row.params || [])}
                     handleDelete={() => handlers.handleDelete(row.id)}
                     robotType={row.type}
+                    isAgentRobot={row.isLLM === true}
                   />
                 </MemoizedTableCell>
               );
@@ -866,9 +867,11 @@ interface OptionsButtonProps {
   handleDuplicate: () => void;
   handleDelete: () => void;
   robotType: string;
+  /** AI mode / Agent robot: retrain and duplicate are hidden for these. */
+  isAgentRobot?: boolean;
 }
 
-const OptionsButton = ({ handleRetrain, handleEdit, handleDuplicate, handleDelete, robotType }: OptionsButtonProps) => {
+const OptionsButton = ({ handleRetrain, handleEdit, handleDuplicate, handleDelete, robotType, isAgentRobot=false }: OptionsButtonProps) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -895,7 +898,7 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDuplicate, handleDelet
         open={Boolean(anchorEl)}
         onClose={handleClose}
       >
-        {robotType !== 'scrape' && (
+        {robotType === 'extract' && !isAgentRobot && (
           <MenuItem onClick={() => { handleRetrain(); handleClose(); }}>
             <ListItemIcon>
               <Refresh fontSize="small" />
@@ -909,7 +912,7 @@ const OptionsButton = ({ handleRetrain, handleEdit, handleDuplicate, handleDelet
           <ListItemText>Edit</ListItemText>
         </MenuItem>
 
-        {robotType === 'extract' && (
+        {robotType === 'extract' && !isAgentRobot && (
           <MenuItem onClick={() => { handleDuplicate(); handleClose(); }}>
             <ListItemIcon><ContentCopy fontSize="small" /></ListItemIcon>
             <ListItemText>Duplicate</ListItemText>

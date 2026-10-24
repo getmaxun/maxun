@@ -115,6 +115,7 @@
     "server_url_helper": "Tüm robotlar için kullanılacak proxy. HTTP ve SOCKS desteklenir. Örnek http://myproxy.com:3128 veya socks5://myproxy.com:3128. Kısa biçim myproxy.com:3128 HTTP proxy kabul edilir.",
     "requires_auth": "Kimlik Doğrulama Gerekli mi?",
     "username": "Kullanıcı Adı",
+    "username_hint": "İsteğe bağlı: Sağlayıcınızın oturum kimliği beklediği yere {session} ekleyin (ör. user-session-{session}); böylece her çalıştırmada yeni bir sabit IP alırsınız.",
     "password": "Şifre",
     "add_proxy": "Proxy Ekle",
     "test_proxy": "Proxy’yi Test Et",

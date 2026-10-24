@@ -1,6 +1,6 @@
 {
   "name": "maxun-backend",
-  "version": "0.0.48",
+  "version": "0.1.0",
   "dependencies": {
     "@anthropic-ai/sdk": "0.71.2",
     "@cliqz/adblocker-playwright": "1.34.0",
