@@ -594,10 +594,15 @@ export class RemoteBrowser {
               if (proxyConfig.proxy_url) {
                 proxyOptions = {
                   server: proxyConfig.proxy_url,
-                  ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: expandSessionPlaceholder(proxyConfig.proxy_username, (this.proxySessionId ??= newProxySessionId())),
-                    password: proxyConfig.proxy_password,
-                  }),
+                  ...(proxyConfig.proxy_username &&
+                    proxyConfig.proxy_password && {
+                      username:
+                        expandSessionPlaceholder(
+                          proxyConfig.proxy_username,
+                          (this.proxySessionId ??= newProxySessionId())
+                        ) ?? undefined,
+                      password: proxyConfig.proxy_password,
+                    }),
                 };
               }
 
