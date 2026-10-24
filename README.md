@@ -8,6 +8,7 @@
     </div>
     Turn Any Website Into A Structured API
 </h3>
+<p align="center"><b>English</b> | <a href="./README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
 The open-source web data platform for real-time web scraping, crawling, search, monitoring and AI data extraction.
