@@ -936,7 +936,7 @@ const RobotCreate: React.FC = () => {
       onChange={setGenerationMode}
       options={[
         { value: 'recorder', label: 'Recorder Mode', description: 'Record your actions on websites into workflows.', icon: <HighlightAlt sx={{ fontSize: 17 }} /> },
-        { value: 'agent', label: 'AI Mode', description: 'Describe the task to extract data from websites.', icon: <AutoAwesome sx={{ fontSize: 17 }} /> },
+        { value: 'agent', label: 'AI Mode (Beta)', description: 'Describe the task to extract data from websites.', icon: <AutoAwesome sx={{ fontSize: 17 }} /> },
       ]}
     />
   );
