@@ -174,15 +174,14 @@ const getModelHelperText = (
   options: ModelFieldTextOptions = {}
 ) => {
   if (provider === 'ollama') return options.ollamaHelperText || 'Leave blank to use default: llama3.2-vision';
-  if (provider === 'anthropic') return options.anthropicHelperText || 'Leave blank to use default: claude-sonnet-4-6';
+  if (provider === 'anthropic') return options.anthropicHelperText || "Use an Anthropic model, or leave blank to use Maxun's default.";
   return getOpenAICompatiblePreset(presetId).modelHelperText;
 };
 
 const DOCUMENT_MODEL_FIELD_TEXT: ModelFieldTextOptions = {
   ollamaPlaceholder: 'e.g. llama3.2:latest',
   ollamaHelperText: 'Leave blank to use default: llama3.2:latest',
-  anthropicPlaceholder: 'e.g. claude-3-5-haiku-20241022',
-  anthropicHelperText: 'Leave blank to use default: claude-3-5-haiku-20241022',
+  anthropicPlaceholder: 'e.g. claude-sonnet-5',
 };
 
 
