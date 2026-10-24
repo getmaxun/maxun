@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { requireAPIKey } from "../middlewares/api";
 import Robot from "../models/Robot";
 import Run from "../models/Run";
-import { getDecryptedProxyConfig, expandSessionPlaceholder } from "../routes/proxy";
+import { getDecryptedProxyConfig } from "../routes/proxy";
 import { v4 as uuid } from "uuid";
 import { createRemoteBrowserForRun, destroyRemoteBrowser } from "../browser-management/controller";
 import logger from "../logger";
@@ -569,7 +569,7 @@ async function createWorkflowAndStoreMetadata(id: string, userId: string, runSou
             proxyOptions = {
                 server: proxyConfig.proxy_url,
                 ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: expandSessionPlaceholder(proxyConfig.proxy_username),
+                    username: proxyConfig.proxy_username,
                     password: proxyConfig.proxy_password,
                 }),
             };

@@ -115,6 +115,7 @@
     "server_url_helper": "Proxy to be used for all robots. HTTP and SOCKS proxies are supported. Example http://myproxy.com:3128 or socks5://myproxy.com:3128. Short form myproxy.com:3128 is considered an HTTP proxy.",
     "requires_auth": "Requires Authentication?",
     "username": "Username",
+    "username_hint": "Optional: add {session} where your provider expects a session id (e.g. user-session-{session}) to get a new sticky IP for each run.",
     "password": "Password",
     "add_proxy": "Add Proxy",
     "test_proxy": "Test Proxy",

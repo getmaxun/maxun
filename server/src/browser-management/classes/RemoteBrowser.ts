@@ -13,7 +13,8 @@ import { readFileSync } from "fs";
 import { InterpreterSettings } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
-import { getDecryptedProxyConfig, expandSessionPlaceholder, newProxySessionId } from '../../routes/proxy';
+import { getDecryptedProxyConfig } from '../../routes/proxy';
+import { expandSessionPlaceholder, newProxySessionId } from '../../utils/proxy-session';
 import { getInjectableScript } from 'idcac-playwright';
 import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
@@ -48,9 +49,10 @@ interface PageNavigationState {
 export class RemoteBrowser {
 
     /**
-     * Per-run sticky proxy session id, generated lazily on first proxy use.
-     * Stashed on the instance so every browser context of this run reuses one
-     * exit IP (and retries/resume do not rotate mid-run).
+     * Sticky proxy session id for this browser instance, generated lazily on
+     * first proxy use. Context relaunches inside initialize() reuse it, so they
+     * keep the same exit IP. A run that gets a new RemoteBrowser (e.g. a retried
+     * run) gets a new id.
      */
     private proxySessionId?: string;
 

@@ -115,6 +115,7 @@
     "server_url_helper": "Bütün robotlar üçün istifadə ediləcək proksi. HTTP və SOCKS proksiləri dəstəklənir. Məsələn: http://myproxy.com:3128 və ya socks5://myproxy.com:3128. Qısa myproxy.com:3128 forması HTTP proksisi hesab olunur.",
     "requires_auth": "Kimliyin təsdiqlənməsi tələb olunur?",
     "username": "İstifadəçi adı",
+    "username_hint": "İstəyə bağlı: Provayderinizin sessiya ID gözlədiyi yerə {session} əlavə edin (məs. user-session-{session}) ki, hər işə salmada yeni sabit IP alasınız.",
     "password": "Parol",
     "add_proxy": "Proksi əlavə et",
     "test_proxy": "Proksini yoxla",
