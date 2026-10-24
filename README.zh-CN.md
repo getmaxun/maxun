@@ -51,17 +51,6 @@
 
 <tr>
 <td width="20%" align="center" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=getmaxun">
-  <img src="https://github.com/user-attachments/assets/74ba8f9e-a8a8-4c6a-b06c-cd048a118117" alt="Thordata" width="250" height="130">
-</a>
-</td>
-<td width="80%" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=getmaxun"><strong>Thordata – 为网页抓取与 AI 数据收集提供可靠代理</strong></a> 提供住宅、移动、ISP 和数据中心代理 · 覆盖 190+ 个国家，支持城市级定位 · 粘性会话与轮换会话灵活适配不同工作流 · 为开发者提供快速、稳定的代理基础设施。<strong>优惠码：</strong><code>MAXUN10</code> - 立减 10%。
-</td>
-</tr>
-
-<tr>
-<td width="20%" align="center" valign="middle">
 <a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">
   <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Mango Proxy" width="250" height="130">
 </a>
