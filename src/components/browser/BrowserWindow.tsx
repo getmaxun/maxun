@@ -1848,7 +1848,8 @@ export const BrowserWindow = () => {
                     variant="outlined"
                     size="medium"
                     key={option.value}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       handleAttributeSelection(option.value);
                     }}
                     style={{
