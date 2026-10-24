@@ -20,27 +20,19 @@ import type {
 } from '@anthropic-ai/sdk/resources/messages';
 import { z } from 'zod';
 
-// Prefixes of models that answer `temperature` (and other sampling settings) with a 400.
-const MODELS_REJECTING_SAMPLING = [
-  'claude-fable-5',
-  'claude-mythos-5',
-  'claude-opus-4-7',
-  'claude-opus-4-8',
-  'claude-opus-5',
-  'claude-sonnet-5',
-  'claude-haiku-5-5',
+// Models known to accept a forced `tool_choice`. Anything else, including
+// models released after this list was written, gets `auto` instead: newer
+// models (Opus 5.5, Sonnet 5.5, Fable 5.1, Mythos 5.1) answer forcing with a
+// 400, while `auto` is accepted by every model.
+const FORCED_TOOL_CHOICE_MODELS = [
+  /^claude-3/,
+  /^claude-(opus|sonnet|haiku)-4/,
+  /^claude-(opus|sonnet|fable|mythos)-5(-\d{8})?$/,
+  /^claude-haiku-5-5(-\d{8})?$/,
 ];
 
-// Prefixes of models that answer a forced `tool_choice` (`tool` or `any`) with a 400.
-const MODELS_REJECTING_FORCED_TOOL_CHOICE = [
-  'claude-fable-5-1',
-  'claude-mythos-5-1',
-  'claude-opus-5-5',
-  'claude-sonnet-5-5',
-];
-
-function matchesAny(model: string, prefixes: string[]): boolean {
-  return prefixes.some((prefix) => model.startsWith(prefix));
+function supportsForcedToolChoice(model: string): boolean {
+  return FORCED_TOOL_CHOICE_MODELS.some((pattern) => pattern.test(model));
 }
 
 export class AnthropicToolCallError extends Error {
@@ -61,7 +53,6 @@ export interface CallAnthropicWithToolOptions<T> {
   apiKey?: string;
   model: string;
   maxTokens: number;
-  temperature?: number;
   system?: string;
   userMessage: MessageParam['content'];
   tool: Tool;
@@ -76,10 +67,11 @@ export interface CallAnthropicWithToolOptions<T> {
 }
 
 /**
- * Calls Anthropic with a single tool forced via tool_choice (with parallel
- * tool use disabled, so the model cannot invoke the forced tool more than
- * once), and returns the tool's `input`, cast - or, if `zodSchema` is
- * supplied, validated and parsed - as T.
+ * Calls Anthropic with a single tool - forced via tool_choice where the model
+ * allows it, requested in the system prompt otherwise - with parallel tool use
+ * disabled, so the model cannot invoke the tool more than once, and returns
+ * the tool's `input`, cast - or, if `zodSchema` is supplied, validated and
+ * parsed - as T.
  *
  * Throws AnthropicToolCallError (or the AnthropicToolCallTruncatedError
  * subclass) only for structural failures: no tool_use block returned,
@@ -91,11 +83,16 @@ export async function callAnthropicWithTool<T>(
 ): Promise<T> {
   const anthropic = new Anthropic({ apiKey: opts.apiKey || process.env.ANTHROPIC_API_KEY });
 
-  // Models that reject forcing pick the tool themselves; a reply without it
-  // still raises AnthropicToolCallError below.
-  const toolChoice: ToolChoice = matchesAny(opts.model, MODELS_REJECTING_FORCED_TOOL_CHOICE)
-    ? { type: 'auto', disable_parallel_tool_use: true }
-    : { type: 'tool', name: opts.tool.name, disable_parallel_tool_use: true };
+  // Without forcing, the system prompt asks for the tool instead; a reply
+  // without it still raises AnthropicToolCallError below.
+  const forceTool = supportsForcedToolChoice(opts.model);
+  const toolChoice: ToolChoice = forceTool
+    ? { type: 'tool', name: opts.tool.name, disable_parallel_tool_use: true }
+    : { type: 'auto', disable_parallel_tool_use: true };
+  const toolInstruction = `Respond by calling the \`${opts.tool.name}\` tool.`;
+  const system = forceTool
+    ? opts.system
+    : [opts.system, toolInstruction].filter(Boolean).join('\n\n');
 
   const messages: MessageParam[] = [
     { role: 'user', content: opts.userMessage },
@@ -104,8 +101,9 @@ export async function callAnthropicWithTool<T>(
   const response = await anthropic.messages.create({
     model: opts.model,
     max_tokens: opts.maxTokens,
-    ...(matchesAny(opts.model, MODELS_REJECTING_SAMPLING) ? {} : { temperature: opts.temperature }),
-    system: opts.system,
+    // No `temperature`: most current models answer it with a 400, and no
+    // other Anthropic call site in Maxun sets it.
+    system,
     messages,
     tools: [opts.tool],
     tool_choice: toolChoice,

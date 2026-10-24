@@ -1,7 +1,8 @@
 /**
  * Request bodies callAnthropicWithTool sends, checked against a local server
  * that answers like the Messages API: it rejects `temperature` and a forced
- * `tool_choice` for the models that reject them.
+ * `tool_choice` for the models that reject them. The model lists below describe
+ * the API, so they are deliberately not imported from the helper.
  */
 import assert from 'assert';
 import http from 'http';
@@ -10,7 +11,9 @@ import { after, before, describe, it } from 'node:test';
 import { callAnthropicWithTool } from '../../src/sdk/anthropicToolHelper';
 
 const REJECTS_SAMPLING = ['claude-fable-5', 'claude-mythos-5', 'claude-opus-4-7', 'claude-opus-4-8', 'claude-opus-5', 'claude-sonnet-5', 'claude-haiku-5-5'];
-const REJECTS_FORCED_TOOL = ['claude-fable-5-1', 'claude-mythos-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5'];
+// claude-opus-6 stands in for a model released after the helper was written.
+const REJECTS_FORCED_TOOL = ['claude-fable-5-1', 'claude-mythos-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-opus-6'];
+const SYSTEM = 'Name lists on web pages.';
 
 const TOOL = {
   name: 'pick_label',
@@ -46,7 +49,7 @@ async function call(model: string) {
     apiKey: 'test-key',
     model,
     maxTokens: 64,
-    temperature: 0.1,
+    system: SYSTEM,
     userMessage: 'Name this list.',
     tool: TOOL,
   });
@@ -74,27 +77,30 @@ describe('callAnthropicWithTool request parameters', () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
-  it('omits temperature for the default model, claude-sonnet-5, and keeps forcing the tool', async () => {
-    requests.length = 0;
-    assert.deepStrictEqual(await call('claude-sonnet-5'), { label: 'Products' });
-    assert.strictEqual(requests.length, 1);
-    assert.strictEqual('temperature' in requests[0], false);
-    assert.deepStrictEqual(requests[0].tool_choice, { type: 'tool', name: TOOL.name, disable_parallel_tool_use: true });
-  });
-
-  for (const model of ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-fable-5-1']) {
-    it(`lets ${model} choose the tool instead of forcing it`, async () => {
+  it('never sends temperature', async () => {
+    for (const model of ['claude-sonnet-5', 'claude-sonnet-5-5', 'claude-sonnet-4-5']) {
       requests.length = 0;
       assert.deepStrictEqual(await call(model), { label: 'Products' });
+      assert.strictEqual(requests.length, 1);
       assert.strictEqual('temperature' in requests[0], false);
-      assert.deepStrictEqual(requests[0].tool_choice, { type: 'auto', disable_parallel_tool_use: true });
+    }
+  });
+
+  for (const model of ['claude-sonnet-5', 'claude-sonnet-5-20260101', 'claude-haiku-5-5', 'claude-sonnet-4-5', 'claude-3-5-haiku-20241022']) {
+    it(`forces the tool for ${model}`, async () => {
+      requests.length = 0;
+      assert.deepStrictEqual(await call(model), { label: 'Products' });
+      assert.deepStrictEqual(requests[0].tool_choice, { type: 'tool', name: TOOL.name, disable_parallel_tool_use: true });
+      assert.strictEqual(requests[0].system, SYSTEM);
     });
   }
 
-  it('still sends temperature and forces the tool for models that accept both', async () => {
-    requests.length = 0;
-    assert.deepStrictEqual(await call('claude-sonnet-4-5'), { label: 'Products' });
-    assert.strictEqual(requests[0].temperature, 0.1);
-    assert.deepStrictEqual(requests[0].tool_choice, { type: 'tool', name: TOOL.name, disable_parallel_tool_use: true });
-  });
+  for (const model of ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-fable-5-1', 'claude-mythos-5-1', 'claude-opus-6']) {
+    it(`asks ${model} for the tool in the system prompt instead of forcing it`, async () => {
+      requests.length = 0;
+      assert.deepStrictEqual(await call(model), { label: 'Products' });
+      assert.deepStrictEqual(requests[0].tool_choice, { type: 'auto', disable_parallel_tool_use: true });
+      assert.strictEqual(requests[0].system, `${SYSTEM}\n\nRespond by calling the \`${TOOL.name}\` tool.`);
+    });
+  }
 });
