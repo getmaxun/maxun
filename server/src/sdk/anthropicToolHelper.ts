@@ -1,8 +1,8 @@
 /**
  * Anthropic Tool Call Helper
- * Calls Anthropic with tool_choice forced to a single named tool and returns
- * the tool's structured input directly, instead of parsing JSON out of a
- * free-form text completion.
+ * Calls Anthropic with tool_choice forced to a single named tool (or left to
+ * the model, for models that reject forcing) and returns the tool's structured
+ * input directly, instead of parsing JSON out of a free-form text completion.
  *
  * None of the tools this helper is used with set `strict: true`, so
  * `tool_use.input` is never validated server-side against the schema.
@@ -19,6 +19,21 @@ import type {
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/messages';
 import { z } from 'zod';
+
+// Models known to accept a forced `tool_choice`. Anything else, including
+// models released after this list was written, gets `auto` instead: newer
+// models (Opus 5.5, Sonnet 5.5, Fable 5.1, Mythos 5.1) answer forcing with a
+// 400, while `auto` is accepted by every model.
+const FORCED_TOOL_CHOICE_MODELS = [
+  /^claude-3/,
+  /^claude-(opus|sonnet|haiku)-4/,
+  /^claude-(opus|sonnet|fable|mythos)-5(-\d{8})?$/,
+  /^claude-haiku-5-5(-\d{8})?$/,
+];
+
+function supportsForcedToolChoice(model: string): boolean {
+  return FORCED_TOOL_CHOICE_MODELS.some((pattern) => pattern.test(model));
+}
 
 export class AnthropicToolCallError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -38,7 +53,6 @@ export interface CallAnthropicWithToolOptions<T> {
   apiKey?: string;
   model: string;
   maxTokens: number;
-  temperature?: number;
   system?: string;
   userMessage: MessageParam['content'];
   tool: Tool;
@@ -53,10 +67,11 @@ export interface CallAnthropicWithToolOptions<T> {
 }
 
 /**
- * Calls Anthropic with a single tool forced via tool_choice (with parallel
- * tool use disabled, so the model cannot invoke the forced tool more than
- * once), and returns the tool's `input`, cast - or, if `zodSchema` is
- * supplied, validated and parsed - as T.
+ * Calls Anthropic with a single tool - forced via tool_choice where the model
+ * allows it, requested in the system prompt otherwise - with parallel tool use
+ * disabled, so the model cannot invoke the tool more than once, and returns
+ * the tool's `input`, cast - or, if `zodSchema` is supplied, validated and
+ * parsed - as T.
  *
  * Throws AnthropicToolCallError (or the AnthropicToolCallTruncatedError
  * subclass) only for structural failures: no tool_use block returned,
@@ -68,11 +83,16 @@ export async function callAnthropicWithTool<T>(
 ): Promise<T> {
   const anthropic = new Anthropic({ apiKey: opts.apiKey || process.env.ANTHROPIC_API_KEY });
 
-  const toolChoice: ToolChoice = {
-    type: 'tool',
-    name: opts.tool.name,
-    disable_parallel_tool_use: true,
-  };
+  // Without forcing, the system prompt asks for the tool instead; a reply
+  // without it still raises AnthropicToolCallError below.
+  const forceTool = supportsForcedToolChoice(opts.model);
+  const toolChoice: ToolChoice = forceTool
+    ? { type: 'tool', name: opts.tool.name, disable_parallel_tool_use: true }
+    : { type: 'auto', disable_parallel_tool_use: true };
+  const toolInstruction = `Respond by calling the \`${opts.tool.name}\` tool.`;
+  const system = forceTool
+    ? opts.system
+    : [opts.system, toolInstruction].filter(Boolean).join('\n\n');
 
   const messages: MessageParam[] = [
     { role: 'user', content: opts.userMessage },
@@ -81,8 +101,9 @@ export async function callAnthropicWithTool<T>(
   const response = await anthropic.messages.create({
     model: opts.model,
     max_tokens: opts.maxTokens,
-    temperature: opts.temperature,
-    system: opts.system,
+    // No `temperature`: most current models answer it with a 400, and no
+    // other Anthropic call site in Maxun sets it.
+    system,
     messages,
     tools: [opts.tool],
     tool_choice: toolChoice,

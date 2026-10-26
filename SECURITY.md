@@ -14,6 +14,15 @@ If you believe you have discovered a security vulnerability in Maxun, please rep
 
 Please **do not** report security vulnerabilities through public GitHub issues or discussions.
 
+## Maxun OSS: Deployment and Security Scope
+
+The Maxun OSS version is designed for trusted, local environments and does not implement per-user resource isolation. It is not intended to function as a multi-tenant system with strict account separation.
+
+In this distribution, all users are assumed to operate within the same trusted environment, and shared access to robots, runs, and recordings is expected behavior. As a result, the absence of `userId` scoping in resource queries is intentional and is not considered a security vulnerability within the scope of the OSS project.
+
+Security researchers are welcome to report other potential vulnerabilities in Maxun OSS. However, reports concerning the absence of per-user resource isolation or multi-tenant support in OSS are out of scope. If you identify a potential cross-tenant vulnerability in Maxun Cloud, please report it through the security reporting channel above.
+
+
 ## Response Timeline
 
 Maxun is maintained by a small team, and we receive a high volume of emails every day. While we review every legitimate security report, we may not be able to respond immediately.

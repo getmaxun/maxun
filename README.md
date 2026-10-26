@@ -8,6 +8,7 @@
     </div>
     Turn Any Website Into A Structured API
 </h3>
+<p align="center"><b>English</b> | <a href="./README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
 The open-source web data platform for real-time web scraping, crawling, search, monitoring and AI data extraction.
@@ -39,23 +40,24 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 
 <tr>
 <td width="20%" align="center" valign="middle">
+<a href="https://proxy-seller.com/?partner=224ED2B5F5D24719">
+  <img src="https://github.com/user-attachments/assets/ac862778-464d-49ae-af7e-69712d9b74a4" alt="Proxy-Seller" width="300" height="150">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://proxy-seller.com/?partner=224ED2B5F5D24719"><strong>Proxy-Seller</strong></a> gives you reliable proxy infrastructure for any workflow: private residential, mobile (4G/5G/LTE), ISP, and datacenter IPv4/IPv6 proxies, all with HTTP(S) and SOCKS5 support. Tap into 47M+ residential IPs across 220+ locations, target exactly the country, city, or ISP you need, and count on 99.7% uptime backed by 24/7 support.
+<strong>Discount:</strong> <code>MAXUNDEV</code> - Get 15% off.
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
 <a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship">
   <img src="https://github.com/user-attachments/assets/f3f7ea4a-a965-4ff9-aab6-8d257da3b18c" alt="Byteful" width="280" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
 <a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month.<strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
-</td>
-</tr>
-
-<tr>
-<td width="20%" align="center" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=getmaxun">
-  <img src="https://github.com/user-attachments/assets/74ba8f9e-a8a8-4c6a-b06c-cd048a118117" alt="Thordata" width="250" height="130">
-</a>
-</td>
-<td width="80%" valign="middle">
-<a href="https://www.thordata.com/?ls=github&lk=getmaxun"><strong>Thordata – Reliable Proxies for Web Scraping & AI Data Collection </strong></a> offers Residential, Mobile, ISP & Datacenter Proxies · 190+ countries with city-level targeting · Sticky and rotating sessions for flexible workflows · Fast, stable proxy infrastructure for developers. <strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off.
 </td>
 </tr>
 
@@ -101,6 +103,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
    * **[AI Mode](https://docs.maxun.dev/robot/extract/llm-extraction)** – Describe what you need in natural language and extract it with AI.
 - **[Scrape](https://docs.maxun.dev/robot/scrape/scrape-robots)** – Convert full webpages into Markdown, HTML and capture screenshots.
 - **[Crawl](https://docs.maxun.dev/robot/crawl/crawl-introduction)** – Crawl entire websites and extract content across pages.
+- **[Agent](https://docs.maxun.dev/robot/agent)** – Extract data from websites with AI that autonomously discovers where the data lives.
 - **[Search](https://docs.maxun.dev/robot/search/search-introduction)** – Search the web and extract results with time-based filters.
 - **[Monitoring](https://docs.maxun.dev/robot/monitoring)** – Track websites over time, detect changes, and get notified when they occur.
 - **[Document Extraction & Parsing](https://docs.maxun.dev/robot/document)** – Extract and parse structured data from documents.

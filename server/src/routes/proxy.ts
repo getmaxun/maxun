@@ -4,6 +4,7 @@ import { connectToRemoteBrowser } from '../browser-management/browserConnection'
 import User from '../models/User';
 import { encrypt, decrypt } from '../utils/auth';
 import { requireSignIn } from '../middlewares/auth';
+import { expandSessionPlaceholder } from '../utils/proxy-session';
 
 export const router = Router();
 
@@ -89,7 +90,7 @@ router.get('/test', requireSignIn, async (req: Request, res: Response) => {
             context = await browser.newContext({
                 proxy: {
                     server: decryptedProxyUrl,
-                    username: decryptedProxyUsername || undefined,
+                    username: expandSessionPlaceholder(decryptedProxyUsername) || undefined,
                     password: decryptedProxyPassword || undefined,
                 },
             });

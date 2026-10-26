@@ -14,6 +14,7 @@ import { InterpreterSettings } from "../../types";
 import { WorkflowGenerator } from "../../workflow-management/classes/Generator";
 import { WorkflowInterpreter } from "../../workflow-management/classes/Interpreter";
 import { getDecryptedProxyConfig } from '../../routes/proxy';
+import { expandSessionPlaceholder, newProxySessionId } from '../../utils/proxy-session';
 import { getInjectableScript } from 'idcac-playwright';
 import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
@@ -46,6 +47,14 @@ interface PageNavigationState {
  * @category BrowserManagement
  */
 export class RemoteBrowser {
+
+    /**
+     * Sticky proxy session id for this browser instance, generated lazily on
+     * first proxy use. Context relaunches inside initialize() reuse it, so they
+     * keep the same exit IP. A run that gets a new RemoteBrowser (e.g. a retried
+     * run) gets a new id.
+     */
+    private proxySessionId?: string;
 
     /**
      * Playwright's [browser](https://playwright.dev/docs/api/class-browser) instance.
@@ -585,10 +594,15 @@ export class RemoteBrowser {
               if (proxyConfig.proxy_url) {
                 proxyOptions = {
                   server: proxyConfig.proxy_url,
-                  ...(proxyConfig.proxy_username && proxyConfig.proxy_password && {
-                    username: proxyConfig.proxy_username,
-                    password: proxyConfig.proxy_password,
-                  }),
+                  ...(proxyConfig.proxy_username &&
+                    proxyConfig.proxy_password && {
+                      username:
+                        expandSessionPlaceholder(
+                          proxyConfig.proxy_username,
+                          (this.proxySessionId ??= newProxySessionId())
+                        ) ?? undefined,
+                      password: proxyConfig.proxy_password,
+                    }),
                 };
               }
 

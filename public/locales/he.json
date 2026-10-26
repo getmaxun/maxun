@@ -115,6 +115,7 @@
       "server_url_helper": "פרוקסי שישמש עבור כל הרובוטים. HTTP ו-SOCKS נתמכים. לדוגמה http://myproxy.com:3128 או socks5://myproxy.com:3128. הצורה הקצרה myproxy.com:3128 נחשבת לפרוקסי HTTP.",
       "requires_auth": "האם נדרש אימות?",
       "username": "שם משתמש",
+      "username_hint": "אופציונלי: הוסיפו {session} במקום שבו הספק מצפה למזהה סשן (לדוגמה user-session-{session}) כדי לקבל IP קבוע חדש בכל הרצה.",
       "password": "סיסמה",
       "add_proxy": "הוסף פרוקסי",
       "test_proxy": "בדוק פרוקסי",

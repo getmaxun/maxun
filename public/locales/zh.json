@@ -115,6 +115,7 @@
     "server_url_helper": "用于所有机器人的代理。支持HTTP和SOCKS代理。示例 http://myproxy.com:3128 或 socks5://myproxy.com:3128。简短形式 myproxy.com:3128 被视为HTTP代理。",
     "requires_auth": "需要认证？",
     "username": "用户名",
+    "username_hint": "可选：在服务商要求填写会话 ID 的位置加入 {session}（例如 user-session-{session}），即可让每次运行获得新的固定 IP。",
     "password": "密码",
     "add_proxy": "添加代理",
     "test_proxy": "测试代理",
