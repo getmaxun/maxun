@@ -103,7 +103,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
    * **[AI Mode](https://docs.maxun.dev/robot/extract/llm-extraction)** – Describe what you need in natural language and extract it with AI.
 - **[Scrape](https://docs.maxun.dev/robot/scrape/scrape-robots)** – Convert full webpages into Markdown, HTML and capture screenshots.
 - **[Crawl](https://docs.maxun.dev/robot/crawl/crawl-introduction)** – Crawl entire websites and extract content across pages.
-- **[Agent](https://docs.maxun.dev/robot/agent)** – Extract data from websites using natural-language prompts, with AI that autonomously discovers where the data lives and how to collect it.
+- **[Agent](https://docs.maxun.dev/robot/agent)** – Extract data from websites with AI that autonomously discovers where the data lives.
 - **[Search](https://docs.maxun.dev/robot/search/search-introduction)** – Search the web and extract results with time-based filters.
 - **[Monitoring](https://docs.maxun.dev/robot/monitoring)** – Track websites over time, detect changes, and get notified when they occur.
 - **[Document Extraction & Parsing](https://docs.maxun.dev/robot/document)** – Extract and parse structured data from documents.
