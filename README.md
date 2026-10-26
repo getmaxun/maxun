@@ -72,15 +72,14 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </td>
 </tr>
 
-
 <tr>
 <td width="20%" align="center" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept">
-  <img src="https://github.com/user-attachments/assets/7269ea9b-83fb-4b70-9a41-0eb2beaabf2a" alt="Nodemaven" width="420" height="130">
+<a href="https://go.nodemaven.com/maxunreadmeoct">
+  <img src="https://github.com/user-attachments/assets/de295d94-61f4-4c97-88f8-cd45cbf3af84" alt="Nodemaven" width="420" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunGHsept">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
+<a href="https://go.nodemaven.com/maxunreadmeoct"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunreadmeoct">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
 </td>
 </tr>
 
