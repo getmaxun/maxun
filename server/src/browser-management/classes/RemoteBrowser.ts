@@ -33,12 +33,6 @@ interface PageNavigationState {
     queue: Promise<unknown>;
 }
 
-// const MEMORY_CONFIG = {
-//     gcInterval: 20000,
-//     maxHeapSize: 1536 * 1024 * 1024,
-//     heapUsageThreshold: 0.7
-// };
-
 /**
  * This class represents a remote browser instance.
  * It is used to allow a variety of interaction with the Playwright's browser instance.
@@ -138,54 +132,6 @@ export class RemoteBrowser {
         this.generator = new WorkflowGenerator(socket, poolId);
         this.isRecordingMode = isRecordingMode;
     }
-
-    // private initializeMemoryManagement(): void {
-    //   this.memoryManagementInterval = setInterval(() => {
-    //     const memoryUsage = process.memoryUsage();
-    //     const heapUsageRatio = memoryUsage.heapUsed / MEMORY_CONFIG.maxHeapSize;
-
-    //     if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.2) {
-    //       logger.warn(
-    //         "Critical memory pressure detected, triggering emergency cleanup"
-    //       );
-    //       this.performMemoryCleanup();
-    //     } else if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
-    //       logger.warn("High memory usage detected, triggering cleanup");
-
-    //       if (
-    //         global.gc &&
-    //         heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.1
-    //       ) {
-    //         global.gc();
-    //       }
-    //     }
-    //   }, MEMORY_CONFIG.gcInterval);
-    // }
-
-    // private async performMemoryCleanup(): Promise<void> {
-    //   if (global.gc) {
-    //     try {
-    //       global.gc();
-    //       logger.info("Garbage collection requested");
-    //     } catch (error) {
-    //       logger.error("Error during garbage collection:", error);
-    //     }
-    //   }
-
-    //   if (this.currentPage) {
-    //     try {
-    //       await new Promise((resolve) => setTimeout(resolve, 500));
-    //       logger.info("CDP session reset completed");
-    //     } catch (error) {
-    //       logger.error("Error resetting CDP session:", error);
-    //     }
-    //   }
-
-    //   this.socket.emit("memory-cleanup", {
-    //     userId: this.userId,
-    //     timestamp: Date.now(),
-    //   });
-    // }
 
     /**
      * Normalizes URLs to prevent navigation loops while maintaining consistent format
@@ -848,16 +794,6 @@ export class RemoteBrowser {
      */
     public async switchOff(): Promise<void> {
       this.isDOMStreamingActive = false;
-
-      // if (this.memoryCleanupInterval) {
-      //   clearInterval(this.memoryCleanupInterval);
-      //   this.memoryCleanupInterval = null;
-      // }
-
-      // if (this.memoryManagementInterval) {
-      //   clearInterval(this.memoryManagementInterval);
-      //   this.memoryManagementInterval = null;
-      // }
 
       this.removeAllSocketListeners();
 
