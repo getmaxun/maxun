@@ -3,12 +3,10 @@ import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import http from 'http';
 import type { BrowserServer } from 'playwright';
 
-// Apply stealth plugin to chromium
 chromium.use(stealthPlugin());
 
 let browserServer: BrowserServer | null = null;
 
-// Configurable ports with defaults
 const BROWSER_WS_PORT = parseInt(process.env.BROWSER_WS_PORT || '3001', 10);
 const BROWSER_HEALTH_PORT = parseInt(process.env.BROWSER_HEALTH_PORT || '3002', 10);
 const BROWSER_WS_HOST = process.env.BROWSER_WS_HOST || 'localhost';
@@ -19,7 +17,6 @@ async function start(): Promise<void> {
     console.log(`Health check port: ${BROWSER_HEALTH_PORT}`);
 
     try {
-        // Launch browser server that exposes WebSocket endpoint
         browserServer = await chromium.launchServer({
             headless: true,
             args: [
@@ -42,7 +39,6 @@ async function start(): Promise<void> {
         console.log(`✅ Browser WebSocket endpoint ready: ${browserServer.wsEndpoint()}`);
         console.log(`✅ Stealth plugin enabled`);
 
-        // Health check HTTP server
         const healthServer = http.createServer((req, res) => {
             if (req.url === '/health') {
                 const wsEndpoint = browserServer?.wsEndpoint().replace('localhost', BROWSER_WS_HOST) || '';
@@ -74,7 +70,6 @@ async function start(): Promise<void> {
     }
 }
 
-// Graceful shutdown
 async function shutdown(): Promise<void> {
     console.log('Shutting down browser service...');
     if (browserServer) {
@@ -91,5 +86,4 @@ async function shutdown(): Promise<void> {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-// Start the service
 start().catch(console.error);
