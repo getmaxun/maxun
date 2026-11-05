@@ -10,6 +10,14 @@ So you want to create a bot? Let's get you started!
 - Docker compose
 - Probably others...
 
+## Easypanel
+
+[Easypanel](https://easypanel.io/) is a self-hosted Docker deployment platform. Maxun has a one-click deployment template there that sets up the backend, frontend, PostgreSQL, and MinIO automatically, without manually writing a docker-compose file or `.env`.
+
+[![Deploy on Easypanel][easypanel-btn]][easypanel-deploy]
+
+If you'd rather set everything up yourself with docker-compose, follow the guide below instead.
+
 ## Guide
 For this guide, we assume that before you start, you have a dedicated docker folder to house config files and everything else we need for persistence between docker container reboots and updates. The path in this guide is `/home/$USER/Docker/maxun`.
 1. Change directory into your docker folder `cd /home/$USER/Docker/`
@@ -178,3 +186,6 @@ services:
 ## Next steps
 You will want to configure a reverse proxy. Click on a link below to check out some examples.
 - [Nginx](nginx.conf)
+
+[easypanel-btn]: https://easypanel.io/img/deploy-on-easypanel-40.svg
+[easypanel-deploy]: https://easypanel.io/templates/maxun
