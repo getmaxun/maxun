@@ -34,7 +34,30 @@
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://www.webshare.io/?referral_code=wwhk524ynls2"><strong>Webshare</strong></a> 让你即时访问覆盖 195+ 个国家的 8000 万+ 合乎道德来源的 IP 代理池，提供轮换住宅代理、静态 ISP 代理和数据中心代理，以及完整的 API。它包含 100+ Gbps 骨干网，支持国家/城市/州/ZIP/ASN 级别的定向，且无需信用卡即可开始。<strong>免费额度：</strong>10 个代理 + 1GB/月 · <strong>优惠码：</strong><code>MAXUN20</code> - 首次购买立减 20%。
+<a href="https://www.webshare.io/?referral_code=wwhk524ynls2"><strong>Webshare</strong></a> 提供即时访问超过 8000 万个来自 195 多个国家和地区的合规 IP 代理池，包括轮换住宅代理、静态 ISP 代理和数据中心代理，并提供完整的 API。其网络骨干带宽超过 100 Gbps，支持国家/地区、城市、州、邮政编码及 ASN 级别的精准定位，注册使用无需信用卡。<strong>免费套餐：</strong>10 个代理 IP + 每月 1GB 流量 · <strong>优惠码：</strong><code>MAXUN20</code> - 首次购买可享 8 折优惠。
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
+<a href="https://www.swiftproxy.net/?ref=maxun">
+  <img src="https://github.com/user-attachments/assets/a1d2309b-d3bd-45e6-8760-ce1f8dcd18b9" alt="Swiftproxy" width="240" height="130">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://www.swiftproxy.net/?ref=maxun"><strong>Swiftproxy</strong></a> 在全球 220 多个地区提供超过 9000 万个住宅 IP，帮助 Maxun 用户抓取网站、访问地理位置限制内容，以及从不同地区收集网页数据。支持轮换和静态住宅代理、HTTP(S) 及 SOCKS5 协议。<strong>提供免费测试。优惠码：</strong><code>PROXY90</code> - 可享 9 折优惠。
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
+<a href="https://proxy-seller.com/?partner=224ED2B5F5D24719">
+  <img src="https://github.com/user-attachments/assets/ac862778-464d-49ae-af7e-69712d9b74a4" alt="Proxy-Seller" width="300" height="150">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://proxy-seller.com/?partner=224ED2B5F5D24719"><strong>Proxy-Seller</strong></a> 为各种工作流程提供可靠的代理基础设施，包括私人住宅代理、移动代理（4G/5G/LTE）、ISP 代理，以及数据中心 IPv4/IPv6 代理，全面支持 HTTP(S) 和 SOCKS5 协议。拥有覆盖 220 多个地区的 4700 多万个住宅 IP，可精准定位所需的国家、城市或 ISP，并提供 99.7% 的正常运行时间保障及全天候技术支持。
+<strong>优惠码：</strong><code>MAXUNDEV</code> - 立享 85 折优惠。
 </td>
 </tr>
 
@@ -45,7 +68,7 @@
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> 是一家总部位于英国的 Web 数据基础设施平台，提供合乎道德来源的住宅代理、移动代理、静态住宅代理（ISP）和数据中心代理，以及面向网页抓取、数据收集和 AI 驱动自动化的 API 优先工具，每月处理数百亿次请求。<strong>优惠码：</strong><code>MAXUN10</code> - Byteful 住宅代理立减 10%。
+<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> 是一家总部位于英国的网页数据基础设施平台，提供合规来源的住宅代理、移动代理、静态住宅（ISP）代理和数据中心代理，同时提供以 API 为核心的网页抓取、数据采集及 AI 驱动自动化工具，每月处理数百亿次请求。<strong>优惠码：</strong><code>MAXUN10</code> - 购买 Byteful 住宅代理可享 9 折优惠。
 </td>
 </tr>
 
@@ -56,19 +79,19 @@
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun"><strong>Mango Proxy</strong></a> 提供覆盖 200+ 个国家的住宅、ISP、数据中心和移动代理，支持 HTTP(S)/SOCKS5 和灵活的 IP 管理。<strong>优惠码：</strong><code>MAXUN</code> - 静态 ISP 代理立减 8%。
+<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun"><strong>Mango Proxy</strong></a> 在 200 多个国家和地区提供住宅代理、ISP 代理、数据中心代理及移动代理，支持 HTTP(S)/SOCKS5 协议和灵活的 IP 管理。<strong>优惠码：</strong><code>MAXUN</code> - 静态 ISP 代理可享 8% 优惠。
 </td>
 </tr>
 
-
 <tr>
 <td width="20%" align="center" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept">
-  <img src="https://github.com/user-attachments/assets/7269ea9b-83fb-4b70-9a41-0eb2beaabf2a" alt="Nodemaven" width="420" height="130">
+<a href="https://go.nodemaven.com/maxunreadmeoct">
+  <img src="https://github.com/user-attachments/assets/de295d94-61f4-4c97-88f8-cd45cbf3af84" alt="Nodemaven" width="420" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept"><strong>Nodemaven</strong></a> 为网页抓取和自动化提供市场上 IP 质量最高、最高效的代理服务。为什么选择 <a href="https://go.nodemaven.com/maxunGHsept">Nodemaven</a>？· ZIP 级定位 · 99.9% 可用性 · IP 过滤：所有代理的欺诈评分均低于 97% · 无需 KYC · 独家免费工具：代理带宽检测器、Meta 标签检测器、IP 查询等！<strong>优惠码：</strong><code>MAXUN35</code> — 移动与住宅代理立减 35% · <code>MAXUN40</code> - ISP（静态）立减 40%
+<a href="https://go.nodemaven.com/maxunreadmeoct"><strong>Nodemaven</strong></a> 为网页抓取和自动化提供高效的代理服务，拥有市场上品质最高的 IP。为什么选择 <a href="https://go.nodemaven.com/maxunreadmeoct">Nodemaven</a>？· ZIP 邮政编码级别定位 · 99.9% 正常运行时间 · IP 过滤：所有代理的欺诈评分均低于 97% · 无需 KYC 身份验证 · 提供独特的免费工具，包括代理带宽检测器、Meta 标签检测器、IP 查询等！
+<strong>优惠活动：</strong><code>MAXUN2X</code> — 黑色星期五期间流量翻倍 · <code>MAXUN35</code> — 移动代理和住宅代理享 65 折 · <code>MAXUN40</code> - ISP（静态）代理享 6 折优惠。
 </td>
 </tr>
 
@@ -79,7 +102,7 @@
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun"><strong>TestMu AI</strong></a> 是面向质量工程的原生 AI 智能体云平台。更智能地测试，更快地交付。
+<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=maxun"><strong>TestMu AI</strong></a> 是一个原生 AI 智能体驱动的云端质量工程平台，帮助团队更智能地进行软件测试，加快产品交付速度。
 </td>
 </tr>
 </table>
