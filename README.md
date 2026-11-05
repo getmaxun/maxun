@@ -68,7 +68,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month.<strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
+<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month. <strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
 </td>
 </tr>
 
@@ -90,7 +90,8 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://go.nodemaven.com/maxunreadmeoct"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunreadmeoct">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
+<a href="https://go.nodemaven.com/maxunreadmeoct"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunreadmeoct">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN2X</code> — 2X traffic for Black Friday · <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
+
 </td>
 </tr>
 
