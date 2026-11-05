@@ -40,6 +40,17 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 
 <tr>
 <td width="20%" align="center" valign="middle">
+<a href="https://www.swiftproxy.net/?ref=maxun">
+  <img src="https://github.com/user-attachments/assets/a1d2309b-d3bd-45e6-8760-ce1f8dcd18b9" alt="Swiftproxy" width="240" height="130">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://www.swiftproxy.net/?ref=maxun"><strong>Swiftproxy</strong></a> provides 90M+ residential IPs across 220+ locations worldwide, helping Maxun users scrape websites, access geo-restricted content, and collect web data across different regions. Supports rotating and static residential proxies, HTTP(S), and SOCKS5. <strong>Free testing available. </strong><strong>Discount:</strong> <code>PROXY90</code> - 10% off.
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
 <a href="https://proxy-seller.com/?partner=224ED2B5F5D24719">
   <img src="https://github.com/user-attachments/assets/ac862778-464d-49ae-af7e-69712d9b74a4" alt="Proxy-Seller" width="300" height="150">
 </a>
