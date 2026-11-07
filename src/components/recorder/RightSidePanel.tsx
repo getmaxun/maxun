@@ -1108,8 +1108,8 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
             {showLimitOptions && (
               <FormControl>
                 <Typography variant="h6" sx={{
-                  fontSize: '16px',
-                  fontWeight: 'bold',
+                  fontSize: '15px',
+                  fontWeight: '500',
                   mb: 1,
                   whiteSpace: 'normal',
                   wordBreak: 'break-word'
