@@ -40,6 +40,17 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 
 <tr>
 <td width="20%" align="center" valign="middle">
+<a href="https://www.swiftproxy.net/?ref=maxun">
+  <img src="https://github.com/user-attachments/assets/a1d2309b-d3bd-45e6-8760-ce1f8dcd18b9" alt="Swiftproxy" width="240" height="130">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://www.swiftproxy.net/?ref=maxun"><strong>Swiftproxy</strong></a> provides 90M+ residential IPs across 220+ locations worldwide, helping Maxun users scrape websites, access geo-restricted content, and collect web data across different regions. Supports rotating and static residential proxies, HTTP(S), and SOCKS5. <strong>Free testing available. </strong><strong>Discount:</strong> <code>PROXY90</code> - 10% off.
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
 <a href="https://proxy-seller.com/?partner=224ED2B5F5D24719">
   <img src="https://github.com/user-attachments/assets/ac862778-464d-49ae-af7e-69712d9b74a4" alt="Proxy-Seller" width="300" height="150">
 </a>
@@ -57,7 +68,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month.<strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
+<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month. <strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
 </td>
 </tr>
 
@@ -72,15 +83,15 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </td>
 </tr>
 
-
 <tr>
 <td width="20%" align="center" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept">
-  <img src="https://github.com/user-attachments/assets/7269ea9b-83fb-4b70-9a41-0eb2beaabf2a" alt="Nodemaven" width="420" height="130">
+<a href="https://go.nodemaven.com/maxunreadmeoct">
+  <img src="https://github.com/user-attachments/assets/de295d94-61f4-4c97-88f8-cd45cbf3af84" alt="Nodemaven" width="420" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunGHsept">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
+<a href="https://go.nodemaven.com/maxunreadmeoct"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunreadmeoct">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN2X</code> — 2X traffic for Black Friday · <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
+
 </td>
 </tr>
 
