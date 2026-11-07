@@ -312,11 +312,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     browserSteps.find(
       step => step.type === 'list' && step.actionId === currentListActionId
     ) as (BrowserStep & { type: 'list'; listSelector?: string; fields?: Record<string, any> }) | undefined
-  , [browserSteps, currentListActionId]);
+    , [browserSteps, currentListActionId]);
 
   const fieldsString = React.useMemo(() =>
     JSON.stringify(currentListStep?.fields || {})
-  , [currentListStep?.fields]);
+    , [currentListStep?.fields]);
 
   useEffect(() => {
     if (!getList) return;
@@ -883,7 +883,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   onClick={handleBackCaptureList}
                   sx={{
                     color: '#4b4848 !important',
-                    borderColor: '#858585 !important',
+                    border: 'none',
+                    '&:hover': {
+                      border: 'none',
+                    },
                     backgroundColor: 'whitesmoke !important',
                   }}
                 >
@@ -895,7 +898,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 onClick={handleConfirmListCapture}
                 sx={{
                   color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
+                  border: 'none',
+                  '&:hover': {
+                    border: 'none',
+                  },
                   backgroundColor: 'whitesmoke !important',
                 }}
               >
@@ -910,8 +916,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 onClick={discardGetList}
                 sx={{
                   color: 'red !important',
-                  borderColor: 'red !important',
+                  border: 'none',
                   backgroundColor: 'whitesmoke !important',
+                  '&:hover': {
+                    border: 'none',
+                  }
                 }}
               >
                 {t('right_panel.buttons.discard')}
@@ -1016,9 +1025,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         }}
                         sx={{
                           color: '#ff00c3 !important',
-                          borderColor: '#ff00c3 !important',
+                          border: 'none',
                           '&:hover': {
-                            borderColor: '#ff00c3 !important',
+                            border: 'none',
+
                             backgroundColor: '#f4f6f4 !important',
                           }
                         }}
@@ -1033,7 +1043,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   onClick={() => handlePaginationSettingSelect('clickNext')}
                   sx={{
                     color: paginationType === 'clickNext' ? 'whitesmoke !important' : '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
+                    border: 'none',
+                    '&:hover': {
+                      border: 'none',
+                    },
                     backgroundColor: paginationType === 'clickNext' ? '#ff00c3 !important' : 'whitesmoke !important',
                   }}>
                   {t('right_panel.pagination.click_next')}
@@ -1043,7 +1056,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   onClick={() => handlePaginationSettingSelect('clickLoadMore')}
                   sx={{
                     color: paginationType === 'clickLoadMore' ? 'whitesmoke !important' : '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
+                    border: 'none',
+                    '&:hover': {
+                      border: 'none',
+                    },
                     backgroundColor: paginationType === 'clickLoadMore' ? '#ff00c3 !important' : 'whitesmoke !important',
                   }}>
                   {t('right_panel.pagination.click_load_more')}
@@ -1053,7 +1069,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   onClick={() => handlePaginationSettingSelect('scrollDown')}
                   sx={{
                     color: paginationType === 'scrollDown' ? 'whitesmoke !important' : '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
+                    border: 'none',
+                    '&:hover': {
+                      border: 'none',
+                    },
                     backgroundColor: paginationType === 'scrollDown' ? '#ff00c3 !important' : 'whitesmoke !important',
                   }}>
                   {t('right_panel.pagination.scroll_down')}
@@ -1063,7 +1082,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   onClick={() => handlePaginationSettingSelect('scrollUp')}
                   sx={{
                     color: paginationType === 'scrollUp' ? 'whitesmoke !important' : '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
+                    border: 'none',
+                    '&:hover': {
+                      border: 'none',
+                    },
                     backgroundColor: paginationType === 'scrollUp' ? '#ff00c3 !important' : 'whitesmoke !important',
                   }}>
                   {t('right_panel.pagination.scroll_up')}
@@ -1073,7 +1095,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   onClick={() => handlePaginationSettingSelect('none')}
                   sx={{
                     color: paginationType === 'none' ? 'whitesmoke !important' : '#ff00c3 !important',
-                    borderColor: '#ff00c3 !important',
+                    border: 'none',
+                    '&:hover': {
+                      border: 'none',
+                    },
                     backgroundColor: paginationType === 'none' ? '#ff00c3 !important' : 'whitesmoke !important',
                   }}>
                   {t('right_panel.pagination.none')}</Button>
@@ -1150,8 +1175,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 onClick={stopCaptureAndEmitGetTextSettings}
                 sx={{
                   color: '#ff00c3 !important',
-                  borderColor: '#ff00c3 !important',
+                  border: 'none',
                   backgroundColor: 'whitesmoke !important',
+                  '&:hover': {
+                    border: 'none',
+                  }
                 }}
               >
                 {t('right_panel.buttons.confirm')}
@@ -1162,7 +1190,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                 onClick={discardGetText}
                 sx={{
                   color: 'red !important',
-                  borderColor: 'red !important',
+                  border: 'none',
+                  '&:hover': {
+                    border: 'none',
+                  },
                   backgroundColor: 'whitesmoke !important',
                 }}
               >
@@ -1189,8 +1220,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               }}
               sx={{
                 color: 'red !important',
-                borderColor: 'red !important',
+                border: 'none',
                 backgroundColor: 'whitesmoke !important',
+                '&:hover': {
+                  border: 'none',
+                }
               }}
             >
               {t('right_panel.buttons.discard')}
