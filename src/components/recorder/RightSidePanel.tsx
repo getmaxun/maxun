@@ -312,11 +312,11 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
     browserSteps.find(
       step => step.type === 'list' && step.actionId === currentListActionId
     ) as (BrowserStep & { type: 'list'; listSelector?: string; fields?: Record<string, any> }) | undefined
-  , [browserSteps, currentListActionId]);
+    , [browserSteps, currentListActionId]);
 
   const fieldsString = React.useMemo(() =>
     JSON.stringify(currentListStep?.fields || {})
-  , [currentListStep?.fields]);
+    , [currentListStep?.fields]);
 
   useEffect(() => {
     if (!getList) return;
@@ -1025,10 +1025,10 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                         }}
                         sx={{
                           color: '#ff00c3 !important',
-                                            border: 'none',
-                  '&:hover': {
-                    border: 'none',
-                  
+                          border: 'none',
+                          '&:hover': {
+                            border: 'none',
+
                             backgroundColor: '#f4f6f4 !important',
                           }
                         }}
@@ -1057,7 +1057,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   sx={{
                     color: paginationType === 'clickLoadMore' ? 'whitesmoke !important' : '#ff00c3 !important',
                     border: 'none',
-                                        '&:hover': {
+                    '&:hover': {
                       border: 'none',
                     },
                     backgroundColor: paginationType === 'clickLoadMore' ? '#ff00c3 !important' : 'whitesmoke !important',
@@ -1070,7 +1070,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   sx={{
                     color: paginationType === 'scrollDown' ? 'whitesmoke !important' : '#ff00c3 !important',
                     border: 'none',
-                                        '&:hover': {
+                    '&:hover': {
                       border: 'none',
                     },
                     backgroundColor: paginationType === 'scrollDown' ? '#ff00c3 !important' : 'whitesmoke !important',
@@ -1083,7 +1083,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   sx={{
                     color: paginationType === 'scrollUp' ? 'whitesmoke !important' : '#ff00c3 !important',
                     border: 'none',
-                                        '&:hover': {
+                    '&:hover': {
                       border: 'none',
                     },
                     backgroundColor: paginationType === 'scrollUp' ? '#ff00c3 !important' : 'whitesmoke !important',
@@ -1096,7 +1096,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
                   sx={{
                     color: paginationType === 'none' ? 'whitesmoke !important' : '#ff00c3 !important',
                     border: 'none',
-                                        '&:hover': {
+                    '&:hover': {
                       border: 'none',
                     },
                     backgroundColor: paginationType === 'none' ? '#ff00c3 !important' : 'whitesmoke !important',
