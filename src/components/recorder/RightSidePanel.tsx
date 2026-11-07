@@ -1109,7 +1109,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({ onFinishCapture 
               <FormControl>
                 <Typography variant="h6" sx={{
                   fontSize: '16px',
-                  fontWeight: 'bold',
+                  fontWeight: '500',
                   mb: 1,
                   whiteSpace: 'normal',
                   wordBreak: 'break-word'
