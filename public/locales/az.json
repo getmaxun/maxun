@@ -142,7 +142,8 @@
       "fetch_success": "Proksi parametrləri uğurla alındı",
       "remove_success": "Proksi parametrləri uğurla silindi",
       "remove_error": "Proksi parametrlərini silmək mümkün olmadı. Yenidən cəhd edin."
-    }
+    },
+    "testing": "Yoxlanılır..."
   },
   "apikey": {
     "title": "API açarınızı idarə edin",
@@ -166,7 +167,8 @@
       "generate_error": "API açarı yaratmaq mümkün olmadı - {{error}}",
       "delete_success": "API açarı uğurla silindi",
       "delete_error": "API açarını silmək mümkün olmadı - {{error}}",
-      "copy_success": "API açarı uğurla kopyalandı"
+      "copy_success": "API açarı uğurla kopyalandı",
+      "copy_error": "API açarını kopyalamaq mümkün olmadı"
     }
   },
   "action_description": {
@@ -284,7 +286,8 @@
       "no_actions_performed": "Robotu yadda saxlamaq mümkün deyil. Yadda saxlamazdan əvvəl ən azı bir çıxarma əməliyyatı yerinə yetirin."
     },
     "tooltips": {
-      "saving": "İş axını optimallaşdırılır və yadda saxlanılır"
+      "saving": "İş axını optimallaşdırılır və yadda saxlanılır",
+      "optimizing": "İş axını optimallaşdırılır"
     }
   },
   "browser_recording": {
@@ -431,7 +434,8 @@
       "notifications": {
         "base_selected": "Airtable verilənlər bazası uğurla seçildi",
         "table_selected": "Airtable cədvəli uğurla seçildi",
-        "integration_removed": "Airtable inteqrasiyası uğurla silindi"
+        "integration_removed": "Airtable inteqrasiyası uğurla silindi",
+        "auth_success": "Airtable ilə kimlik uğurla təsdiqləndi"
       }
     }
   },
@@ -468,7 +472,8 @@
     "created_at": "Robotun yaradılma vaxtı",
     "compare_runs": "Son icranı əvvəlki icra ilə müqayisə et",
     "errors": {
-      "robot_not_found": "Robotun təfərrüatlarını tapmaq mümkün olmadı. Yenidən cəhd edin."
+      "robot_not_found": "Robotun təfərrüatlarını tapmaq mümkün olmadı. Yenidən cəhd edin.",
+      "update_failed": "Robot parametrlərini yeniləmək mümkün olmadı. Yenidən cəhd edin."
     },
     "buttons": {
       "close": "Bağla"
@@ -521,7 +526,8 @@
       "schedule_failed": "{{name}} robotu üçün cədvəl qurmaq mümkün olmadı",
       "abort_success": "{{name}} robotunun icrası uğurla dayandırıldı",
       "abort_failed": "{{name}} robotunun icrasını dayandırmaq mümkün olmadı",
-      "abort_initiated": "{{name}} robotunun icrası dayandırılır"
+      "abort_initiated": "{{name}} robotunun icrası dayandırılır",
+      "connection_failed": "{{name}} robotu üçün brauzerə qoşulmaq mümkün olmadı"
     },
     "menu": {
       "recordings": "Robotlar",
@@ -577,7 +583,11 @@
         "run_by_user": "İşə salan istifadəçi",
         "run_by_schedule": "İşə salan cədvəlin identifikatoru",
         "run_by_api": "API vasitəsilə icra",
-        "run_type": "İcra növü"
+        "run_type": "İcra növü",
+        "run_by_cli": "CLI vasitəsilə icra",
+        "run_by_mcp": "MCP vasitəsilə icra",
+        "run_by_sdk": "SDK vasitəsilə icra",
+        "run_by_unknown": "İşə salan məlum deyil"
       }
     }
   },
