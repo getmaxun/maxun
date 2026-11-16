@@ -12,6 +12,15 @@ const CONNECTION_CONFIG = {
 };
 
 /**
+ * The browser service only returns its WebSocket endpoint to callers that
+ * present BROWSER_SERVICE_TOKEN (when one is configured on the service).
+ */
+function browserServiceHeaders(): Record<string, string> {
+    const token = process.env.BROWSER_SERVICE_TOKEN;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
  * Get the WebSocket endpoint from the browser service health check
  * @returns Promise<string> - The WebSocket endpoint URL with browser ID
  */
@@ -22,15 +31,15 @@ async function getBrowserServiceEndpoint(): Promise<string> {
 
     try {
         logger.debug(`Fetching WebSocket endpoint from: ${healthEndpoint}`);
-        const response = await fetch(healthEndpoint);
+        const response = await fetch(healthEndpoint, { headers: browserServiceHeaders() });
         const data = await response.json();
 
         if (data.status === 'healthy' && data.wsEndpoint) {
-            logger.debug(`Got WebSocket endpoint: ${data.wsEndpoint}`);
+            logger.debug('Got WebSocket endpoint from browser service');
             return data.wsEndpoint;
         }
 
-        throw new Error('Health check did not return a valid wsEndpoint');
+        throw new Error('Health check did not return a valid wsEndpoint (is BROWSER_SERVICE_TOKEN the same on the backend and browser service?)');
     } catch (error: any) {
         logger.error(`Failed to fetch endpoint from health check: ${error.message}`);
         throw new Error(
