@@ -68,7 +68,7 @@
     "pdf-parse": "^2.4.5",
     "pg": "^8.13.0",
     "pkce-challenge": "^4.1.0",
-    "playwright-core": "1.57.0",
+    "playwright-core": "1.65.1",
     "posthog-node": "^4.2.1",
     "ppu-paddle-ocr": "^5.7.1",
     "react": "^18.0.0",
