@@ -79,7 +79,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun"><strong>Mango Proxy</strong></a> offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management. <strong>Discount:</strong> <code>MAXUN</code> - 8% off Static ISP Proxies.
+<a href="https://mangoproxy.com/prod-isp-static/?utm_source=maxun&utm_medium=partner&utm_campaign=maxun_github"><strong>Mango Proxy</strong></a> offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management. <strong>Discount:</strong> <code>MAXUN</code> - 8% off Static ISP Proxies.
 </td>
 </tr>
 
