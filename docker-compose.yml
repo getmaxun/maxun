@@ -11,10 +11,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      # Check over TCP: while the image initialises a new database, its temporary
+      # server only listens on a Unix socket, which the backend can't use.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5
+      # Check every second while starting up, so the backend isn't kept waiting.
+      start_period: 30s
+      start_interval: 1s
 
   minio:
     image: minio/minio
@@ -54,9 +59,15 @@ services:
     - seccomp=unconfined
     shm_size: '2gb'
     mem_limit: 6g
+    # Forwards `docker stop` to node so the backend can shut down cleanly.
+    init: true
     depends_on:
-      - postgres
-      - minio
+      # Start the backend once Postgres accepts connections, instead of letting it
+      # fail and restart while the database is still starting.
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
     volumes:
       - /var/run/dbus:/var/run/dbus
 

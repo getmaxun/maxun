@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import Anthropic from '@anthropic-ai/sdk';
-import mammoth from 'mammoth';
-import { PDFParse } from 'pdf-parse';
+// mammoth, pdf-parse and xlsx are imported where they're used, so starting the
+// server doesn't pay to load them.
 import type { PaddleOcrResult } from 'ppu-paddle-ocr';
 import logger from '../../logger';
 import { OutputFormats } from '../../constants/output-formats';
@@ -12,8 +12,6 @@ import { DOCX_MIME_TYPE, PDF_MIME_TYPE, XLSX_MIME_TYPE, CSV_MIME_TYPE,
   PNG_MIME_TYPE, isImageMimeType } from '../../utils/document/documentFile';
 import { assertLlmBaseUrlAllowed, resolveOpenAiApiKey } from '../../utils/llm-endpoint';
 import { resolveLlmModel } from '../../utils/llm-models';
-
-import * as XLSX from 'xlsx';
 
 const MAX_SCHEMA_SAMPLE_CHARS = 16000;
 const MAX_CHUNK_CHARS = 12000;
@@ -1688,6 +1686,7 @@ export class DocumentInterpreter {
   }
 
   private static async parsePDF(buffer: Buffer): Promise<ParsedDocument> {
+    const { PDFParse } = await import('pdf-parse');
     const parser = new PDFParse({ data: buffer });
 
     try {
@@ -1772,6 +1771,7 @@ export class DocumentInterpreter {
   }
 
   private static async parseXLSX(buffer: Buffer): Promise<ParsedDocument>{
+    const XLSX = await import('xlsx');
 
     // conver the excel file into a Javascript object called "workbook"
     const workbook = XLSX.read(buffer, {
@@ -1855,6 +1855,7 @@ export class DocumentInterpreter {
   }
 
   private static async parseCSV(buffer: Buffer): Promise<ParsedDocument> {
+    const XLSX = await import('xlsx');
     const workbook = XLSX.read(buffer, {
       type: 'buffer',
       cellDates: true,
@@ -1931,6 +1932,7 @@ export class DocumentInterpreter {
   }
 
   private static async parseDOCX(buffer: Buffer): Promise<ParsedDocument> {
+    const mammoth = (await import('mammoth')).default;
     const [rawTextResult, htmlResult] = await Promise.all([
       mammoth.extractRawText({ buffer }),
       mammoth.convertToHtml({ buffer }),

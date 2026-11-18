@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import { hashPassword, comparePassword } from "../utils/auth";
 import { requireSignIn } from "../middlewares/auth";
 import { genAPIKey } from "../utils/api";
-import { google } from "googleapis";
+import { getGoogle } from "../utils/googleapis";
 import { capture } from "../utils/analytics";
 import crypto from 'crypto';
 
@@ -355,11 +355,18 @@ router.delete(
   }
 );
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
+let googleOAuth2Client: InstanceType<ReturnType<typeof getGoogle>["auth"]["OAuth2"]> | undefined;
+
+const getGoogleOAuth2Client = () => {
+  if (!googleOAuth2Client) {
+    googleOAuth2Client = new (getGoogle().auth.OAuth2)(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+  }
+  return googleOAuth2Client;
+};
 
 // Step 1: Redirect to Google for authentication
 router.get("/google", (req, res) => {
@@ -372,7 +379,7 @@ router.get("/google", (req, res) => {
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/drive.readonly",
   ];
-  const url = oauth2Client.generateAuthUrl({
+  const url = getGoogleOAuth2Client().generateAuthUrl({
     access_type: "offline",
     prompt: "consent", // Ensures you get a refresh token on first login
     scope: scopes,
@@ -398,11 +405,11 @@ router.get(
       if (typeof code !== "string") {
         return res.status(400).json({ message: "Invalid code" });
       }
-      const { tokens } = await oauth2Client.getToken(code);
-      oauth2Client.setCredentials(tokens);
+      const { tokens } = await getGoogleOAuth2Client().getToken(code);
+      getGoogleOAuth2Client().setCredentials(tokens);
 
       // Get user profile from Google
-      const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+      const oauth2 = getGoogle().oauth2({ version: "v2", auth: getGoogleOAuth2Client() });
       const {
         data: { email },
       } = await oauth2.userinfo.get();
@@ -442,7 +449,7 @@ router.get(
       });
 
       // List user's Google Sheets from their Google Drive
-      const drive = google.drive({ version: "v3", auth: oauth2Client });
+      const drive = getGoogle().drive({ version: "v3", auth: getGoogleOAuth2Client() });
       const response = await drive.files.list({
         q: "mimeType='application/vnd.google-apps.spreadsheet'", // List only Google Sheets files
         fields: "files(id, name)", // Retrieve the ID and name of each file
@@ -515,12 +522,12 @@ router.post(
     }
 
     // Set Google OAuth credentials
-    oauth2Client.setCredentials({
+    getGoogleOAuth2Client().setCredentials({
       access_token: robot.google_access_token,
       refresh_token: robot.google_refresh_token,
     });
 
-    const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+    const sheets = getGoogle().sheets({ version: "v4", auth: getGoogleOAuth2Client() });
 
     try {
       // Fetch data from the spreadsheet (you can let the user choose a specific range too)
@@ -550,13 +557,13 @@ router.get("/gsheets/files", requireSignIn, async (req, res) => {
       return res.status(400).json({ message: "Robot not found" });
     }
 
-    oauth2Client.setCredentials({
+    getGoogleOAuth2Client().setCredentials({
       access_token: robot.google_access_token,
       refresh_token: robot.google_refresh_token,
     });
 
     // List user's Google Sheets files from their Google Drive
-    const drive = google.drive({ version: "v3", auth: oauth2Client });
+    const drive = getGoogle().drive({ version: "v3", auth: getGoogleOAuth2Client() });
     const response = await drive.files.list({
       q: "mimeType='application/vnd.google-apps.spreadsheet'",
       fields: "files(id, name)",

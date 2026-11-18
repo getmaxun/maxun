@@ -1,4 +1,4 @@
-import { google } from "googleapis";
+import { getGoogle } from "../../utils/googleapis";
 import logger from "../../logger";
 import Run from "../../models/Run";
 import Robot from "../../models/Robot";
@@ -225,7 +225,7 @@ async function processOutputType(
 async function ensureSheetExists(spreadsheetId: string, sheetName: string, robotConfig: any) {
   try {
     const oauth2Client = getOAuth2Client(robotConfig);
-    const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+    const sheets = getGoogle().sheets({ version: 'v4', auth: oauth2Client });
     
     const response = await sheets.spreadsheets.get({
       spreadsheetId,
@@ -258,7 +258,7 @@ async function ensureSheetExists(spreadsheetId: string, sheetName: string, robot
 }
 
 function getOAuth2Client(robotConfig: any) {
-  const oauth2Client = new google.auth.OAuth2(
+  const oauth2Client = new (getGoogle().auth.OAuth2)(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
@@ -296,7 +296,7 @@ export async function writeDataToSheet(
       throw new Error('Google Sheets access not configured for user');
     }
 
-    const oauth2Client = new google.auth.OAuth2(
+    const oauth2Client = new (getGoogle().auth.OAuth2)(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
       process.env.GOOGLE_REDIRECT_URI
@@ -319,7 +319,7 @@ export async function writeDataToSheet(
       }
     });
 
-    const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+    const sheets = getGoogle().sheets({ version: 'v4', auth: oauth2Client });
 
     const checkResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
