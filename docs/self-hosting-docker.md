@@ -123,7 +123,8 @@ services:
       - /home/$USER/Docker/maxun/redis:/data
 
   minio:
-    image: minio/minio
+    # minio/minio was removed from Docker Hub; Chainguard maintains a free build.
+    image: cgr.dev/chainguard/minio:latest
     container_name: maxun-minio
     mem_limit: 512M
     environment:
