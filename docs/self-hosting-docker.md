@@ -123,8 +123,8 @@ services:
       - /home/$USER/Docker/maxun/redis:/data
 
   minio:
-    # minio/minio was removed from Docker Hub; Chainguard maintains a free build.
-    image: cgr.dev/chainguard/minio:latest
+    # minio/minio was removed from Docker Hub. Silo (pgsty/silo) is a maintained MinIO fork.
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     container_name: maxun-minio
     mem_limit: 512M
     environment:
