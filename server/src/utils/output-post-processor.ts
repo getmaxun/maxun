@@ -70,12 +70,6 @@ export async function processRobotOutputFormats(
           }
         }
 
-        if (!effectiveFormats.includes('html') && markdownConversionSucceeded) {
-          delete pageResult.html;
-        }
-        if (!effectiveFormats.includes('text')) delete pageResult.text;
-        if (!effectiveFormats.includes('links')) delete pageResult.links;
-
         if (effectiveFormats.includes('summary')) {
           const pageText = (pageResult.markdown || pageResult.text || '').substring(0, 40000);
           if (pageText.trim()) {
@@ -87,6 +81,12 @@ export async function processRobotOutputFormats(
             }
           }
         }
+
+        if (!effectiveFormats.includes('html') && markdownConversionSucceeded) {
+          delete pageResult.html;
+        }
+        if (!effectiveFormats.includes('text')) delete pageResult.text;
+        if (!effectiveFormats.includes('links')) delete pageResult.links;
 
         if (!includeVisibleScreenshot) {
           delete pageResult.screenshotVisible;
@@ -118,12 +118,6 @@ export async function processRobotOutputFormats(
             }
           }
 
-          if (!effectiveFormats.includes('html') && markdownConversionSucceeded) {
-            delete result.html;
-          }
-          if (!effectiveFormats.includes('text')) delete result.text;
-          if (!effectiveFormats.includes('links')) delete result.links;
-
           if (effectiveFormats.includes('summary')) {
             const pageText = (result.markdown || result.text || '').substring(0, 40000);
             if (pageText.trim()) {
@@ -135,6 +129,12 @@ export async function processRobotOutputFormats(
               }
             }
           }
+
+          if (!effectiveFormats.includes('html') && markdownConversionSucceeded) {
+            delete result.html;
+          }
+          if (!effectiveFormats.includes('text')) delete result.text;
+          if (!effectiveFormats.includes('links')) delete result.links;
 
           if (!includeVisibleScreenshot) {
             delete result.screenshotVisible;
