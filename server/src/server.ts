@@ -331,8 +331,9 @@ if (require.main === module) {
 
     try {
       await new Promise<void>((resolve, reject) => {
-        server.close((err) => {
-          if (err) {
+        server.close((err?: NodeJS.ErrnoException) => {
+          // io.close() above already closes the HTTP server.
+          if (err && err.code !== 'ERR_SERVER_NOT_RUNNING') {
             reject(err);
           } else {
             resolve();
