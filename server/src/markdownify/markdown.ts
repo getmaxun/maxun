@@ -242,7 +242,8 @@ function tidyHtml(html: string): string {
     const alttext = ($el.attr("alttext") || "").trim();
     const latex = annotation || alttext;
     if (latex) {
-      $el.replaceWith(isBlock ? `<p>$$${latex}$$</p>` : `<span>$${latex}$</span>`);
+      const escapedLatex = escapeHtml(latex);
+      $el.replaceWith(isBlock ? `<p>$$${escapedLatex}$$</p>` : `<span>$${escapedLatex}$</span>`);
     } else {
       $el.remove();
     }
