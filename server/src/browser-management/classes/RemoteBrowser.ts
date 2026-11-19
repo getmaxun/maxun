@@ -19,6 +19,7 @@ import { getInjectableScript } from 'idcac-playwright';
 import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
 import { connectToRemoteBrowser } from '../browserConnection';
+import { installNavigationGuard } from '../../utils/navigation-guard';
 
 declare global {
   interface Window {
@@ -586,6 +587,8 @@ export class RemoteBrowser {
                 })
               ]) as BrowserContext;
 
+              await installNavigationGuard(this.context);
+
               await this.applyEnhancedFingerprinting(this.context);
 
               await this.context.addInitScript(
@@ -1004,6 +1007,9 @@ export class RemoteBrowser {
     private initializeNewPage = async (options?: Object): Promise<void> => {
         const newPage = options ? await this.browser?.newPage(options)
             : await this.browser?.newPage();
+        if (newPage) {
+            await installNavigationGuard(newPage.context());
+        }
         await newPage?.setExtraHTTPHeaders({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
         });

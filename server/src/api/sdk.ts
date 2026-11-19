@@ -27,7 +27,8 @@ import {
 import sequelizeInstance from '../storage/db';
 import { Op } from 'sequelize';
 import { checkAiExtractInput } from '../sdk/aiExtract/target';
-import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
+import { normalizeRobotUrl, normalizeAndValidateRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
+import { validateNavigationUrl } from '../utils/navigation-guard';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig, toPromptLlmMeta } from '../utils/llm-config-validation';
 import multer from 'multer';
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
@@ -155,7 +156,7 @@ router.post("/sdk/robots", requireAPIKey, async (req: AuthenticatedRequest, res:
             }
 
             try {
-                extractedUrl = normalizeRobotUrl(extractedUrl);
+                extractedUrl = await normalizeAndValidateRobotUrl(extractedUrl);
             } catch (err) {
                 return res.status(400).json({
                     error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}`
@@ -405,7 +406,7 @@ router.put("/sdk/robots/:id", requireAPIKey, async (req: AuthenticatedRequest, r
             let normalizedMetaUrl: string | undefined;
             if (updates.meta.url) {
                 try {
-                    normalizedMetaUrl = normalizeRobotUrl(updates.meta.url);
+                    normalizedMetaUrl = await normalizeAndValidateRobotUrl(updates.meta.url);
                 } catch (err) {
                     return res.status(400).json({
                         error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}`
@@ -1063,7 +1064,7 @@ router.post("/sdk/robots/:id/duplicate", requireAPIKey, async (req: Authenticate
 
         let normalizedTargetUrl: string;
         try {
-            normalizedTargetUrl = normalizeRobotUrl(targetUrl);
+            normalizedTargetUrl = await normalizeAndValidateRobotUrl(targetUrl);
             const parsed = new URL(normalizedTargetUrl);
             if (!['http:', 'https:'].includes(parsed.protocol)) {
                 return res.status(400).json({
@@ -1186,7 +1187,7 @@ router.post("/sdk/crawl", requireAPIKey, async (req: AuthenticatedRequest, res: 
 
         let normalizedUrl: string;
         try {
-            normalizedUrl = normalizeRobotUrl(url);
+            normalizedUrl = await normalizeAndValidateRobotUrl(url);
         } catch (err) {
             return res.status(400).json({
                 error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}`
@@ -1457,6 +1458,10 @@ router.post("/sdk/extract/llm", requireAPIKey, async (req: AuthenticatedRequest,
         const input = checkAiExtractInput(url, prompt, { requireDetailedPrompt: false });
         if (!input.ok) {
             return res.status(400).json({ error: input.error });
+        }
+        const urlCheck = await validateNavigationUrl(input.url);
+        if (!urlCheck.safe) {
+            return res.status(400).json({ error: `Invalid URL: ${urlCheck.reason}` });
         }
         const targetUrl = input.url;
 

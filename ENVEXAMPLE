@@ -55,3 +55,10 @@ BROWSER_WS_HOST=browser
 # OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OLLAMA_API_KEY=
 # OLLAMA_MODEL=
+
+# SSRF protection: by default the server-side browser refuses to open loopback,
+# private (RFC1918), link-local / cloud metadata (169.254.169.254) and other
+# internal addresses, including public hostnames that resolve to them. Set to
+# true only if you intentionally scrape intranet or localhost sites and trust
+# every user of this instance.
+# ALLOW_PRIVATE_NAVIGATION_URLS=false

@@ -2,6 +2,7 @@ import { Page } from "playwright-core";
 import { parseMarkdown } from "./markdown";
 import logger from "../logger";
 import { isBackgroundRequest } from "../utils/backgroundRequests";
+import { assertSafeNavigationUrl } from '../utils/navigation-guard';
 
 interface PageState {
   /** Open XHR/fetch requests that can carry page data. */
@@ -153,6 +154,9 @@ const lastRequestedTarget = new WeakMap<object, string>();
 const normaliseUrl = (u: string) => u.split('#')[0].replace(/\/$/, '');
 
 async function gotoWithFallback(page: any, url: string, forScreenshot = false) {
+  // Every scrape conversion navigates through here; refuse internal targets
+  // before the browser is pointed at them.
+  await assertSafeNavigationUrl(url);
   try {
     const current = page.url();
     if (current && current !== 'about:blank') {
