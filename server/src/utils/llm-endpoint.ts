@@ -18,7 +18,7 @@ const normalize = (value: unknown): string =>
  * its key unset no longer hands the operator's credential to that endpoint.
  */
 export function resolveOpenAiApiKey(configuredKey?: unknown, baseUrl?: unknown): string {
-  const supplied = normalize(configuredKey);
+  const supplied = typeof configuredKey === 'string' ? configuredKey.trim() : '';
   if (supplied) return supplied;
 
   const target = normalize(baseUrl);
