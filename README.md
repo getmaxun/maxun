@@ -16,6 +16,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 <p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
     <a href="https://docs.maxun.dev/?ref=ghread"><b>Documentation</b></a> •
+    <a href="https://app.maxun.dev/?ref=ghread"><b>Playground</b></a> •
     <a href="https://www.maxun.dev/?ref=ghread"><b>Website</b></a> •
     <a href="https://discord.gg/5GbPjBUkws"><b>Discord</b></a> •
     <a href="https://www.youtube.com/@MaxunOSS?ref=ghread"><b>Watch Tutorials</b></a>
