@@ -99,7 +99,7 @@ For this guide, we assume that before you start, you have a dedicated docker fol
 ```yml
 services:
   postgres:
-    image: postgres:17
+    image: postgres:18
     container_name: maxun-postgres
     mem_limit: 512M
     environment:
@@ -107,7 +107,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
-      - /home/$USER/Docker/maxun/db:/var/lib/postgresql/data
+      - /home/$USER/Docker/maxun/db18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -174,6 +174,32 @@ services:
 9. Start maxun `sudo docker compose up -d` or `sudo docker-compose up -d`
 10. Wait 30 seconds for everything to come up
 11. Access your maxun instance at http://localhost:5173 if using defaults
+
+## Upgrading from an older PostgreSQL version
+The Compose files now use PostgreSQL 18. PostgreSQL 13 reached end of life in November 2025.
+A new major version cannot read an older version's data files. Starting from version 18, the
+image also keeps its data in `/var/lib/postgresql/18/docker`. For these reasons, PostgreSQL 18
+uses a new, empty volume (`postgres18_data` in the repository's `docker-compose.yml`, `db18` in
+the example above). Your old volume is left untouched. To move your existing data across:
+
+1. With your **old** Compose file still in place, stop the app and dump the database:
+   ```bash
+   docker compose stop backend frontend
+   docker compose exec -T postgres sh -c 'pg_dumpall -U "$POSTGRES_USER"' > maxun-backup.sql
+   docker compose down
+   ```
+2. Switch to the new Compose file, then start only the new database:
+   ```bash
+   docker compose up -d postgres
+   ```
+3. Once `docker compose ps` reports it healthy, restore the dump. Errors saying your role
+   or database already exists are expected and can be ignored:
+   ```bash
+   docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres' < maxun-backup.sql
+   ```
+4. Start everything else with `docker compose up -d`. When you've confirmed your robots and
+   runs are there, you can remove the old volume (e.g. `docker volume rm <project>_postgres_data`)
+   or the old `db` directory.
 
 ## Next steps
 You will want to configure a reverse proxy. Click on a link below to check out some examples.
