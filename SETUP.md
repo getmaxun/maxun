@@ -75,3 +75,4 @@ You can access the frontend at http://localhost:5173/ and backend at http://loca
 | `AIRTABLE_CLIENT_ID` | No       | Client ID for Airtable, used for Airtable integration authentication.                         | Airtable login will not work.  |
 | `AIRTABLE_REDIRECT_URI` | No    | Redirect URI for handling Airtable OAuth responses.                                           | Airtable login will not work.  |
 | `MAXUN_TELEMETRY`     | No        | Disables telemetry to stop sending anonymous usage data. Keeping it enabled helps us understand how the product is used and assess the impact of any new changes. Please keep it enabled. | Telemetry data will not be collected. |
+| `ALLOW_PRIVATE_NAVIGATION_URLS` | No | Set to `true` to let robots and the recorder open loopback, private-network and cloud-metadata addresses (SSRF protection off). Only for trusted single-tenant instances that scrape intranet/localhost sites. | Such URLs are rejected (default). |
