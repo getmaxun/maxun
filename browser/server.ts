@@ -1,6 +1,7 @@
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import http from 'http';
+import { timingSafeEqual } from 'crypto';
 import type { BrowserServer } from 'playwright';
 
 chromium.use(stealthPlugin());
@@ -10,6 +11,22 @@ let browserServer: BrowserServer | null = null;
 const BROWSER_WS_PORT = parseInt(process.env.BROWSER_WS_PORT || '3001', 10);
 const BROWSER_HEALTH_PORT = parseInt(process.env.BROWSER_HEALTH_PORT || '3002', 10);
 const BROWSER_WS_HOST = process.env.BROWSER_WS_HOST || 'localhost';
+const BROWSER_SERVICE_TOKEN = process.env.BROWSER_SERVICE_TOKEN || '';
+
+/**
+ * The Playwright WebSocket endpoint grants full control of the browser
+ * (including reading files the browser process can access), and its random
+ * path is the only thing protecting it. Only hand it out to callers that
+ * present BROWSER_SERVICE_TOKEN, when one is configured.
+ */
+function isAuthorized(req: http.IncomingMessage): boolean {
+    if (!BROWSER_SERVICE_TOKEN) return true;
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+    const expected = Buffer.from(BROWSER_SERVICE_TOKEN);
+    const given = Buffer.from(token);
+    return given.length === expected.length && timingSafeEqual(given, expected);
+}
 
 async function start(): Promise<void> {
     console.log('Starting Maxun Browser Service...');
@@ -36,12 +53,18 @@ async function start(): Promise<void> {
             port: BROWSER_WS_PORT,
         });
 
-        console.log(`✅ Browser WebSocket endpoint ready: ${browserServer.wsEndpoint()}`);
+        console.log(`✅ Browser WebSocket server listening on port ${BROWSER_WS_PORT}`);
+        if (!BROWSER_SERVICE_TOKEN) {
+            console.warn('⚠️  BROWSER_SERVICE_TOKEN is not set: /health returns the browser control endpoint to any caller that can reach it. Keep the browser ports off untrusted networks or set a token.');
+        }
         console.log(`✅ Stealth plugin enabled`);
 
         const healthServer = http.createServer((req, res) => {
             if (req.url === '/health') {
-                const wsEndpoint = browserServer?.wsEndpoint().replace('localhost', BROWSER_WS_HOST) || '';
+                // Liveness stays public (Docker healthcheck); the control endpoint does not.
+                const wsEndpoint = isAuthorized(req)
+                    ? browserServer?.wsEndpoint().replace('localhost', BROWSER_WS_HOST) || ''
+                    : undefined;
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     status: 'healthy',
@@ -52,8 +75,7 @@ async function start(): Promise<void> {
                 }));
             } else if (req.url === '/') {
                 res.writeHead(200, { 'Content-Type': 'text/plain' });
-                const wsEndpoint = browserServer?.wsEndpoint().replace('localhost', BROWSER_WS_HOST) || '';
-                res.end(`Maxun Browser Service\nWebSocket: ${wsEndpoint}\nHealth: http://localhost:${BROWSER_HEALTH_PORT}/health`);
+                res.end(`Maxun Browser Service\nHealth: http://localhost:${BROWSER_HEALTH_PORT}/health`);
             } else {
                 res.writeHead(404);
                 res.end('Not Found');
