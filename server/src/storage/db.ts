@@ -30,12 +30,30 @@ const sequelize = new Sequelize(databaseUrl,
     }
 );
 
+const DB_CONNECT_ATTEMPTS = 60;
+const DB_CONNECT_RETRY_MS = 1000;
+
+/**
+ * Waits for the database to accept connections. On a fresh start Postgres is
+ * often still initialising, and failing straight away made the server exit and
+ * get restarted (reloading every module) until Postgres was up.
+ */
 export const connectDB = async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('Database connected successfully');
-    } catch (error) {
-        console.error('Unable to connect to the database:', error);
+    for (let attempt = 1; ; attempt++) {
+        try {
+            await sequelize.authenticate();
+            console.log('Database connected successfully');
+            return;
+        } catch (error: any) {
+            if (attempt >= DB_CONNECT_ATTEMPTS) {
+                console.error('Unable to connect to the database:', error);
+                throw error;
+            }
+            if (attempt === 1) {
+                console.log(`Waiting for the database to accept connections (${error.message})...`);
+            }
+            await new Promise((resolve) => setTimeout(resolve, DB_CONNECT_RETRY_MS));
+        }
     }
 };
 

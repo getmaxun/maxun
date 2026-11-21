@@ -34,5 +34,7 @@ COPY --from=builder /app/public ./public
 
 EXPOSE ${BACKEND_PORT:-8080}
 
-CMD ["npm", "run", "server"]
+# Run node directly: `npm run server` kept npm and cross-env alive as parent
+# processes (~110MB RSS together) and didn't pass SIGTERM on for a clean shutdown.
+CMD ["node", "--max-old-space-size=4096", "server/dist/server/src/server.js"]
 # CMD ["sh", "-c", "npm run migrate && npm run server"]

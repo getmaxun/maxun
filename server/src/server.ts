@@ -225,7 +225,11 @@ if (require.main === module) {
     }
   });
 
-  process.on('SIGINT', async () => {
+  let shuttingDown = false;
+
+  const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log('Main app shutting down...');
     let shutdownSuccessful = true;
 
@@ -327,8 +331,9 @@ if (require.main === module) {
 
     try {
       await new Promise<void>((resolve, reject) => {
-        server.close((err) => {
-          if (err) {
+        server.close((err?: NodeJS.ErrnoException) => {
+          // io.close() above already closes the HTTP server.
+          if (err && err.code !== 'ERR_SERVER_NOT_RUNNING') {
             reject(err);
           } else {
             resolve();
@@ -357,7 +362,11 @@ if (require.main === module) {
 
     console.log(`Shutdown ${shutdownSuccessful ? 'completed successfully' : 'completed with errors'}`);
     process.exit(shutdownSuccessful ? 0 : 1);
-  });
+  };
+
+  process.on('SIGINT', shutdown);
+  // `docker stop` sends SIGTERM, which now reaches node directly rather than via npm.
+  process.on('SIGTERM', shutdown);
 
   process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled promise rejection:', reason);
