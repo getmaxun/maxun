@@ -119,6 +119,10 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
   if (provider === 'ollama') {
     const baseUrl = guardLlmBaseUrl(config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
     const model = resolveLlmModel(config.model, config.provider);
+    // Match AI Extract: operator credentials only belong to the operator's endpoint.
+    const operatorBaseUrl = (process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, '');
+    const usesOperatorEndpoint = !config.baseUrl || config.baseUrl.replace(/\/+$/, '') === operatorBaseUrl;
+    const apiKey = config.apiKey || (usesOperatorEndpoint ? process.env.OLLAMA_API_KEY : undefined);
     logger.info(`[Summarizer] Using Ollama at ${baseUrl} (${model})`);
 
     const controller = new AbortController();
@@ -136,7 +140,11 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
           think: false,
           options: { temperature: 0.1, num_predict: MAX_TOKENS },
         },
-        { signal: controller.signal as any, ...LLM_AGENTS }
+        {
+          headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+          signal: controller.signal as any,
+          ...LLM_AGENTS,
+        }
       );
       const content = response.data.message?.content || '';
       if (!content || content.trim().length === 0) {
