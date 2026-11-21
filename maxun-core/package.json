@@ -30,7 +30,7 @@
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
-    "@types/node": "22.7.9",
+    "@types/node": "22.20.5",
     "cross-fetch": "^4.0.0",
     "joi": "^17.6.0",
     "playwright-core": "1.57.0",
