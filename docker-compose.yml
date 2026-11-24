@@ -40,6 +40,8 @@ services:
     env_file: .env
     environment:
       BACKEND_URL: ${BACKEND_URL}
+      # Same interpolation as the browser service so both always get the same token.
+      BROWSER_SERVICE_TOKEN: ${BROWSER_SERVICE_TOKEN:-}
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 0
       CI: "true"
@@ -83,15 +85,22 @@ services:
     #     BROWSER_WS_PORT: ${BROWSER_WS_PORT:-3001}
     #     BROWSER_HEALTH_PORT: ${BROWSER_HEALTH_PORT:-3002}
     image: getmaxun/maxun-browser:latest
+    # The backend reaches the browser over the Compose network. These ports
+    # give unauthenticated control of the browser, so they are only published
+    # on the host's loopback interface (for running the backend outside Docker).
+    # Docker Engine versions before 28.0.0 let hosts on the same L2 network reach
+    # loopback-published ports. Use Docker Engine 28.0.0 or later on shared
+    # networks, or remove these mappings when the backend runs inside Compose.
     ports:
-      - "${BROWSER_WS_PORT:-3001}:${BROWSER_WS_PORT:-3001}"
-      - "${BROWSER_HEALTH_PORT:-3002}:${BROWSER_HEALTH_PORT:-3002}"
+      - "127.0.0.1:${BROWSER_WS_PORT:-3001}:${BROWSER_WS_PORT:-3001}"
+      - "127.0.0.1:${BROWSER_HEALTH_PORT:-3002}:${BROWSER_HEALTH_PORT:-3002}"
     environment:
       - NODE_ENV=production
       - DEBUG=pw:browser*
       - BROWSER_WS_PORT=${BROWSER_WS_PORT:-3001}
       - BROWSER_HEALTH_PORT=${BROWSER_HEALTH_PORT:-3002}
       - BROWSER_WS_HOST=${BROWSER_WS_HOST:-browser}
+      - BROWSER_SERVICE_TOKEN=${BROWSER_SERVICE_TOKEN:-}
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     restart: unless-stopped
     healthcheck:
