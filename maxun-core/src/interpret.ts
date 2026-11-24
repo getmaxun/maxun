@@ -575,6 +575,19 @@ export default class Interpreter extends EventEmitter {
           const style = window.getComputedStyle(el);
           return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
         }
+        // A disabled control ignores click(), and a control covered by another
+        // layer would take a click meant for the foreground pop-up. Skip both so
+        // a usable close control later in the list still gets tried.
+        function isClickable(el: Element): boolean {
+          if ((el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return false;
+          const r = el.getBoundingClientRect();
+          const x = r.left + r.width / 2, y = r.top + r.height / 2;
+          // elementFromPoint only answers inside the viewport; don't reject what it can't test.
+          if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) return true;
+          const hit = document.elementFromPoint(x, y);
+          return !!hit && (hit === el || el.contains(hit));
+        }
+
         // Only buttons inside a pop-up layer may be clicked. A bare "×" or
         // "Close" button elsewhere is page content (a removable filter chip, a
         // calculator row, a tab) and clicking it changes what gets scraped.
@@ -617,7 +630,7 @@ export default class Interpreter extends EventEmitter {
         for (const sel of SELECTORS) {
           try {
             for (const el of Array.from(document.querySelectorAll(sel))) {
-              if (isVisible(el) && inOverlay(el)) { (el as HTMLElement).click(); return true; }
+              if (isVisible(el) && inOverlay(el) && isClickable(el)) { (el as HTMLElement).click(); return true; }
             }
           } catch {}
         }
@@ -626,7 +639,7 @@ export default class Interpreter extends EventEmitter {
         const candidates = Array.from(document.querySelectorAll('button, [role="button"], a[href="#"]'));
         for (const el of candidates) {
           const text = (el as HTMLElement).innerText?.trim() || el.getAttribute('aria-label') || '';
-          if (CLOSE_LABELS.has(text) && isVisible(el) && inOverlay(el)) {
+          if (CLOSE_LABELS.has(text) && isVisible(el) && inOverlay(el) && isClickable(el)) {
             (el as HTMLElement).click();
             return true;
           }
