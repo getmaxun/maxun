@@ -592,7 +592,9 @@ export default class Interpreter extends EventEmitter {
               const blocksCentre = r.left <= vw / 2 && r.right >= vw / 2 && r.top <= vh / 2 && r.bottom >= vh / 2;
               const area = (Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0))) / (vw * vh || 1);
               const hinted = /modal|popup|pop-up|dialog|overlay|lightbox|newsletter|cookie|consent/i.test(String((n as HTMLElement).className || '') + ' ' + (n.id || ''));
-              return blocksCentre || area > 0.3 || hinted;
+              if (blocksCentre || area > 0.3 || hinted) return true;
+              // A non-qualifying fixed element (e.g. a corner close button or a thin
+              // toolbar) may still sit inside a dialog, so keep walking up.
             }
           }
           return false;
