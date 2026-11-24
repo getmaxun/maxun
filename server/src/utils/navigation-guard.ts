@@ -279,15 +279,28 @@ const closeFramePage = (request: Request) => {
   page?.close().catch(() => {});
 };
 
+const blockRequestPage = (request: Request, what: string, reason: string) => {
+  logger.log('warn', `[navigation-guard] ${what} ${describeUrl(request.url())} blocked (${reason}); closing page`);
+  closeFramePage(request);
+};
+
 /**
  * Installs the SSRF guard on a browser context:
  *
  * - every request the context makes (navigations, popups, iframes, XHR/fetch,
  *   subresources) is routed through a check that aborts it when it targets a
  *   private, loopback, link-local or internal destination;
- * - Playwright does not route the individual hops of an HTTP redirect, so a
- *   navigation that is redirected into private address space closes the page
- *   before its content can be read back.
+ * - WebSocket connections are routed too and refused for internal targets;
+ * - Playwright does not route the individual hops of an HTTP redirect, so any
+ *   request (navigation or subresource) redirected into private address space
+ *   closes its page so the response cannot be read back;
+ *
+ * Limits: the redirect check acts after the browser has sent the redirected
+ * request, so it stops the response being read back but not a blind request.
+ * Names are resolved here and again by the browser, so DNS rebinding between
+ * the two lookups is not prevented. Binding the check to the address the
+ * browser actually connects to needs an egress firewall or filtering proxy in
+ * front of the browser (see SETUP.md).
  *
  * Page-level routes registered elsewhere must call `route.fallback()` (not
  * `route.continue()`) for this context-level guard to see the request.
@@ -308,31 +321,35 @@ export async function installNavigationGuard(context: BrowserContext): Promise<v
     await route.fallback().catch(() => {});
   });
 
+  await context.routeWebSocket(/.*/, async (ws) => {
+    const httpUrl = ws.url().replace(/^ws(s?):/i, 'http$1:');
+    const reason = await shouldBlockRequestUrl(httpUrl);
+    if (reason) {
+      logger.log('warn', `[navigation-guard] Blocked WebSocket to ${describeUrl(httpUrl)}: ${reason}`);
+      await ws.close({ code: 1008, reason: 'Blocked' }).catch(() => {});
+      return;
+    }
+    ws.connectToServer();
+  });
+
   context.on('request', (request: Request) => {
-    if (!request.redirectedFrom() || !request.isNavigationRequest()) return;
+    if (!request.redirectedFrom()) return;
 
     // Literal hosts and recently resolved names are decided synchronously so
-    // the page is closed before the navigation that triggered the redirect can
+    // the page is closed before the request that triggered the redirect can
     // resolve. Names not seen before are resolved asynchronously (best effort).
     const sync = checkNavigationUrlSync(request.url());
     const cached = sync.safe && sync.needsDns && sync.hostname
       ? cachedPrivateAddress(sync.hostname)
       : null;
     if (!sync.safe || cached) {
-      const reason = sync.reason || `resolves to private address ${cached}`;
-      logger.log('warn', `[navigation-guard] Redirect into ${describeUrl(request.url())} blocked (${reason}); closing page`);
-      closeFramePage(request);
+      blockRequestPage(request, 'Redirect into', sync.reason || `resolves to private address ${cached}`);
       return;
     }
     if (!sync.needsDns || cached === null) return;
 
     shouldBlockRequestUrl(request.url())
-      .then((reason) => {
-        if (reason) {
-          logger.log('warn', `[navigation-guard] Redirect into ${describeUrl(request.url())} blocked (${reason}); closing page`);
-          closeFramePage(request);
-        }
-      })
+      .then((reason) => { if (reason) blockRequestPage(request, 'Redirect into', reason); })
       .catch(() => {});
   });
 }

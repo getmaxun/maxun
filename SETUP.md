@@ -76,3 +76,7 @@ You can access the frontend at http://localhost:5173/ and backend at http://loca
 | `AIRTABLE_REDIRECT_URI` | No    | Redirect URI for handling Airtable OAuth responses.                                           | Airtable login will not work.  |
 | `MAXUN_TELEMETRY`     | No        | Disables telemetry to stop sending anonymous usage data. Keeping it enabled helps us understand how the product is used and assess the impact of any new changes. Please keep it enabled. | Telemetry data will not be collected. |
 | `ALLOW_PRIVATE_NAVIGATION_URLS` | No | Set to `true` to let robots and the recorder open loopback, private-network and cloud-metadata addresses (SSRF protection off). Only for trusted single-tenant instances that scrape intranet/localhost sites. | Such URLs are rejected (default). |
+
+### Hardening the browser's network access
+
+Maxun blocks robots, the recorder and the SDK from opening loopback, private-network and cloud-metadata addresses. That check runs in the server, before and while the browser loads a page. It cannot see which address the browser itself finally connects to, so a hostname whose DNS answer changes between the two lookups, or a redirect into a private address, can still reach an internal service with a blind request. On multi-tenant or internet-facing deployments, also block the browser container's outbound traffic to `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16` and `100.64.0.0/10` (and the IPv6 equivalents) with a firewall or egress proxy.

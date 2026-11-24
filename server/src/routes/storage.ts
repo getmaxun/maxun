@@ -624,8 +624,15 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     }
     if (promptLlmBaseUrl !== undefined) updatedMeta.promptLlmBaseUrl = promptLlmBaseUrl || undefined;
 
+    let normalizedWorkflow: any[];
+    try {
+      normalizedWorkflow = normalizeWorkflowUrls(workflow);
+    } catch (err) {
+      return res.status(400).json({ error: `Invalid workflow URL: ${err instanceof Error ? err.message : 'malformed URL'}` });
+    }
+
     const updates: any = {
-      recording: { ...robot.recording, workflow: normalizeWorkflowUrls(workflow) },
+      recording: { ...robot.recording, workflow: normalizedWorkflow },
       recording_meta: updatedMeta,
     };
 

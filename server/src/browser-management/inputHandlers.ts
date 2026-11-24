@@ -341,7 +341,14 @@ const parseNavigationUrl = (url: string): URL | null => {
  * @param url - the new url of the page
  * @category BrowserManagement
  */
+const latestUrlRequest = new WeakMap<RemoteBrowser, number>();
+
 const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: string) => {
+    // Validation is async, so a slower earlier request could otherwise finish
+    // after a newer one and overwrite the user's latest target.
+    const requestId = (latestUrlRequest.get(activeBrowser) ?? 0) + 1;
+    latestUrlRequest.set(activeBrowser, requestId);
+    const isSuperseded = () => latestUrlRequest.get(activeBrowser) !== requestId;
     try {
         if (page.isClosed()) {
             logger.log("debug", `Ignoring change url event: page is closed`);
@@ -372,6 +379,11 @@ const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: st
                     url,
                     `This URL cannot be opened: ${check.reason}.`,
                 );
+                return;
+            }
+
+            if (isSuperseded()) {
+                logger.log("debug", `Ignoring change url event: superseded by a newer URL`);
                 return;
             }
 
