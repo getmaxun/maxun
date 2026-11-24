@@ -204,6 +204,8 @@ async function findPrivateAddress(hostname: string): Promise<string | null> {
   return lookup;
 }
 
+const UNREACHABLE_DESTINATION_REASON = 'URL points to a private, reserved or unresolvable destination';
+
 /**
  * Full validation of a user-supplied navigation target, including DNS
  * resolution so that a public name pointing at an internal address is
@@ -220,13 +222,14 @@ export async function validateNavigationUrl(rawUrl: unknown): Promise<Navigation
   try {
     const privateAddress = await findPrivateAddress(sync.hostname);
     if (privateAddress) {
-      return {
-        safe: false,
-        reason: `URL resolves to a private or reserved address (${privateAddress})`,
-      };
+      // Details stay in the server log: echoing the resolved address (or a
+      // distinct "could not resolve" message) would let users map internal DNS.
+      logger.log('warn', `[navigation-guard] ${sync.hostname} resolves to private address ${privateAddress}`);
+      return { safe: false, reason: UNREACHABLE_DESTINATION_REASON };
     }
-  } catch {
-    return { safe: false, reason: `Could not resolve hostname ${sync.hostname}` };
+  } catch (err) {
+    logger.log('warn', `[navigation-guard] Could not resolve ${sync.hostname}: ${err instanceof Error ? err.message : err}`);
+    return { safe: false, reason: UNREACHABLE_DESTINATION_REASON };
   }
 
   return { safe: true };
