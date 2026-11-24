@@ -100,7 +100,7 @@ export async function connectToRemoteBrowser(retries?: number): Promise<Browser>
 
     try {
         const wsEndpoint = await getBrowserServiceEndpoint();
-        logger.info(`Connecting to browser service at ${wsEndpoint}...`);
+        logger.info('Connecting to browser service...');
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
