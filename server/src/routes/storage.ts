@@ -31,7 +31,8 @@ import {
 import { MAX_FILE_SIZE_BYTES } from '../workflow-management/classes/DocumentInterpreter';
 import { createDocumentRobotRecord } from '../utils/document/createDocumentRobotRecord';
 import { createDocumentParseRobotRecord } from '../utils/document/createDocumentParseRobotRecord';
-import { normalizeRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
+import { normalizeRobotUrl, normalizeAndValidateRobotUrl, normalizeWorkflowUrls, applyWorkflowLimits } from '../utils/robot-updates';
+import { validateNavigationUrl } from '../utils/navigation-guard';
 import { normalizeDocumentMimeType } from '../utils/document/documentFile';
 import { validateRequiredLlmConfig, formatsRequireLlm, readLlmConfig } from '../utils/llm-config-validation';
 import { findPreviousSuccessfulRun, serializeCapturedText } from '../utils/run-comparison';
@@ -431,6 +432,14 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
       return res.status(404).json({ error: 'Robot not found.' });
     }
 
+    if (targetUrl) {
+      try {
+        await normalizeAndValidateRobotUrl(targetUrl);
+      } catch (err) {
+        return res.status(400).json({ error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}` });
+      }
+    }
+
     let workflow: any[] = Array.isArray(incomingWorkflow)
       ? JSON.parse(JSON.stringify(incomingWorkflow))
       : (Array.isArray(robot.recording?.workflow) ? [...robot.recording.workflow] : []);
@@ -615,8 +624,15 @@ router.put('/recordings/:id', requireSignIn, async (req: AuthenticatedRequest, r
     }
     if (promptLlmBaseUrl !== undefined) updatedMeta.promptLlmBaseUrl = promptLlmBaseUrl || undefined;
 
+    let normalizedWorkflow: any[];
+    try {
+      normalizedWorkflow = normalizeWorkflowUrls(workflow);
+    } catch (err) {
+      return res.status(400).json({ error: `Invalid workflow URL: ${err instanceof Error ? err.message : 'malformed URL'}` });
+    }
+
     const updates: any = {
-      recording: { ...robot.recording, workflow: normalizeWorkflowUrls(workflow) },
+      recording: { ...robot.recording, workflow: normalizedWorkflow },
       recording_meta: updatedMeta,
     };
 
@@ -659,7 +675,7 @@ router.post('/recordings/scrape', requireSignIn, async (req: AuthenticatedReques
 
     let normalizedUrl: string;
     try {
-      normalizedUrl = normalizeRobotUrl(url);
+      normalizedUrl = await normalizeAndValidateRobotUrl(url);
     } catch (err) {
       return res.status(400).json({ error:  `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}` });
     }
@@ -773,6 +789,10 @@ router.post('/recordings/llm', requireSignIn, async (req: AuthenticatedRequest, 
     const input = checkAiExtractInput(url, prompt);
     if (!input.ok) {
       return res.status(400).json({ error: input.error });
+    }
+    const urlCheck = await validateNavigationUrl(input.url);
+    if (!urlCheck.safe) {
+      return res.status(400).json({ error: `Invalid URL: ${urlCheck.reason}` });
     }
     const { url: targetUrl, prompt: trimmedPrompt } = input;
 
@@ -929,13 +949,13 @@ router.post('/recordings/:id/duplicate', requireSignIn, async (req: Authenticate
 
     let normalizedTargetUrl: string;
     try {
-      normalizedTargetUrl = normalizeRobotUrl(targetUrl);
+      normalizedTargetUrl = await normalizeAndValidateRobotUrl(targetUrl);
       const parsed = new URL(normalizedTargetUrl);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
         return res.status(400).json({ error: 'The "targetUrl" must use http or https protocol.' });
       }
-    } catch {
-      return res.status(400).json({ error: 'The "targetUrl" must be a valid URL.' });
+    } catch (err) {
+      return res.status(400).json({ error: `Invalid targetUrl: ${err instanceof Error ? err.message : 'must be a valid URL'}` });
     }
 
     const originalRobot = await Robot.findOne({
@@ -1941,7 +1961,7 @@ router.post('/recordings/crawl', requireSignIn, async (req: AuthenticatedRequest
 
     let normalizedUrl: string;
     try {
-      normalizedUrl = normalizeRobotUrl(url);
+      normalizedUrl = await normalizeAndValidateRobotUrl(url);
     } catch (err) {
       return res.status(400).json({ error: `Invalid URL: ${err instanceof Error ? err.message : 'malformed URL'}` });
     }

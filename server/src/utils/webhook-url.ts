@@ -3,6 +3,7 @@ import * as dnsPromises from 'dns/promises';
 import * as http from 'http';
 import * as https from 'https';
 import * as net from 'net';
+import { isPrivateIp } from './navigation-guard';
 
 export interface WebhookUrlCheck {
   safe: boolean;
@@ -10,44 +11,6 @@ export interface WebhookUrlCheck {
 }
 
 const allowPrivateTargets = (): boolean => process.env.ALLOW_PRIVATE_WEBHOOK_URLS === 'true';
-
-/**
- * Blocks addresses that a webhook has no legitimate reason to reach:
- * loopback, private ranges, link-local (including cloud metadata at
- * 169.254.169.254), carrier-grade NAT, and the IPv6 equivalents.
- */
-function isPrivateIp(ip: string): boolean {
-  if (net.isIPv4(ip)) {
-    const [a, b] = ip.split('.').map(Number);
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168)
-    );
-  }
-
-  if (net.isIPv6(ip)) {
-    const lower = ip.toLowerCase();
-
-    if (lower.startsWith('::ffff:')) {
-      const mapped = lower.slice('::ffff:'.length);
-      if (net.isIPv4(mapped)) return isPrivateIp(mapped);
-      return true;
-    }
-
-    const firstHextet = Number.parseInt(lower.split(':', 1)[0] || '0', 16);
-    const isLinkLocal = (firstHextet & 0xffc0) === 0xfe80;
-    const isUniqueLocal = (firstHextet & 0xfe00) === 0xfc00;
-
-    return lower === '::' || lower === '::1' || isLinkLocal || isUniqueLocal;
-  }
-
-  return false;
-}
 
 /**
  * Validates that a webhook destination is safe to call. Resolves the hostname

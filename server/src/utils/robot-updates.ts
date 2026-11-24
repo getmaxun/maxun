@@ -1,3 +1,5 @@
+import { checkNavigationUrlSync, validateNavigationUrl } from './navigation-guard';
+
 export const normalizeRobotUrl = (rawUrl: string): string => {
   let normalizedUrl: URL;
   try {
@@ -27,8 +29,29 @@ export const normalizeRobotUrl = (rawUrl: string): string => {
     );
   }
 
+  const safety = checkNavigationUrlSync(normalizedUrl.toString());
+  if (!safety.safe) {
+    throw new Error(
+      `"${hostname}" cannot be scraped: ${safety.reason}. Private, loopback and internal addresses are not allowed.`
+    );
+  }
+
   normalizedUrl.search = normalizedUrl.searchParams.toString();
   return normalizedUrl.toString();
+};
+
+/**
+ * {@link normalizeRobotUrl} plus a DNS-resolving SSRF check, for API entry
+ * points where a user supplies a URL the server-side browser will open.
+ * Throws an Error whose message is safe to return to the client.
+ */
+export const normalizeAndValidateRobotUrl = async (rawUrl: string): Promise<string> => {
+  const normalized = normalizeRobotUrl(rawUrl);
+  const check = await validateNavigationUrl(normalized);
+  if (!check.safe) {
+    throw new Error(`${check.reason}. Private, loopback and internal addresses are not allowed.`);
+  }
+  return normalized;
 };
 
 export const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>

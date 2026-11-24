@@ -11,6 +11,7 @@ import { Page } from "playwright-core";
 import { CustomActions } from "../../../src/shared/types";
 import { WhereWhatPair } from "maxun-core";
 import { RemoteBrowser } from './classes/RemoteBrowser';
+import { validateNavigationUrl } from '../utils/navigation-guard';
 
 /**
  * A wrapper function for handling user input.
@@ -305,11 +306,11 @@ const onChangeUrl = async (url: string, userId: string) => {
  * with an explicit `http:` or `https:` scheme are accepted; relative paths,
  * opaque schemes and malformed input are rejected.
  *
- * Limitations: this check does **not** mitigate internal-host SSRF. HTTP(S)
- * requests to `http://localhost`, `http://127.0.0.1`, `http://[::1]`,
- * `http://169.254.169.254` (cloud metadata), RFC1918 ranges, `.internal`
- * hostnames, etc. still pass. If host/IP-range filtering is required it must
- * be added separately in the `input:url` handling path.
+ * Internal-host SSRF (loopback, RFC1918, link-local / cloud metadata such as
+ * `http://169.254.169.254`, `.internal` / `.localhost` names, and public names
+ * resolving to such addresses) is rejected separately in
+ * {@link handleChangeUrl} via `validateNavigationUrl`, and every request the
+ * browser context makes is additionally filtered by `installNavigationGuard`.
  */
 const ALLOWED_NAVIGATION_PROTOCOLS: readonly string[] = ['http:', 'https:'];
 
@@ -340,7 +341,14 @@ const parseNavigationUrl = (url: string): URL | null => {
  * @param url - the new url of the page
  * @category BrowserManagement
  */
+const latestUrlRequest = new WeakMap<RemoteBrowser, number>();
+
 const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: string) => {
+    // Validation is async, so a slower earlier request could otherwise finish
+    // after a newer one and overwrite the user's latest target.
+    const requestId = (latestUrlRequest.get(activeBrowser) ?? 0) + 1;
+    latestUrlRequest.set(activeBrowser, requestId);
+    const isSuperseded = () => latestUrlRequest.get(activeBrowser) !== requestId;
     try {
         if (page.isClosed()) {
             logger.log("debug", `Ignoring change url event: page is closed`);
@@ -358,6 +366,24 @@ const handleChangeUrl = async (activeBrowser: RemoteBrowser, page: Page, url: st
                     url,
                     'Only http(s) URLs are allowed.',
                 );
+                return;
+            }
+
+            const check = await validateNavigationUrl(parsed.toString());
+            if (!check.safe) {
+                logger.log(
+                    "warn",
+                    `Rejected change url event: ${check.reason}`,
+                );
+                activeBrowser.emitBrowserPageError(
+                    url,
+                    `This URL cannot be opened: ${check.reason}.`,
+                );
+                return;
+            }
+
+            if (isSuperseded()) {
+                logger.log("debug", `Ignoring change url event: superseded by a newer URL`);
                 return;
             }
 

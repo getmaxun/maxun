@@ -18,30 +18,7 @@ import { getBestSelectorForAction } from "../utils";
 import { v4 as uuid } from "uuid";
 import { capture } from "../../utils/analytics"
 import { decrypt, encrypt } from "../../utils/auth";
-
-const normalizeRobotUrl = (rawUrl: string): string => {
-  let normalizedUrl: URL;
-  try {
-    normalizedUrl = new URL(rawUrl.trim());
-  } catch {
-    throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
-  }
-  if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-    throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
-  }
-
-  const hostname = normalizedUrl.hostname;
-  const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
-    || hostname === 'localhost'
-    || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
-    || /^\[[0-9a-f:]+\]$/i.test(hostname);
-  if (!isPlausibleHost) {
-    throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
-  }
-
-  normalizedUrl.search = normalizedUrl.searchParams.toString();
-  return normalizedUrl.toString();
-};
+import { normalizeRobotUrl } from '../../utils/robot-updates';
 
 const normalizeWorkflowUrls = (workflow: any[] = []): any[] =>
   workflow.map((pair: any) => ({
