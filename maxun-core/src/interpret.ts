@@ -575,6 +575,46 @@ export default class Interpreter extends EventEmitter {
           const style = window.getComputedStyle(el);
           return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
         }
+        // A disabled control ignores click(), and a control covered by another
+        // layer would take a click meant for the foreground pop-up. Skip both so
+        // a usable close control later in the list still gets tried.
+        function isClickable(el: Element): boolean {
+          // Selectors often match an icon inside the real control (e.g. a span
+          // with pointer-events: none); judge the enclosing control instead.
+          const control = el.closest('button, [role="button"], a, input, summary') || el;
+          if ((control as HTMLButtonElement).disabled || control.getAttribute('aria-disabled') === 'true') return false;
+          const r = control.getBoundingClientRect();
+          const x = r.left + r.width / 2, y = r.top + r.height / 2;
+          // elementFromPoint only answers inside the viewport; don't reject what it can't test.
+          if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) return true;
+          const hit = document.elementFromPoint(x, y);
+          return !!hit && (hit === control || control.contains(hit));
+        }
+
+        // Only buttons inside a pop-up layer may be clicked. A bare "×" or
+        // "Close" button elsewhere is page content (a removable filter chip, a
+        // calculator row, a tab) and clicking it changes what gets scraped.
+        function inOverlay(el: Element): boolean {
+          const vw = window.innerWidth, vh = window.innerHeight;
+          for (let n: Element | null = el; n && n !== document.body; n = n.parentElement) {
+            const role = n.getAttribute('role');
+            if (role === 'dialog' || role === 'alertdialog' || n.getAttribute('aria-modal') === 'true') return true;
+            if (n.tagName === 'DIALOG' && (n as HTMLDialogElement).open) return true;
+            if (window.getComputedStyle(n).position === 'fixed') {
+              // A fixed layer counts when it covers the page: it blocks the
+              // viewport centre or a large share of it. Thin fixed bars and
+              // sidebars are layout, not something to close.
+              const r = n.getBoundingClientRect();
+              const blocksCentre = r.left <= vw / 2 && r.right >= vw / 2 && r.top <= vh / 2 && r.bottom >= vh / 2;
+              const area = (Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0))) / (vw * vh || 1);
+              const hinted = /modal|popup|pop-up|dialog|overlay|lightbox|newsletter|cookie|consent/i.test(String((n as HTMLElement).className || '') + ' ' + (n.id || ''));
+              if (blocksCentre || area > 0.3 || hinted) return true;
+              // A non-qualifying fixed element (e.g. a corner close button or a thin
+              // toolbar) may still sit inside a dialog, so keep walking up.
+            }
+          }
+          return false;
+        }
         const SELECTORS = [
           '[role="dialog"] [aria-label*="close" i]',
           '[role="dialog"] [aria-label*="关闭"]',
@@ -592,8 +632,9 @@ export default class Interpreter extends EventEmitter {
         ];
         for (const sel of SELECTORS) {
           try {
-            const el = document.querySelector(sel);
-            if (el && isVisible(el)) { (el as HTMLElement).click(); return true; }
+            for (const el of Array.from(document.querySelectorAll(sel))) {
+              if (isVisible(el) && inOverlay(el) && isClickable(el)) { (el as HTMLElement).click(); return true; }
+            }
           } catch {}
         }
 
@@ -601,7 +642,7 @@ export default class Interpreter extends EventEmitter {
         const candidates = Array.from(document.querySelectorAll('button, [role="button"], a[href="#"]'));
         for (const el of candidates) {
           const text = (el as HTMLElement).innerText?.trim() || el.getAttribute('aria-label') || '';
-          if (CLOSE_LABELS.has(text) && isVisible(el)) {
+          if (CLOSE_LABELS.has(text) && isVisible(el) && inOverlay(el) && isClickable(el)) {
             (el as HTMLElement).click();
             return true;
           }
