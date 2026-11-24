@@ -579,13 +579,16 @@ export default class Interpreter extends EventEmitter {
         // layer would take a click meant for the foreground pop-up. Skip both so
         // a usable close control later in the list still gets tried.
         function isClickable(el: Element): boolean {
-          if ((el as HTMLButtonElement).disabled || el.getAttribute('aria-disabled') === 'true') return false;
-          const r = el.getBoundingClientRect();
+          // Selectors often match an icon inside the real control (e.g. a span
+          // with pointer-events: none); judge the enclosing control instead.
+          const control = el.closest('button, [role="button"], a, input, summary') || el;
+          if ((control as HTMLButtonElement).disabled || control.getAttribute('aria-disabled') === 'true') return false;
+          const r = control.getBoundingClientRect();
           const x = r.left + r.width / 2, y = r.top + r.height / 2;
           // elementFromPoint only answers inside the viewport; don't reject what it can't test.
           if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) return true;
           const hit = document.elementFromPoint(x, y);
-          return !!hit && (hit === el || el.contains(hit));
+          return !!hit && (hit === control || control.contains(hit));
         }
 
         // Only buttons inside a pop-up layer may be clicked. A bare "×" or
