@@ -35,7 +35,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://www.ippeak.com/?utm_t=1&utm_i=225"><strong>IPPeak</strong></a> offers access to 80M+ real residential IPs and four proxy solutions: Premium Residential, Core Residential, Unlimited Residential and ISP Proxies. Residential proxies start at just $0.49/GB, with precise country/region and ASN targeting. Unlimited Residential Proxies start at $8/hour, providing flexible solutions for diverse business needs. Discount:</strong> <code>Maxun10</code> - 10% OFF Premium Basic
+<a href="https://www.ippeak.com/?utm_t=1&utm_i=225"><strong>IPPeak</strong></a> offers access to 80M+ real residential IPs and four proxy solutions: Premium Residential, Core Residential, Unlimited Residential and ISP Proxies. Residential proxies start at just $0.49/GB, with precise country/region and ASN targeting. Unlimited Residential Proxies start at $8/hour, providing flexible solutions for diverse business needs. <strong>Discount:</strong> <code>Maxun10</code> - 10% OFF Premium Basic
 </td>
 </tr>
     
