@@ -30,9 +30,21 @@ for (const [name, reply] of [
   });
 }
 
-test('keeps the existing fenced array support', () => {
-  assert.deepEqual(parseJsonLoose('```json\n[{"id":1}]\n```'), [{ id: 1 }]);
-});
+const array = [{ id: 1, code: '```json\n{}\n```' }, { id: 2 }];
+const arrayJson = JSON.stringify(array);
+
+for (const [name, reply] of [
+  ['plain', arrayJson],
+  ['newline-delimited fence', `\`\`\`json\n${arrayJson}\n\`\`\``],
+  ['same-line closing fence', `\`\`\`json\n${arrayJson}\`\`\``],
+  ['CRLF fence', `\`\`\`json\r\n${arrayJson}\r\n\`\`\``],
+  ['unlabeled fence', `\`\`\`\n${arrayJson}\`\`\``],
+  ['inline fence', `\`\`\`json${arrayJson}\`\`\``],
+]) {
+  test(`keeps every array member and captured code in ${name} output`, () => {
+    assert.deepEqual(parseJsonLoose(reply), array);
+  });
+}
 
 test('still rejects output with no JSON object', () => {
   assert.throws(() => parseJsonLoose('No extractable rows.'), /No JSON object/);

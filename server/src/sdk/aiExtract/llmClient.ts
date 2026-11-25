@@ -47,7 +47,7 @@ export function parseJsonLoose(text: string): any {
   const cleaned = String(text || '')
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/^[\s\S]*?<\/think>/i, '')
-    .replace(/^\s*```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*```\s*$/i, '$1')
+    .replace(/^\s*```(?:json)?([\s\S]*?)```\s*$/i, '$1')
     .trim();
   try {
     return JSON.parse(cleaned);
