@@ -43,10 +43,11 @@ const DEFAULT_TIMEOUT_MS = 90_000;
 
 /** First balanced JSON object in `text`, ignoring reasoning blocks and code fences. */
 export function parseJsonLoose(text: string): any {
+  // Strip only an enclosing fence; backticks inside JSON strings are captured data.
   const cleaned = String(text || '')
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/^[\s\S]*?<\/think>/i, '')
-    .replace(/```(?:json)?/gi, '')
+    .replace(/^\s*```(?:json)?([\s\S]*?)```\s*$/i, '$1')
     .trim();
   try {
     return JSON.parse(cleaned);
