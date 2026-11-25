@@ -197,7 +197,20 @@ the example above). Your old volume is left untouched. To move your existing dat
    ```bash
    docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres' < maxun-backup.sql
    ```
-4. Start everything else with `docker compose up -d`. When you've confirmed your robots and
+4. Reset the database user's password. PostgreSQL 13 stored it as an MD5 hash, the restore
+   copied that hash over, and PostgreSQL 18 only accepts SCRAM logins over the network, so
+   the backend could not sign in. This sets the same password again, stored as SCRAM:
+   ```bash
+   docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres -v user="$POSTGRES_USER" -v pw="$POSTGRES_PASSWORD"' <<'SQL'
+   SET password_encryption = 'scram-sha-256';
+   ALTER ROLE :"user" PASSWORD :'pw';
+   SQL
+   ```
+   Then check that a password login works. It should print `1`:
+   ```bash
+   docker compose exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select 1"'
+   ```
+5. Start everything else with `docker compose up -d`. When you've confirmed your robots and
    runs are there, you can remove the old volume (e.g. `docker volume rm <project>_postgres_data`)
    or the old `db` directory.
 
