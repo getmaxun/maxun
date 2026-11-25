@@ -107,6 +107,6 @@
   "overrides": {
     "tar": "^7.5.23",
     "decode-uri-component": "^0.5.1",
-    "minimatch": "^11.0.9"
+    "minimatch@3": "^3.1.5"
   }
 }
