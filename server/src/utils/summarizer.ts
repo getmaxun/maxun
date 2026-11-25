@@ -117,7 +117,7 @@ export async function summarizeMarkdown(markdown: string, llmConfig?: LLMConfig)
   }
 
   if (provider === 'ollama') {
-    const baseUrl = guardLlmBaseUrl(config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+    const baseUrl = guardLlmBaseUrl((config.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, ''));
     const model = resolveLlmModel(config.model, config.provider);
     // Match AI Extract: operator credentials only belong to the operator's endpoint.
     const operatorBaseUrl = (process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/+$/, '');

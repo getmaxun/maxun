@@ -9,6 +9,10 @@ const cases = [
   { name: 'operator key for the default endpoint', operator: true, expected: 'operator-fixture' },
   { name: 'operator key for an explicitly selected operator endpoint', operator: true, explicitBase: true, expected: 'operator-fixture' },
   { name: 'operator endpoint with a trailing slash', operator: true, explicitBase: true, trailingSlash: true, expected: 'operator-fixture' },
+  { name: 'selected operator endpoint with a trailing slash', operator: true, explicitBase: true, selectedTrailingSlash: '/', expected: 'operator-fixture' },
+  { name: 'environment endpoint with trailing slashes', operator: true, trailingSlash: true, expected: 'operator-fixture' },
+  { name: 'custom endpoint with trailing slashes', key: 'explicit-fixture', selectedTrailingSlash: '///', expected: 'explicit-fixture' },
+  { name: 'different endpoint with a trailing slash omits the operator key', selectedTrailingSlash: '/', expected: undefined },
   { name: 'explicit key overrides the operator key', operator: true, key: 'explicit-fixture', expected: 'explicit-fixture' },
   { name: 'operator key stays off a different endpoint', expected: undefined },
   { name: 'local endpoint needs no key', noOperatorKey: true, expected: undefined },
@@ -55,7 +59,7 @@ for (const scenario of cases) {
       provider: 'ollama',
       model: 'fixture',
       apiKey: scenario.key,
-      baseUrl: scenario.operator && !scenario.explicitBase ? undefined : baseUrl,
+      baseUrl: scenario.operator && !scenario.explicitBase ? undefined : baseUrl + (scenario.selectedTrailingSlash || ''),
     });
     assert.equal(summary, 'Fixture summary.');
     assert.equal(authorization, expectedHeader);
