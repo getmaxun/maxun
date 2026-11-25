@@ -201,7 +201,8 @@ the example above). Your old volume is left untouched. To move your existing dat
    copied that hash over, and PostgreSQL 18 only accepts SCRAM logins over the network, so
    the backend could not sign in. This sets the same password again, stored as SCRAM:
    ```bash
-   docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres -v user="$POSTGRES_USER" -v pw="$POSTGRES_PASSWORD"' <<'SQL'
+   docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres -v user="$POSTGRES_USER"' <<'SQL'
+   \getenv pw POSTGRES_PASSWORD
    SET password_encryption = 'scram-sha-256';
    ALTER ROLE :"user" PASSWORD :'pw';
    SQL
