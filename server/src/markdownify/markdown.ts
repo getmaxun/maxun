@@ -206,7 +206,8 @@ function stripA11yText(text: string): string {
  * Unwrap common link-redirect/tracking wrappers (Microsoft SafeLinks, Google
  * /url redirects, etc.) back to the real destination URL. Generic across sites
  * and lossless — the wrapped target is recovered from the wrapper's own query
- * param, so no link is dropped, only de-obfuscated.
+ * param, so no link is dropped, only de-obfuscated. URLSearchParams already
+ * decodes that parameter; remaining escapes belong to the destination URL.
  */
 function unwrapRedirect(href: string): string {
   try {
@@ -215,16 +216,16 @@ function unwrapRedirect(href: string): string {
 
     if (host.endsWith("safelinks.protection.outlook.com")) {
       const target = u.searchParams.get("url");
-      if (target) return decodeURIComponent(target);
+      if (target) return target;
     }
 
     if (host.endsWith("google.com") && u.pathname === "/url") {
       const target = u.searchParams.get("q") || u.searchParams.get("url");
-      if (target) return decodeURIComponent(target);
+      if (target) return target;
     }
 
     const generic = u.searchParams.get("redirect_uri") || u.searchParams.get("redirectUrl");
-    if (generic && /^https?:\/\//i.test(generic)) return decodeURIComponent(generic);
+    if (generic && /^https?:\/\//i.test(generic)) return generic;
   } catch {
   }
   return href;
