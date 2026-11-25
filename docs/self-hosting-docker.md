@@ -183,12 +183,14 @@ uses a new, empty volume (`postgres18_data` in the repository's `docker-compose.
 the example above). Your old volume is left untouched. To move your existing data across:
 
 1. With your **old** Compose file still in place, stop the app and dump the Maxun database.
-   The backup holds all your data, so it is created readable only by you. `docker compose down`
-   only runs if the dump succeeded; if it fails, the old stack keeps running and you can retry:
+   The backup holds all your data, so it is created readable only by you. Each command only
+   runs if the previous one succeeded; if any of them fails, the old stack keeps running and
+   you can retry:
    ```bash
-   docker compose stop backend frontend
-   touch maxun-backup.sql && chmod 600 maxun-backup.sql
-   docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > maxun-backup.sql && docker compose down
+   docker compose stop backend frontend &&
+     touch maxun-backup.sql && chmod 600 maxun-backup.sql &&
+     docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > maxun-backup.sql &&
+     docker compose down
    ```
 2. Switch to the new Compose file. Keep the same `DB_USER`, `DB_PASSWORD` and `DB_NAME` in
    your `.env`, then start only the new database:
