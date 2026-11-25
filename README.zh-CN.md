@@ -8,7 +8,7 @@
     </div>
     将任何网站转化为结构化 API
 </h3>
-<p align="center"><a href="./README.md"><b>English</b></a> | <b>简体中文</b></p>
+<p align="center"><a href="./README.md"><b>English</b></a> | <b>简体中文</b> | <a href="./README.ja.md">日本語</a></p>
 
 <p align="center">
 开源的 Web 数据平台，支持实时网页抓取、爬取、搜索、监控和 AI 数据提取。
