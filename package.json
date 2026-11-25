@@ -137,7 +137,7 @@
     "@vitejs/plugin-react": "^6.0.0",
     "ajv": "^8.8.2",
     "concurrently": "^10.0.0",
-    "cross-env": "^7.0.3",
+    "cross-env": "^10.0.0",
     "esbuild": "^0.28.1",
     "eslint": "^8.57.1",
     "eslint-config-react-app": "^7.0.1",
