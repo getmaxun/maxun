@@ -182,38 +182,32 @@ image also keeps its data in `/var/lib/postgresql/18/docker`. For these reasons,
 uses a new, empty volume (`postgres18_data` in the repository's `docker-compose.yml`, `db18` in
 the example above). Your old volume is left untouched. To move your existing data across:
 
-1. With your **old** Compose file still in place, stop the app and dump the database:
+1. With your **old** Compose file still in place, stop the app and dump the Maxun database.
+   The backup holds all your data, so it is created readable only by you. `docker compose down`
+   only runs if the dump succeeded; if it fails, the old stack keeps running and you can retry:
    ```bash
    docker compose stop backend frontend
-   docker compose exec -T postgres sh -c 'pg_dumpall -U "$POSTGRES_USER"' > maxun-backup.sql
-   docker compose down
+   touch maxun-backup.sql && chmod 600 maxun-backup.sql
+   docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > maxun-backup.sql && docker compose down
    ```
-2. Switch to the new Compose file, then start only the new database:
+2. Switch to the new Compose file. Keep the same `DB_USER`, `DB_PASSWORD` and `DB_NAME` in
+   your `.env`, then start only the new database:
    ```bash
    docker compose up -d postgres
    ```
-3. Once `docker compose ps` reports it healthy, restore the dump. Errors saying your role
-   or database already exists are expected and can be ignored:
+3. Once `docker compose ps` reports it healthy, restore the dump. It runs as a single
+   transaction and stops at the first error, so it either restores everything or nothing:
    ```bash
-   docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres' < maxun-backup.sql
+   docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 --single-transaction -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < maxun-backup.sql
    ```
-4. Reset the database user's password. PostgreSQL 13 stored it as an MD5 hash, the restore
-   copied that hash over, and PostgreSQL 18 only accepts SCRAM logins over the network, so
-   the backend could not sign in. This sets the same password again, stored as SCRAM:
-   ```bash
-   docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres -v user="$POSTGRES_USER"' <<'SQL'
-   \getenv pw POSTGRES_PASSWORD
-   SET password_encryption = 'scram-sha-256';
-   ALTER ROLE :"user" PASSWORD :'pw';
-   SQL
-   ```
-   Then check that a password login works. It should print `1`:
+   If it reports an error, nothing was restored: fix the cause and run the same command again.
+4. Check that the backend's password login works. It should print `1`:
    ```bash
    docker compose exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select 1"'
    ```
 5. Start everything else with `docker compose up -d`. When you've confirmed your robots and
-   runs are there, you can remove the old volume (e.g. `docker volume rm <project>_postgres_data`)
-   or the old `db` directory.
+   runs are there, delete `maxun-backup.sql` (or move it to protected storage), and remove the
+   old volume (e.g. `docker volume rm <project>_postgres_data`) or the old `db` directory.
 
 ## Next steps
 You will want to configure a reverse proxy. Click on a link below to check out some examples.
