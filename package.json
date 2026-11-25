@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",
+  "overrides": {
+    "tar": "^7.5.23",
+    "decode-uri-component": "^0.5.1",
+    "minimatch@3": "^3.1.5"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",
     "@cliqz/adblocker-playwright": "^1.30.0",
@@ -134,7 +139,7 @@
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
     "@types/turndown": "^5.0.6",
-    "@vitejs/plugin-react": "^6.0.0",
+    "@vitejs/plugin-react": "^5.2.0",
     "ajv": "^8.8.2",
     "concurrently": "^10.0.0",
     "cross-env": "^10.0.0",
