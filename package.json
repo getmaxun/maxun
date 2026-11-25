@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "author": "Maxun",
   "license": "AGPL-3.0-or-later",
+  "overrides": {
+    "tar": "^7.5.23",
+    "decode-uri-component": "^0.5.1",
+    "minimatch": "^11.0.9"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",
     "@cliqz/adblocker-playwright": "^1.30.0",
