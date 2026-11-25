@@ -60,7 +60,7 @@
     "mammoth": "^1.11.0",
     "maxun-core": "^0.0.38",
     "minio": "^8.0.1",
-    "moment-timezone": "^0.5.45",
+    "moment-timezone": "^0.6.0",
     "multer": "^2.1.1",
     "mupdf": "^1.27.0",
     "node-cron": "^3.0.3",
