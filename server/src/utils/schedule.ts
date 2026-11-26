@@ -107,9 +107,19 @@ export function buildCronExpression(input: ScheduleInput): { cronExpression: str
     case 'MINUTES':
       cronExpression = `*/${runEvery} ${startHours}-${endHours} * * *`;
       break;
-    case 'HOURS':
-      cronExpression = `${startMinutes} ${startHours}-${endHours}/${runEvery} * * *`;
+    case 'HOURS': {
+      if (!Number.isInteger(runEvery) || runEvery < 1) {
+        throw new ScheduleValidationError('runEvery', 'Invalid interval');
+      }
+
+      const lastHour = startMinutes > endMinutes ? endHours - 1 : endHours;
+      const hours: number[] = [];
+      for (let hour = startHours; hour <= lastHour; hour += runEvery) {
+        hours.push(hour);
+      }
+      cronExpression = `${startMinutes} ${hours.join(',')} * * *`;
       break;
+    }
     case 'DAYS':
       cronExpression = `${startMinutes} ${startHours} */${runEvery} * *`;
       break;
