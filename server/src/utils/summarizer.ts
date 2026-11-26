@@ -64,9 +64,11 @@ function stripUnderscoreEmphasis(input: string, width: 1 | 2): string {
     const leftBoundary = !/[\p{L}\p{M}\p{N}_]$/u.test(input.slice(Math.max(0, index - 2), index));
     const pathOpening = protectedToken?.opening;
     const atPathOpening = pathOpening?.index === index && width <= pathOpening.width;
-    const canOpen = leftBoundary && (!protectedToken || (atPathOpening && pathOpening.confirmed));
+    const canOpen = leftBoundary && !/^\s/u.test(input.slice(index + width, index + width + 2)) &&
+      (!protectedToken || (atPathOpening && pathOpening.confirmed));
     const possibleOpen = Boolean(leftBoundary && atPathOpening && !pathOpening.confirmed);
-    const canClose = !/^[\p{L}\p{M}\p{N}_]/u.test(input.slice(index + width, index + width + 2)) &&
+    const canClose = !/\s$/u.test(input.slice(Math.max(0, index - 2), index)) &&
+      !/^[\p{L}\p{M}\p{N}_]/u.test(input.slice(index + width, index + width + 2)) &&
       (!protectedToken || (protectedToken.closing !== undefined && index >= protectedToken.closing.start && index + width <= protectedToken.closing.end));
     if (canOpen || canClose || possibleOpen) markers.push({ index, canOpen, possibleOpen, canClose, token: protectedToken });
   }
