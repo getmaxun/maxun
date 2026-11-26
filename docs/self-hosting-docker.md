@@ -13,7 +13,7 @@ So you want to create a bot? Let's get you started!
 ## Guide
 For this guide, we assume that before you start, you have a dedicated docker folder to house config files and everything else we need for persistence between docker container reboots and updates. The path in this guide is `/home/$USER/Docker/maxun`.
 1. Change directory into your docker folder `cd /home/$USER/Docker/`
-2. Create a new directory for maxun and all the required sub-folders for our docker services `mkdir -p maxun/{db,minio,redis}`
+2. Create a new directory for maxun and all the required sub-folders for our docker services `mkdir -p maxun/{db18,minio}`
 3. Change directory to enter the newly created folder `cd maxun`
 4. Create your `.env` file. Use **either** option below.
 
@@ -67,9 +67,6 @@ For this guide, we assume that before you start, you have a dedicated docker fol
    MINIO_CONSOLE_PORT=9001
    MINIO_ACCESS_KEY=minio
    MINIO_SECRET_KEY=<output of fifth command>
-   REDIS_HOST=maxun-redis
-   REDIS_PORT=6379
-   REDIS_PASSWORD=
    BACKEND_PORT=8080
    FRONTEND_PORT=5173
    BACKEND_URL=https://maxun.my.domain
@@ -113,14 +110,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  redis:
-    image: docker.io/library/redis:7
-    container_name: maxun-redis
-    restart: always
-    mem_limit: 128M
-    volumes:
-      - /home/$USER/Docker/maxun/redis:/data
 
   minio:
     # minio/minio was removed from Docker Hub. Silo (pgsty/silo) is a maintained MinIO fork.
@@ -172,6 +161,12 @@ services:
 ```
 7. Ctrl + x, Y, Enter will save your changes
 8. This particular setup is "production ready" meaning that maxun is only accessible from localhost. You must configure a reverse proxy to access it!
+
+   **You also need a browser service.** The backend image does not include a browser, so recording and running robots fails with `Failed to connect to browser service` until one is available. Either:
+   - add the `browser` service from the repository's [docker-compose.yml](../docker-compose.yml) to this file and set `BROWSER_WS_HOST=browser` in `.env` (keep its ports published on `127.0.0.1` only: anyone who can reach them can control the browser), or
+   - point the backend at a browser service you run elsewhere with `BROWSER_WS_HOST`, `BROWSER_WS_PORT` and `BROWSER_HEALTH_PORT`. The backend calls `http://BROWSER_WS_HOST:BROWSER_HEALTH_PORT/health` and connects to the `wsEndpoint` it returns, so that service must provide the same `/health` endpoint as [Maxun's browser service](../browser/server.ts).
+
+   In both cases, set the same `BROWSER_SERVICE_TOKEN` on the backend and the browser service.
 9. Start maxun `sudo docker compose up -d` or `sudo docker-compose up -d`
 10. Wait 30 seconds for everything to come up
 11. Access your maxun instance at http://localhost:5173 if using defaults
