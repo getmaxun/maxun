@@ -19,6 +19,11 @@ const USER_PROMPT_PREFIX = `Summarize the following web page in plain text. Star
 
 const MAX_TOKENS = 1500;
 
+function unwrapUnderscoreEmphasis(match: string, content: string, offset: number, input: string): string {
+  const tokenPrefix = input.slice(0, offset).match(/\S*$/)?.[0] || '';
+  return tokenPrefix.includes('/') || tokenPrefix.includes('\\') ? match : content;
+}
+
 function cleanOutput(text: string): string {
   let out = text.trim();
 
@@ -35,9 +40,9 @@ function cleanOutput(text: string): string {
   // Strip markdown bold/italic (**text**, *text*, __text__, _text_)
   out = out.replace(/\*\*([^*]+)\*\*/g, '$1');
   // Preserve intraword underscores in identifiers.
-  out = out.replace(/(?<![\p{L}\p{M}\p{N}_])__([\s\S]+?)__(?![\p{L}\p{M}\p{N}_])/gu, '$1');
+  out = out.replace(/(?<![\\/\p{L}\p{M}\p{N}_])__([\s\S]+?)__(?![\\/\p{L}\p{M}\p{N}_])/gu, unwrapUnderscoreEmphasis);
   out = out.replace(/\*([^*]+)\*/g, '$1');
-  out = out.replace(/(?<![\p{L}\p{M}\p{N}_])_([\s\S]+?)_(?![\p{L}\p{M}\p{N}_])/gu, '$1');
+  out = out.replace(/(?<![\\/\p{L}\p{M}\p{N}_])_([\s\S]+?)_(?![\\/\p{L}\p{M}\p{N}_])/gu, unwrapUnderscoreEmphasis);
 
   // Strip ATX headers (## Heading)
   out = out.replace(/^#{1,6}\s+/gm, '');
