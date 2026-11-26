@@ -27,15 +27,17 @@ function stripUnderscoreEmphasis(input: string, width: 1 | 2): string {
       const start = match.index;
       const trailing = /(_+)(?:(?![_\\/])\p{P})*$/u.exec(value);
       const leading = /(^|[^\p{L}\p{M}\p{N}_\\/])(_{1,3})(?!_)/iu.exec(value);
-      let opening: { index: number; width: number } | undefined;
+      let opening: { index: number; width: number; confirmed: boolean } | undefined;
       if (leading) {
         const index = leading.index + leading[1].length;
         const prefix = value.slice(0, index);
         const body = value.slice(index + leading[2].length);
         const knownPath = /^(?:[a-z][a-z\d+.-]*:\/\/|[a-z]:[\\/]|\.{1,2}[\\/]|[\\/])/iu.test(body);
         const paired = trailing && trailing.index > index + leading[2].length && trailing[1].length >= leading[2].length;
-        if (!prefix.includes('/') && !prefix.includes('\\') && (knownPath || paired)) {
-          opening = { index: start + index, width: leading[2].length };
+        const separator = body.search(/[\\/]/);
+        const relative = separator > 0 && !body.slice(0, separator).endsWith(leading[2]);
+        if (!prefix.includes('/') && !prefix.includes('\\') && (knownPath || paired || relative)) {
+          opening = { index: start + index, width: leading[2].length, confirmed: Boolean(knownPath || paired) };
         }
       }
       let closing: { start: number; end: number; literal: boolean } | undefined;
@@ -52,24 +54,29 @@ function stripUnderscoreEmphasis(input: string, width: 1 | 2): string {
       return { start, end: start + value.length, opening, closing };
     });
   const marker = '_'.repeat(width);
-  const markers: { index: number; canOpen: boolean; canClose: boolean; token: (typeof tokens)[number] | undefined }[] = [];
+  const markers: { index: number; canOpen: boolean; possibleOpen: boolean; canClose: boolean; token: (typeof tokens)[number] | undefined }[] = [];
   let tokenIndex = 0;
   for (let index = 0; index <= input.length - width; index++) {
     if (!input.startsWith(marker, index)) continue;
     while (tokenIndex < tokens.length && index >= tokens[tokenIndex].end) tokenIndex++;
     const token = tokens[tokenIndex];
     const protectedToken = token && index >= token.start ? token : undefined;
-    const canOpen = !/[\p{L}\p{M}\p{N}_]$/u.test(input.slice(Math.max(0, index - 2), index)) &&
-      (!protectedToken || (protectedToken.opening?.index === index && width <= protectedToken.opening.width));
+    const leftBoundary = !/[\p{L}\p{M}\p{N}_]$/u.test(input.slice(Math.max(0, index - 2), index));
+    const pathOpening = protectedToken?.opening;
+    const atPathOpening = pathOpening?.index === index && width <= pathOpening.width;
+    const canOpen = leftBoundary && (!protectedToken || (atPathOpening && pathOpening.confirmed));
+    const possibleOpen = Boolean(leftBoundary && atPathOpening && !pathOpening.confirmed);
     const canClose = !/^[\p{L}\p{M}\p{N}_]/u.test(input.slice(index + width, index + width + 2)) &&
       (!protectedToken || (protectedToken.closing !== undefined && index >= protectedToken.closing.start && index + width <= protectedToken.closing.end));
-    if (canOpen || canClose) markers.push({ index, canOpen, canClose, token: protectedToken });
+    if (canOpen || canClose || possibleOpen) markers.push({ index, canOpen, possibleOpen, canClose, token: protectedToken });
   }
   const nextDefinite: ((typeof markers)[number] | undefined)[] = new Array(markers.length);
   let upcoming: (typeof markers)[number] | undefined;
   for (let index = markers.length - 1; index >= 0; index--) {
     nextDefinite[index] = upcoming;
     const candidate = markers[index];
+    // A following external closer confirms emphasis starting at a bare relative path.
+    if (candidate.possibleOpen && upcoming?.canClose) candidate.canOpen = true;
     if (candidate.canOpen || (candidate.canClose && !candidate.token)) upcoming = candidate;
   }
   const removed = new Set<number>();
