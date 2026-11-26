@@ -1,6 +1,7 @@
 import { chromium } from 'playwright-extra';
 import stealthPlugin from 'puppeteer-extra-plugin-stealth';
 import http from 'http';
+import net from 'net';
 import { timingSafeEqual } from 'crypto';
 import type { BrowserServer } from 'playwright';
 
@@ -11,6 +12,9 @@ let browserServer: BrowserServer | null = null;
 const BROWSER_WS_PORT = parseInt(process.env.BROWSER_WS_PORT || '3001', 10);
 const BROWSER_HEALTH_PORT = parseInt(process.env.BROWSER_HEALTH_PORT || '3002', 10);
 const BROWSER_WS_HOST = process.env.BROWSER_WS_HOST || 'localhost';
+// Interface the WebSocket server listens on. Playwright 1.65+ binds launchServer to
+// loopback by default, which other containers cannot reach, so listen on all interfaces.
+const BROWSER_LISTEN_HOST = process.env.BROWSER_LISTEN_HOST || '0.0.0.0';
 const BROWSER_SERVICE_TOKEN = process.env.BROWSER_SERVICE_TOKEN || '';
 
 /**
@@ -51,6 +55,7 @@ async function start(): Promise<void> {
                 '--mute-audio'
             ],
             port: BROWSER_WS_PORT,
+            host: BROWSER_LISTEN_HOST,
         });
 
         console.log(`✅ Browser WebSocket server listening on port ${BROWSER_WS_PORT}`);
@@ -59,15 +64,15 @@ async function start(): Promise<void> {
         }
         console.log(`✅ Stealth plugin enabled`);
 
-        const healthServer = http.createServer((req, res) => {
+        const healthServer = http.createServer(async (req, res) => {
             if (req.url === '/health') {
+                // Report healthy only if the WebSocket server really accepts connections.
+                const wsListening = await isWsPortOpen();
                 // Liveness stays public (Docker healthcheck); the control endpoint does not.
-                const wsEndpoint = isAuthorized(req)
-                    ? browserServer?.wsEndpoint().replace('localhost', BROWSER_WS_HOST) || ''
-                    : undefined;
-                res.writeHead(200, { 'Content-Type': 'application/json' });
+                const wsEndpoint = isAuthorized(req) ? advertisedWsEndpoint() : undefined;
+                res.writeHead(wsListening ? 200 : 503, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
-                    status: 'healthy',
+                    status: wsListening ? 'healthy' : 'unhealthy',
                     wsEndpoint,
                     wsPort: BROWSER_WS_PORT,
                     healthPort: BROWSER_HEALTH_PORT,
@@ -90,6 +95,30 @@ async function start(): Promise<void> {
         console.error('❌ Failed to start browser service:', error);
         process.exit(1);
     }
+}
+
+/**
+ * The endpoint other containers should use: Playwright reports the address it bound to
+ * (localhost, 127.0.0.1, [::1] or 0.0.0.0), so swap in the service's reachable hostname.
+ */
+function advertisedWsEndpoint(): string {
+    const endpoint = browserServer?.wsEndpoint();
+    if (!endpoint) return '';
+    const url = new URL(endpoint);
+    url.hostname = BROWSER_WS_HOST;
+    return url.toString();
+}
+
+/** True if a TCP connection to the WebSocket port succeeds from inside this container. */
+function isWsPortOpen(): Promise<boolean> {
+    const probeHost = ['0.0.0.0', '::'].includes(BROWSER_LISTEN_HOST) ? '127.0.0.1' : BROWSER_LISTEN_HOST;
+    return new Promise((resolve) => {
+        const socket = net.connect({ host: probeHost, port: BROWSER_WS_PORT });
+        const done = (ok: boolean) => { socket.destroy(); resolve(ok); };
+        socket.setTimeout(1000, () => done(false));
+        socket.once('connect', () => done(true));
+        socket.once('error', () => done(false));
+    });
 }
 
 async function shutdown(): Promise<void> {
