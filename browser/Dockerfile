@@ -1,4 +1,4 @@
-FROM node:22.23.5-slim AS builder
+FROM node:26.13.1-slim AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY browser/tsconfig.json ./
 
 RUN npm run build
 
-FROM node:22.23.5-slim AS runner
+FROM node:26.13.1-slim AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production

@@ -9,7 +9,7 @@
     "@types/csurf": "1.11.5",
     "@types/express-session": "1.18.2",
     "@types/jsonwebtoken": "9.0.10",
-    "@types/node": "22.20.7",
+    "@types/node": "26.6.11",
     "@types/react": "18.3.24",
     "airtable": "0.12.2",
     "axios": "1.11.0",
@@ -80,7 +80,7 @@
     "@types/lodash": "4.17.20",
     "@types/loglevel": "1.6.3",
     "@types/multer": "2.1.0",
-    "@types/node": "22.20.7",
+    "@types/node": "26.6.11",
     "@types/node-cron": "3.0.11",
     "@types/node-fetch": "2.6.13",
     "@types/swagger-jsdoc": "6.0.4",
@@ -108,5 +108,13 @@
     "tar": "^7.5.23",
     "decode-uri-component": "^0.5.1",
     "minimatch@3": "^3.1.5"
+  },
+  "allowScripts": {
+    "bcrypt": true,
+    "canvas": true,
+    "esbuild": true,
+    "onnxruntime-node": true,
+    "@scarf/scarf": false,
+    "tesseract.js": false
   }
 }
