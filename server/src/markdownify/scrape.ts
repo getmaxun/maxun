@@ -2,6 +2,7 @@ import { Page } from "playwright-core";
 import { parseMarkdown } from "./markdown";
 import logger from "../logger";
 import { isBackgroundRequest } from "../utils/backgroundRequests";
+import { assertSafeNavigationUrl } from '../utils/navigation-guard';
 
 interface PageState {
   /** Open XHR/fetch requests that can carry page data. */
@@ -84,6 +85,31 @@ async function dismissOverlays(page: Page): Promise<void> {
         return s.display !== 'none' && s.visibility !== 'hidden' && s.opacity !== '0';
       }
 
+      // Only buttons inside a pop-up layer may be clicked. A bare "×" or
+      // "Close" button elsewhere is page content (a removable filter chip, a
+      // calculator row, a tab) and clicking it changes what gets scraped.
+      function inOverlay(el: Element): boolean {
+        const vw = window.innerWidth, vh = window.innerHeight;
+        for (let n: Element | null = el; n && n !== document.body; n = n.parentElement) {
+          const role = n.getAttribute('role');
+          if (role === 'dialog' || role === 'alertdialog' || n.getAttribute('aria-modal') === 'true') return true;
+          if (n.tagName === 'DIALOG' && (n as HTMLDialogElement).open) return true;
+          if (window.getComputedStyle(n).position === 'fixed') {
+            // A fixed layer counts when it covers the page: it blocks the
+            // viewport centre or a large share of it. Thin fixed bars and
+            // sidebars are layout, not something to close.
+            const r = n.getBoundingClientRect();
+            const blocksCentre = r.left <= vw / 2 && r.right >= vw / 2 && r.top <= vh / 2 && r.bottom >= vh / 2;
+            const area = (Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0))) / (vw * vh || 1);
+            const hinted = /modal|popup|pop-up|dialog|overlay|lightbox|newsletter|cookie|consent/i.test(String((n as HTMLElement).className || '') + ' ' + (n.id || ''));
+            if (blocksCentre || area > 0.3 || hinted) return true;
+            // A non-qualifying fixed element (e.g. a corner close button or a thin
+            // toolbar) may still sit inside a dialog, so keep walking up.
+          }
+        }
+        return false;
+      }
+
       const SELECTORS = [
         '[role="dialog"] [aria-label*="close" i]',
         '[role="dialog"] [aria-label*="关闭"]',
@@ -102,7 +128,7 @@ async function dismissOverlays(page: Page): Promise<void> {
 
       for (const sel of SELECTORS) {
         for (const el of Array.from(document.querySelectorAll(sel))) {
-          if (isVisible(el)) {
+          if (isVisible(el) && inOverlay(el)) {
             (el as HTMLElement).click();
             return true;
           }
@@ -113,7 +139,7 @@ async function dismissOverlays(page: Page): Promise<void> {
       for (const el of Array.from(document.querySelectorAll('button, [role="button"]'))) {
         const text = ((el as HTMLElement).innerText || '').trim();
         const label = (el.getAttribute('aria-label') || '').trim();
-        if ((CLOSE_LABELS.has(text) || CLOSE_LABELS.has(label)) && isVisible(el)) {
+        if ((CLOSE_LABELS.has(text) || CLOSE_LABELS.has(label)) && isVisible(el) && inOverlay(el)) {
           (el as HTMLElement).click();
           return true;
         }
@@ -153,6 +179,9 @@ const lastRequestedTarget = new WeakMap<object, string>();
 const normaliseUrl = (u: string) => u.split('#')[0].replace(/\/$/, '');
 
 async function gotoWithFallback(page: any, url: string, forScreenshot = false) {
+  // Every scrape conversion navigates through here; refuse internal targets
+  // before the browser is pointed at them.
+  await assertSafeNavigationUrl(url);
   try {
     const current = page.url();
     if (current && current !== 'about:blank') {

@@ -19,9 +19,6 @@ MINIO_SECRET_KEY=minio_secret_key       # MinIO secret key
 # MinIO is behind a reverse proxy or on a non-localhost/non-9000 public address,
 # e.g. https://storage.example.com (no internal port appended). Optional.
 # MINIO_PUBLIC_URL=https://storage.example.com
-REDIS_HOST=redis                        # Redis host in Docker
-REDIS_PORT=6379                         # Redis port (default: 6379)
-REDIS_PASSWORD=redis_password           # Redis password (This is optional. Needed to authenticate with a password-protected Redis instance; if not set, Redis will connect without authentication.)
 
 # Backend and Frontend URLs and Ports
 BACKEND_PORT=8080 # Port to run backend on. Needed for Docker setup 
@@ -48,6 +45,10 @@ MAXUN_TELEMETRY=true
 BROWSER_WS_PORT=3001
 BROWSER_HEALTH_PORT=3002
 BROWSER_WS_HOST=browser
+# Shared secret between the backend and the browser service. When set, the browser
+# service only reveals its control endpoint to callers presenting it. Generate one with:
+#   openssl rand -hex 32
+BROWSER_SERVICE_TOKEN=
 # Ollama for AI Extract (optional). With Docker Compose the server reaches Ollama on the
 # host at http://host.docker.internal:11434 (the default); use http://localhost:11434 only
 # when the server itself runs on the host.
@@ -55,3 +56,10 @@ BROWSER_WS_HOST=browser
 # OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OLLAMA_API_KEY=
 # OLLAMA_MODEL=
+
+# SSRF protection: by default the server-side browser refuses to open loopback,
+# private (RFC1918), link-local / cloud metadata (169.254.169.254) and other
+# internal addresses, including public hostnames that resolve to them. Set to
+# true only if you intentionally scrape intranet or localhost sites and trust
+# every user of this instance.
+# ALLOW_PRIVATE_NAVIGATION_URLS=false

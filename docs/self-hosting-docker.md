@@ -13,7 +13,7 @@ So you want to create a bot? Let's get you started!
 ## Guide
 For this guide, we assume that before you start, you have a dedicated docker folder to house config files and everything else we need for persistence between docker container reboots and updates. The path in this guide is `/home/$USER/Docker/maxun`.
 1. Change directory into your docker folder `cd /home/$USER/Docker/`
-2. Create a new directory for maxun and all the required sub-folders for our docker services `mkdir -p maxun/{db,minio,redis}`
+2. Create a new directory for maxun and all the required sub-folders for our docker services `mkdir -p maxun/{db18,minio}`
 3. Change directory to enter the newly created folder `cd maxun`
 4. Create your `.env` file. Use **either** option below.
 
@@ -67,9 +67,6 @@ For this guide, we assume that before you start, you have a dedicated docker fol
    MINIO_CONSOLE_PORT=9001
    MINIO_ACCESS_KEY=minio
    MINIO_SECRET_KEY=<output of fifth command>
-   REDIS_HOST=maxun-redis
-   REDIS_PORT=6379
-   REDIS_PASSWORD=
    BACKEND_PORT=8080
    FRONTEND_PORT=5173
    BACKEND_URL=https://maxun.my.domain
@@ -99,7 +96,7 @@ For this guide, we assume that before you start, you have a dedicated docker fol
 ```yml
 services:
   postgres:
-    image: postgres:17
+    image: postgres:18
     container_name: maxun-postgres
     mem_limit: 512M
     environment:
@@ -107,23 +104,16 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
-      - /home/$USER/Docker/maxun/db:/var/lib/postgresql/data
+      - /home/$USER/Docker/maxun/db18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  redis:
-    image: docker.io/library/redis:7
-    container_name: maxun-redis
-    restart: always
-    mem_limit: 128M
-    volumes:
-      - /home/$USER/Docker/maxun/redis:/data
-
   minio:
-    image: minio/minio
+    # minio/minio was removed from Docker Hub. Silo (pgsty/silo) is a maintained MinIO fork.
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     container_name: maxun-minio
     mem_limit: 512M
     environment:
@@ -171,9 +161,51 @@ services:
 ```
 7. Ctrl + x, Y, Enter will save your changes
 8. This particular setup is "production ready" meaning that maxun is only accessible from localhost. You must configure a reverse proxy to access it!
+
+   **You also need a browser service.** The backend image does not include a browser, so recording and running robots fails with `Failed to connect to browser service` until one is available. Either:
+   - add the `browser` service from the repository's [docker-compose.yml](../docker-compose.yml) to this file and set `BROWSER_WS_HOST=browser` in `.env` (keep its ports published on `127.0.0.1` only: anyone who can reach them can control the browser), or
+   - point the backend at a browser service you run elsewhere with `BROWSER_WS_HOST`, `BROWSER_WS_PORT` and `BROWSER_HEALTH_PORT`. The backend calls `http://BROWSER_WS_HOST:BROWSER_HEALTH_PORT/health` and connects to the `wsEndpoint` it returns, so that service must provide the same `/health` endpoint as [Maxun's browser service](../browser/server.ts).
+
+   In both cases, set the same `BROWSER_SERVICE_TOKEN` on the backend and the browser service.
 9. Start maxun `sudo docker compose up -d` or `sudo docker-compose up -d`
 10. Wait 30 seconds for everything to come up
 11. Access your maxun instance at http://localhost:5173 if using defaults
+
+## Upgrading from an older PostgreSQL version
+The Compose files now use PostgreSQL 18. PostgreSQL 13 reached end of life in November 2025.
+A new major version cannot read an older version's data files. Starting from version 18, the
+image also keeps its data in `/var/lib/postgresql/18/docker`. For these reasons, PostgreSQL 18
+uses a new, empty volume (`postgres18_data` in the repository's `docker-compose.yml`, `db18` in
+the example above). Your old volume is left untouched. To move your existing data across:
+
+1. With your **old** Compose file still in place, stop the app and dump the Maxun database.
+   The backup holds all your data, so it is created readable only by you. Each command only
+   runs if the previous one succeeded; if any of them fails, the old stack keeps running and
+   you can retry:
+   ```bash
+   docker compose stop backend frontend &&
+     touch maxun-backup.sql && chmod 600 maxun-backup.sql &&
+     docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > maxun-backup.sql &&
+     docker compose down
+   ```
+2. Switch to the new Compose file. Keep the same `DB_USER`, `DB_PASSWORD` and `DB_NAME` in
+   your `.env`, then start only the new database:
+   ```bash
+   docker compose up -d postgres
+   ```
+3. Once `docker compose ps` reports it healthy, restore the dump. It runs as a single
+   transaction and stops at the first error, so it either restores everything or nothing:
+   ```bash
+   docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 --single-transaction -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < maxun-backup.sql
+   ```
+   If it reports an error, nothing was restored: fix the cause and run the same command again.
+4. Check that the backend's password login works. It should print `1`:
+   ```bash
+   docker compose exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select 1"'
+   ```
+5. Start everything else with `docker compose up -d`. When you've confirmed your robots and
+   runs are there, delete `maxun-backup.sql` (or move it to protected storage), and remove the
+   old volume (e.g. `docker volume rm <project>_postgres_data`) or the old `db` directory.
 
 ## Next steps
 You will want to configure a reverse proxy. Click on a link below to check out some examples.

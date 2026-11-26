@@ -8,7 +8,7 @@
     </div>
     Turn Any Website Into A Structured API
 </h3>
-<p align="center"><b>English</b> | <a href="./README.zh-CN.md">简体中文</a></p>
+<p align="center"><b>English</b> | <a href="./README.zh-CN.md">简体中文</a> | <a href="./README.ja.md">日本語</a></p>
 
 <p align="center">
 The open-source web data platform for real-time web scraping, crawling, search, monitoring and AI data extraction.
@@ -16,6 +16,7 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 <p align="center">
     <a href="https://app.maxun.dev/?ref=ghread"><b>Go To App</b></a> •
     <a href="https://docs.maxun.dev/?ref=ghread"><b>Documentation</b></a> •
+    <a href="https://app.maxun.dev/?ref=ghread"><b>Playground</b></a> •
     <a href="https://www.maxun.dev/?ref=ghread"><b>Website</b></a> •
     <a href="https://discord.gg/5GbPjBUkws"><b>Discord</b></a> •
     <a href="https://www.youtube.com/@MaxunOSS?ref=ghread"><b>Watch Tutorials</b></a>
@@ -29,12 +30,34 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 <table>
 <tr>
 <td width="20%" align="center" valign="middle">
+<a href="https://www.ippeak.com/?utm_t=1&utm_i=225">
+  <img src="https://github.com/user-attachments/assets/86174be3-99e5-4e0e-8b00-bb4f8da08a46" alt="IPPeak" width="240" height="130">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://www.ippeak.com/?utm_t=1&utm_i=225"><strong>IPPeak</strong></a> offers access to 80M+ real residential IPs and four proxy solutions: Premium Residential, Core Residential, Unlimited Residential and ISP Proxies. Residential proxies start at just $0.49/GB, with precise country/region and ASN targeting. Unlimited Residential Proxies start at $8/hour, providing flexible solutions for diverse business needs. <strong>Discount:</strong> <code>Maxun10</code> - 10% OFF Premium Basic
+</td>
+</tr>
+    
+<tr>
+<td width="20%" align="center" valign="middle">
 <a href="https://www.webshare.io/?referral_code=wwhk524ynls2">
   <img src="https://github.com/user-attachments/assets/c3a60969-a8f8-4d2c-acef-22bee80c2484" alt="Webshare" width="240" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
 <a href="https://www.webshare.io/?referral_code=wwhk524ynls2"><strong>Webshare</strong></a> gives you instant access to a proxy pool of 80M+ ethically-sourced IPs across 195+ countries, with rotating residential, static ISP, and datacenter options plus a full API. It includes a 100+ Gbps backbone, country/city/state/ZIP/ASN-level targeting, and requires no credit card to start. <strong>Free tier:</strong> 10 proxies + 1GB/month · <strong>Discount:</strong> <code>MAXUN20</code> - 20% off your first purchase.
+</td>
+</tr>
+
+<tr>
+<td width="20%" align="center" valign="middle">
+<a href="https://www.swiftproxy.net/?ref=maxun">
+  <img src="https://github.com/user-attachments/assets/a1d2309b-d3bd-45e6-8760-ce1f8dcd18b9" alt="Swiftproxy" width="240" height="130">
+</a>
+</td>
+<td width="80%" valign="middle">
+<a href="https://www.swiftproxy.net/?ref=maxun"><strong>Swiftproxy</strong></a> provides 90M+ residential IPs across 220+ locations worldwide, helping Maxun users scrape websites, access geo-restricted content, and collect web data across different regions. Supports rotating and static residential proxies, HTTP(S), and SOCKS5. <strong>Free testing available. </strong><strong>Discount:</strong> <code>PROXY90</code> - 10% off.
 </td>
 </tr>
 
@@ -57,30 +80,30 @@ The open-source web data platform for real-time web scraping, crawling, search, 
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month.<strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
+<a href="https://byteful.com/?utm_source=github&utm_medium=github-sponsor&utm_campaign=maxun_github_sponsorship"><strong>Byteful</strong></a> is a UK-based web data infrastructure platform providing ethically sourced residential, mobile, static residential (ISP) and datacenter proxies alongside API-first tools for web scraping, data collection, and AI-driven automation, processing tens of billions of requests per month. <strong>Discount:</strong> <code>MAXUN10</code> - Get 10% off Byteful Residential Proxies.
 </td>
 </tr>
 
 <tr>
 <td width="20%" align="center" valign="middle">
-<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun">
+<a href="https://mangoproxy.com/prod-isp-static/?utm_source=maxun&utm_medium=partner&utm_campaign=maxun_github">
   <img src="https://github.com/user-attachments/assets/326b5b8f-6a2c-4aa2-94c8-6a29ae23f2ac" alt="Mango Proxy" width="250" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://mangoproxy.com/?utm_source=github&utm_medium=partner&utm_campaign=getmaxun"><strong>Mango Proxy</strong></a> offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management. <strong>Discount:</strong> <code>MAXUN</code> - 8% off Static ISP Proxies.
+<a href="https://mangoproxy.com/prod-isp-static/?utm_source=maxun&utm_medium=partner&utm_campaign=maxun_github"><strong>Mango Proxy</strong></a> offers Residential, ISP, Datacenter, and Mobile Proxies in 200+ countries with HTTP(S)/SOCKS5 support and flexible IP management. <strong>Discount:</strong> <code>MAXUN</code> - 8% off Static ISP Proxies.
 </td>
 </tr>
 
-
 <tr>
 <td width="20%" align="center" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept">
-  <img src="https://github.com/user-attachments/assets/7269ea9b-83fb-4b70-9a41-0eb2beaabf2a" alt="Nodemaven" width="420" height="130">
+<a href="https://go.nodemaven.com/maxunreadmeoct">
+  <img src="https://github.com/user-attachments/assets/de295d94-61f4-4c97-88f8-cd45cbf3af84" alt="Nodemaven" width="420" height="130">
 </a>
 </td>
 <td width="80%" valign="middle">
-<a href="https://go.nodemaven.com/maxunGHsept"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunGHsept">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
+<a href="https://go.nodemaven.com/maxunreadmeoct"><strong>Nodemaven</strong></a> offers the most efficient proxy provider for Web Scraping and Automation with the Highest Quality IP on the market. Why <a href="https://go.nodemaven.com/maxunreadmeoct">Nodemaven</a>? · ZIP targeting · 99.9% uptime · IP filtering: all proxies have fraud score <97% · No KYC required · Unique free tools: Proxy Bandwidth Checker, Meta Tag Checker, IP Lookup and others! <strong>Discounts:</strong> <code>MAXUN2X</code> — 2X traffic for Black Friday · <code>MAXUN35</code> — 35% off Mobile & Residential · <code>MAXUN40</code> - 40% off ISP (Static)
+
 </td>
 </tr>
 

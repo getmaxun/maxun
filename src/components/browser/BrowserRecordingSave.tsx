@@ -152,7 +152,10 @@ const BrowserRecordingSave = () => {
             sx={{
               marginLeft: '25px',
               color: 'red !important',
-              borderColor: 'red !important',
+              border: 'none',
+              '&:hover': {
+                border: 'none',
+              },
               backgroundColor: 'whitesmoke !important',
             }}
             size="small"

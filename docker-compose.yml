@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:13
+    image: postgres:18
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -9,7 +9,10 @@ services:
     ports:
       - "${DB_PORT:-5432}:${DB_PORT:-5432}"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Postgres 18+ keeps its data in /var/lib/postgresql/18/docker, so mount the parent.
+      # This is a new volume: data from the old postgres:13 volume (postgres_data) must be
+      # migrated with a dump and restore. See docs/self-hosting-docker.md.
+      - postgres18_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -17,7 +20,8 @@ services:
       retries: 5
 
   minio:
-    image: minio/minio
+    # minio/minio was removed from Docker Hub. Silo (pgsty/silo) is a maintained MinIO fork.
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
@@ -40,6 +44,8 @@ services:
     env_file: .env
     environment:
       BACKEND_URL: ${BACKEND_URL}
+      # Same interpolation as the browser service so both always get the same token.
+      BROWSER_SERVICE_TOKEN: ${BROWSER_SERVICE_TOKEN:-}
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 0
       CI: "true"
@@ -83,15 +89,22 @@ services:
     #     BROWSER_WS_PORT: ${BROWSER_WS_PORT:-3001}
     #     BROWSER_HEALTH_PORT: ${BROWSER_HEALTH_PORT:-3002}
     image: getmaxun/maxun-browser:latest
+    # The backend reaches the browser over the Compose network. These ports
+    # give unauthenticated control of the browser, so they are only published
+    # on the host's loopback interface (for running the backend outside Docker).
+    # Docker Engine versions before 28.0.0 let hosts on the same L2 network reach
+    # loopback-published ports. Use Docker Engine 28.0.0 or later on shared
+    # networks, or remove these mappings when the backend runs inside Compose.
     ports:
-      - "${BROWSER_WS_PORT:-3001}:${BROWSER_WS_PORT:-3001}"
-      - "${BROWSER_HEALTH_PORT:-3002}:${BROWSER_HEALTH_PORT:-3002}"
+      - "127.0.0.1:${BROWSER_WS_PORT:-3001}:${BROWSER_WS_PORT:-3001}"
+      - "127.0.0.1:${BROWSER_HEALTH_PORT:-3002}:${BROWSER_HEALTH_PORT:-3002}"
     environment:
       - NODE_ENV=production
       - DEBUG=pw:browser*
       - BROWSER_WS_PORT=${BROWSER_WS_PORT:-3001}
       - BROWSER_HEALTH_PORT=${BROWSER_HEALTH_PORT:-3002}
       - BROWSER_WS_HOST=${BROWSER_WS_HOST:-browser}
+      - BROWSER_SERVICE_TOKEN=${BROWSER_SERVICE_TOKEN:-}
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
     restart: unless-stopped
     healthcheck:
@@ -115,5 +128,5 @@ services:
       - SYS_ADMIN
 
 volumes:
-  postgres_data:
+  postgres18_data:
   minio_data:

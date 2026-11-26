@@ -19,6 +19,7 @@ import { getInjectableScript } from 'idcac-playwright';
 import { FingerprintInjector } from "fingerprint-injector";
 import { FingerprintGenerator } from "fingerprint-generator";
 import { connectToRemoteBrowser } from '../browserConnection';
+import { installNavigationGuard } from '../../utils/navigation-guard';
 
 declare global {
   interface Window {
@@ -32,12 +33,6 @@ interface PageNavigationState {
     version: number;
     queue: Promise<unknown>;
 }
-
-// const MEMORY_CONFIG = {
-//     gcInterval: 20000,
-//     maxHeapSize: 1536 * 1024 * 1024,
-//     heapUsageThreshold: 0.7
-// };
 
 /**
  * This class represents a remote browser instance.
@@ -138,54 +133,6 @@ export class RemoteBrowser {
         this.generator = new WorkflowGenerator(socket, poolId);
         this.isRecordingMode = isRecordingMode;
     }
-
-    // private initializeMemoryManagement(): void {
-    //   this.memoryManagementInterval = setInterval(() => {
-    //     const memoryUsage = process.memoryUsage();
-    //     const heapUsageRatio = memoryUsage.heapUsed / MEMORY_CONFIG.maxHeapSize;
-
-    //     if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.2) {
-    //       logger.warn(
-    //         "Critical memory pressure detected, triggering emergency cleanup"
-    //       );
-    //       this.performMemoryCleanup();
-    //     } else if (heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold) {
-    //       logger.warn("High memory usage detected, triggering cleanup");
-
-    //       if (
-    //         global.gc &&
-    //         heapUsageRatio > MEMORY_CONFIG.heapUsageThreshold * 1.1
-    //       ) {
-    //         global.gc();
-    //       }
-    //     }
-    //   }, MEMORY_CONFIG.gcInterval);
-    // }
-
-    // private async performMemoryCleanup(): Promise<void> {
-    //   if (global.gc) {
-    //     try {
-    //       global.gc();
-    //       logger.info("Garbage collection requested");
-    //     } catch (error) {
-    //       logger.error("Error during garbage collection:", error);
-    //     }
-    //   }
-
-    //   if (this.currentPage) {
-    //     try {
-    //       await new Promise((resolve) => setTimeout(resolve, 500));
-    //       logger.info("CDP session reset completed");
-    //     } catch (error) {
-    //       logger.error("Error resetting CDP session:", error);
-    //     }
-    //   }
-
-    //   this.socket.emit("memory-cleanup", {
-    //     userId: this.userId,
-    //     timestamp: Date.now(),
-    //   });
-    // }
 
     /**
      * Normalizes URLs to prevent navigation loops while maintaining consistent format
@@ -640,6 +587,8 @@ export class RemoteBrowser {
                 })
               ]) as BrowserContext;
 
+              await installNavigationGuard(this.context);
+
               await this.applyEnhancedFingerprinting(this.context);
 
               await this.context.addInitScript(
@@ -848,16 +797,6 @@ export class RemoteBrowser {
      */
     public async switchOff(): Promise<void> {
       this.isDOMStreamingActive = false;
-
-      // if (this.memoryCleanupInterval) {
-      //   clearInterval(this.memoryCleanupInterval);
-      //   this.memoryCleanupInterval = null;
-      // }
-
-      // if (this.memoryManagementInterval) {
-      //   clearInterval(this.memoryManagementInterval);
-      //   this.memoryManagementInterval = null;
-      // }
 
       this.removeAllSocketListeners();
 
@@ -1068,6 +1007,9 @@ export class RemoteBrowser {
     private initializeNewPage = async (options?: Object): Promise<void> => {
         const newPage = options ? await this.browser?.newPage(options)
             : await this.browser?.newPage();
+        if (newPage) {
+            await installNavigationGuard(newPage.context());
+        }
         await newPage?.setExtraHTTPHeaders({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
         });

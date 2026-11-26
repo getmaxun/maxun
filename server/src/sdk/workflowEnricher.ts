@@ -17,7 +17,7 @@ import { createJsonLLM } from './aiExtract/llmClient';
 import { selectGroupCandidatesTool, assignFieldLabelsTool, filterFieldsByIntentTool, setListNameTool, verifyExtractionMatchTool, parseSearchIntentTool, selectBestUrlTool, classifyMultiSitePromptTool, selectMultipleUrlsTool } from './anthropicTools';
 
 interface SimplifiedAction {
-  action: string | typeof Symbol.asyncDispose;
+  action: string | symbol;
   args?: any[];
   name?: string;
   actionId?: string;

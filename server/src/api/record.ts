@@ -26,32 +26,9 @@ import { QUEUE_NAMES } from '../task-runner';
 import { computeNextRun, buildCronExpression, ScheduleValidationError } from '../utils/schedule';
 import { compareExtractRunWithPrevious, compareRunOutputsWithPrevious } from '../utils/run-comparison';
 import { withSnakeCaseCapturedKeys } from "../../../src/helpers/jsonKeys";
+import { normalizeAndValidateRobotUrl } from '../utils/robot-updates';
 
 const router = Router();
-
-const normalizeRobotUrl = (rawUrl: string): string => {
-    let normalizedUrl: URL;
-    try {
-        normalizedUrl = new URL(rawUrl.trim());
-    } catch {
-        throw new Error(`"${rawUrl.trim()}" is not a valid URL. Provide a full web address like https://example.com`);
-    }
-    if (!['http:', 'https:'].includes(normalizedUrl.protocol)) {
-        throw new Error(`Unsupported URL protocol "${normalizedUrl.protocol}//" — only http and https are supported. Local file paths cannot be scraped.`);
-    }
-
-    const hostname = normalizedUrl.hostname;
-    const isPlausibleHost = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(hostname)
-        || hostname === 'localhost'
-        || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)
-        || /^\[[0-9a-f:]+\]$/i.test(hostname);
-    if (!isPlausibleHost) {
-        throw new Error(`"${hostname}" is not a reachable hostname. Provide a full web address like https://example.com`);
-    }
-
-    normalizedUrl.search = normalizedUrl.searchParams.toString();
-    return normalizedUrl.toString();
-};
 
 const getRobotTargetUrl = (recording: any): string => {
     const metaUrl = recording?.recording_meta?.url?.trim();
@@ -1615,8 +1592,8 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
  *   post:
  *     summary: Duplicate a robot with a new target URL
  *     description: Duplicate an existing robot to run it on a different URL with the same structure.
- *    tags: 
- *     - Robots   
+ *     tags:
+ *       - Robots
  *     security:
  *       - api_key: []
  *     parameters:
@@ -1664,7 +1641,7 @@ router.post("/robots/:id/duplicate", requireAPIKey, async (req: Request, res: Re
 
         let normalizedTargetUrl: string;
         try {
-            normalizedTargetUrl = normalizeRobotUrl(targetUrl);
+            normalizedTargetUrl = await normalizeAndValidateRobotUrl(targetUrl);
         } catch (err) {
             return res.status(400).json({
                 statusCode: 400,
