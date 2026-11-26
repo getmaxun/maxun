@@ -1,6 +1,6 @@
 {
   "name": "maxun-backend",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "dependencies": {
     "@anthropic-ai/sdk": "0.137.0",
     "@cliqz/adblocker-playwright": "1.34.0",
@@ -37,7 +37,7 @@
     "jsonwebtoken": "9.0.2",
     "lodash": "4.17.21",
     "mammoth": "^1.11.0",
-    "maxun-core": "0.0.38",
+    "maxun-core": "^0.0.39",
     "minio": "8.0.5",
     "moment-timezone": "0.6.0",
     "multer": "2.1.1",
