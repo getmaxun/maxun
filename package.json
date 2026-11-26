@@ -24,7 +24,7 @@
     "@types/csurf": "^1.11.5",
     "@types/express-session": "^1.18.1",
     "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "22.20.7",
+    "@types/node": "26.6.11",
     "@types/react": "^18.0.5",
     "@types/react-dom": "^18.0.1",
     "airtable": "^0.12.2",
@@ -132,7 +132,7 @@
     "@types/lodash": "^4.17.14",
     "@types/loglevel": "^1.6.3",
     "@types/multer": "^2.1.0",
-    "@types/node": "22.20.7",
+    "@types/node": "26.6.11",
     "@types/node-cron": "^3.0.11",
     "@types/node-fetch": "^2.6.12",
     "@types/styled-components": "^5.1.23",
@@ -152,5 +152,13 @@
     "ts-node": "^10.4.0",
     "vite": "^6.4.2",
     "zod": "^3.25.62"
+  },
+  "allowScripts": {
+    "bcrypt": true,
+    "canvas": true,
+    "esbuild": true,
+    "onnxruntime-node": true,
+    "@scarf/scarf": false,
+    "tesseract.js": false
   }
 }
