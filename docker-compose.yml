@@ -20,7 +20,8 @@ services:
       retries: 5
 
   minio:
-    image: minio/minio
+    # minio/minio was removed from Docker Hub. Silo (pgsty/silo) is a maintained MinIO fork.
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
