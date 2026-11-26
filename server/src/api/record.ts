@@ -1592,8 +1592,8 @@ router.post("/robots/:id/runs", requireAPIKey, async (req: AuthenticatedRequest,
  *   post:
  *     summary: Duplicate a robot with a new target URL
  *     description: Duplicate an existing robot to run it on a different URL with the same structure.
- *    tags: 
- *     - Robots   
+ *     tags:
+ *       - Robots
  *     security:
  *       - api_key: []
  *     parameters:
