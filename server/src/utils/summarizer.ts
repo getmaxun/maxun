@@ -56,19 +56,28 @@ function stripUnderscoreEmphasis(input: string, width: 1 | 2): string {
   const marker = '_'.repeat(width);
   const markers: { index: number; canOpen: boolean; possibleOpen: boolean; canClose: boolean; token: (typeof tokens)[number] | undefined }[] = [];
   let tokenIndex = 0;
+  let runStart = 0;
+  let runEnd = 0;
   for (let index = 0; index <= input.length - width; index++) {
     if (!input.startsWith(marker, index)) continue;
+    if (index >= runEnd) {
+      runStart = index;
+      runEnd = index + width;
+      while (input[runEnd] === '_') runEnd++;
+    }
     while (tokenIndex < tokens.length && index >= tokens[tokenIndex].end) tokenIndex++;
     const token = tokens[tokenIndex];
     const protectedToken = token && index >= token.start ? token : undefined;
-    const leftBoundary = !/[\p{L}\p{M}\p{N}_]$/u.test(input.slice(Math.max(0, index - 2), index));
+    const beforeRun = input.slice(Math.max(0, runStart - 2), runStart);
+    const afterRun = input.slice(runEnd, runEnd + 2);
+    const leftBoundary = !/[\p{L}\p{M}\p{N}_]$/u.test(beforeRun);
+    const canStart = index === runStart && leftBoundary && afterRun.length > 0 && !/^\s/u.test(afterRun);
     const pathOpening = protectedToken?.opening;
     const atPathOpening = pathOpening?.index === index && width <= pathOpening.width;
-    const canOpen = leftBoundary && !/^\s/u.test(input.slice(index + width, index + width + 2)) &&
-      (!protectedToken || (atPathOpening && pathOpening.confirmed));
-    const possibleOpen = Boolean(leftBoundary && atPathOpening && !pathOpening.confirmed);
-    const canClose = !/\s$/u.test(input.slice(Math.max(0, index - 2), index)) &&
-      !/^[\p{L}\p{M}\p{N}_]/u.test(input.slice(index + width, index + width + 2)) &&
+    const canOpen = canStart && (!protectedToken || (atPathOpening && pathOpening.confirmed));
+    const possibleOpen = Boolean(canStart && atPathOpening && !pathOpening.confirmed);
+    const canClose = index + width === runEnd && beforeRun.length > 0 && !/\s$/u.test(beforeRun) &&
+      !/^[\p{L}\p{M}\p{N}_]/u.test(afterRun) &&
       (!protectedToken || (protectedToken.closing !== undefined && index >= protectedToken.closing.start && index + width <= protectedToken.closing.end));
     if (canOpen || canClose || possibleOpen) markers.push({ index, canOpen, possibleOpen, canClose, token: protectedToken });
   }
