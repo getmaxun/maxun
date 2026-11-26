@@ -25,51 +25,76 @@ function stripUnderscoreEmphasis(input: string, width: 1 | 2): string {
     .map((match) => {
       const value = match[0];
       const start = match.index;
-      const leading = /(^|[^\p{L}\p{M}\p{N}_\\/])(_{1,3})(?=(?:[a-z][a-z\d+.-]*:\/\/|[a-z]:[\\/]|\.{1,2}[\\/]|[\\/]))/iu.exec(value);
+      const trailing = /(_+)(?:(?![_\\/])\p{P})*$/u.exec(value);
+      const leading = /(^|[^\p{L}\p{M}\p{N}_\\/])(_{1,3})(?!_)/iu.exec(value);
       let opening: { index: number; width: number } | undefined;
       if (leading) {
         const index = leading.index + leading[1].length;
         const prefix = value.slice(0, index);
-        if (!prefix.includes('/') && !prefix.includes('\\')) {
+        const body = value.slice(index + leading[2].length);
+        const knownPath = /^(?:[a-z][a-z\d+.-]*:\/\/|[a-z]:[\\/]|\.{1,2}[\\/]|[\\/])/iu.test(body);
+        const paired = trailing && trailing.index > index + leading[2].length && trailing[1].length >= leading[2].length;
+        if (!prefix.includes('/') && !prefix.includes('\\') && (knownPath || paired)) {
           opening = { index: start + index, width: leading[2].length };
         }
       }
-      const trailing = /(_+)(?:(?![_\\/])\p{P})*$/u.exec(value);
-      return {
-        start,
-        end: start + value.length,
-        opening,
-        closing: trailing ? {
+      let closing: { start: number; end: number; literal: boolean } | undefined;
+      if (trailing) {
+        const before = value.slice(0, trailing.index);
+        const segment = before.slice(Math.max(before.lastIndexOf('/'), before.lastIndexOf('\\')) + 1);
+        const literalWidth = /^_+/.exec(segment)?.[0].length || 0;
+        closing = {
           start: start + trailing.index,
           end: start + trailing.index + trailing[1].length,
-        } : undefined,
-      };
+          literal: literalWidth >= width && trailing[1].length <= literalWidth,
+        };
+      }
+      return { start, end: start + value.length, opening, closing };
     });
   const marker = '_'.repeat(width);
-  const removed = new Set<number>();
-  let opener: number | undefined;
+  const markers: { index: number; canOpen: boolean; canClose: boolean; token: (typeof tokens)[number] | undefined }[] = [];
   let tokenIndex = 0;
   for (let index = 0; index <= input.length - width; index++) {
     if (!input.startsWith(marker, index)) continue;
     while (tokenIndex < tokens.length && index >= tokens[tokenIndex].end) tokenIndex++;
     const token = tokens[tokenIndex];
     const protectedToken = token && index >= token.start ? token : undefined;
-    // Path-internal markers stay literal. A known outer wrapper may open, and
-    // a token's final run may close emphasis opened outside its path content.
     const canOpen = !/[\p{L}\p{M}\p{N}_]$/u.test(input.slice(Math.max(0, index - 2), index)) &&
       (!protectedToken || (protectedToken.opening?.index === index && width <= protectedToken.opening.width));
     const canClose = !/^[\p{L}\p{M}\p{N}_]/u.test(input.slice(index + width, index + width + 2)) &&
-      (!protectedToken || (protectedToken.closing && index >= protectedToken.closing.start && index + width <= protectedToken.closing.end));
-    if (opener !== undefined && canClose && index > opener + width) {
+      (!protectedToken || (protectedToken.closing !== undefined && index >= protectedToken.closing.start && index + width <= protectedToken.closing.end));
+    if (canOpen || canClose) markers.push({ index, canOpen, canClose, token: protectedToken });
+  }
+  const nextDefinite: ((typeof markers)[number] | undefined)[] = new Array(markers.length);
+  let upcoming: (typeof markers)[number] | undefined;
+  for (let index = markers.length - 1; index >= 0; index--) {
+    nextDefinite[index] = upcoming;
+    const candidate = markers[index];
+    if (candidate.canOpen || (candidate.canClose && !candidate.token)) upcoming = candidate;
+  }
+  const removed = new Set<number>();
+  let opener: (typeof markers)[number] | undefined;
+  let consumedUntil = 0;
+  for (let index = 0; index < markers.length; index++) {
+    const candidate = markers[index];
+    if (candidate.index < consumedUntil) continue;
+    if (opener && candidate.canClose && candidate.index > opener.index + width) {
+      // Prefer an external closer over a URL's literal suffix. A new opener
+      // instead confirms that the earlier URL already ended the emphasis.
+      if (candidate.token) {
+        if (nextDefinite[index]?.canClose) continue;
+        const ownWrapper = opener.token === candidate.token && candidate.token.opening?.index === opener.index;
+        if (candidate.token.closing?.literal && !ownWrapper) continue;
+      }
       for (let offset = 0; offset < width; offset++) {
-        removed.add(opener + offset);
-        removed.add(index + offset);
+        removed.add(opener.index + offset);
+        removed.add(candidate.index + offset);
       }
       opener = undefined;
-      index += width - 1;
-    } else if (opener === undefined && canOpen) {
-      opener = index;
-      index += width - 1;
+      consumedUntil = candidate.index + width;
+    } else if (!opener && candidate.canOpen) {
+      opener = candidate;
+      consumedUntil = candidate.index + width;
     }
   }
   return removed.size ? input.split('').filter((_char, index) => !removed.has(index)).join('') : input;
