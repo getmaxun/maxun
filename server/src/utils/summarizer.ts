@@ -40,9 +40,9 @@ function cleanOutput(text: string): string {
   // Strip markdown bold/italic (**text**, *text*, __text__, _text_)
   out = out.replace(/\*\*([^*]+)\*\*/g, '$1');
   // Preserve intraword underscores in identifiers.
-  out = out.replace(/(?<![\\/\p{L}\p{M}\p{N}_])__([\s\S]+?)__(?![\\/\p{L}\p{M}\p{N}_])/gu, unwrapUnderscoreEmphasis);
+  out = out.replace(/(?<![\\/\p{L}\p{M}\p{N}_])__((?:(?!__[\\/])[\s\S])+?)__(?![\\/\p{L}\p{M}\p{N}_])/gu, unwrapUnderscoreEmphasis);
   out = out.replace(/\*([^*]+)\*/g, '$1');
-  out = out.replace(/(?<![\\/\p{L}\p{M}\p{N}_])_([\s\S]+?)_(?![\\/\p{L}\p{M}\p{N}_])/gu, unwrapUnderscoreEmphasis);
+  out = out.replace(/(?<![\\/\p{L}\p{M}\p{N}_])_((?:(?!_[\\/])[\s\S])+?)_(?![\\/\p{L}\p{M}\p{N}_])/gu, unwrapUnderscoreEmphasis);
 
   // Strip ATX headers (## Heading)
   out = out.replace(/^#{1,6}\s+/gm, '');
