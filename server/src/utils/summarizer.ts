@@ -19,9 +19,60 @@ const USER_PROMPT_PREFIX = `Summarize the following web page in plain text. Star
 
 const MAX_TOKENS = 1500;
 
-function unwrapUnderscoreEmphasis(match: string, content: string, offset: number, input: string): string {
-  const tokenPrefix = input.slice(0, offset).match(/\S*$/)?.[0] || '';
-  return tokenPrefix.includes('/') || tokenPrefix.includes('\\') ? match : content;
+function stripUnderscoreEmphasis(input: string, width: 1 | 2): string {
+  const tokens = Array.from(input.matchAll(/\S+/gu))
+    .filter((match) => match[0].includes('/') || match[0].includes('\\'))
+    .map((match) => {
+      const value = match[0];
+      const start = match.index;
+      const leading = /(^|[^\p{L}\p{M}\p{N}_\\/])(_{1,3})(?=(?:[a-z][a-z\d+.-]*:\/\/|[a-z]:[\\/]|\.{1,2}[\\/]|[\\/]))/iu.exec(value);
+      let opening: { index: number; width: number } | undefined;
+      if (leading) {
+        const index = leading.index + leading[1].length;
+        const prefix = value.slice(0, index);
+        if (!prefix.includes('/') && !prefix.includes('\\')) {
+          opening = { index: start + index, width: leading[2].length };
+        }
+      }
+      const trailing = /(_+)(?:(?![_\\/])\p{P})*$/u.exec(value);
+      return {
+        start,
+        end: start + value.length,
+        opening,
+        closing: trailing ? {
+          start: start + trailing.index,
+          end: start + trailing.index + trailing[1].length,
+        } : undefined,
+      };
+    });
+  const marker = '_'.repeat(width);
+  const removed = new Set<number>();
+  let opener: number | undefined;
+  let tokenIndex = 0;
+  for (let index = 0; index <= input.length - width; index++) {
+    if (!input.startsWith(marker, index)) continue;
+    while (tokenIndex < tokens.length && index >= tokens[tokenIndex].end) tokenIndex++;
+    const token = tokens[tokenIndex];
+    const protectedToken = token && index >= token.start ? token : undefined;
+    // Path-internal markers stay literal. A known outer wrapper may open, and
+    // a token's final run may close emphasis opened outside its path content.
+    const canOpen = !/[\p{L}\p{M}\p{N}_]$/u.test(input.slice(Math.max(0, index - 2), index)) &&
+      (!protectedToken || (protectedToken.opening?.index === index && width <= protectedToken.opening.width));
+    const canClose = !/^[\p{L}\p{M}\p{N}_]/u.test(input.slice(index + width, index + width + 2)) &&
+      (!protectedToken || (protectedToken.closing && index >= protectedToken.closing.start && index + width <= protectedToken.closing.end));
+    if (opener !== undefined && canClose && index > opener + width) {
+      for (let offset = 0; offset < width; offset++) {
+        removed.add(opener + offset);
+        removed.add(index + offset);
+      }
+      opener = undefined;
+      index += width - 1;
+    } else if (opener === undefined && canOpen) {
+      opener = index;
+      index += width - 1;
+    }
+  }
+  return removed.size ? input.split('').filter((_char, index) => !removed.has(index)).join('') : input;
 }
 
 function cleanOutput(text: string): string {
@@ -37,12 +88,11 @@ function cleanOutput(text: string): string {
     out = out.replace(/^```[^\n]*\n/, '').replace(/```\s*$/, '').trim();
   }
 
-  // Strip markdown bold/italic (**text**, *text*, __text__, _text_)
+  // Strip markdown bold/italic while preserving literal URL/path markers.
   out = out.replace(/\*\*([^*]+)\*\*/g, '$1');
-  // Preserve intraword underscores in identifiers.
-  out = out.replace(/(?<![\\/\p{L}\p{M}\p{N}_])__((?:(?!__[\\/])[\s\S])+?)__(?![\\/\p{L}\p{M}\p{N}_])/gu, unwrapUnderscoreEmphasis);
   out = out.replace(/\*([^*]+)\*/g, '$1');
-  out = out.replace(/(?<![\\/\p{L}\p{M}\p{N}_])_((?:(?!_[\\/])[\s\S])+?)_(?![\\/\p{L}\p{M}\p{N}_])/gu, unwrapUnderscoreEmphasis);
+  out = stripUnderscoreEmphasis(out, 2);
+  out = stripUnderscoreEmphasis(out, 1);
 
   // Strip ATX headers (## Heading)
   out = out.replace(/^#{1,6}\s+/gm, '');
