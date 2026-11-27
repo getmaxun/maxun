@@ -80,6 +80,8 @@ test('adjacent inline code preserves separators and delimiter runs', async () =>
     ['<p><span><code>a </code></span><code>b</code></p>', '`a b`'],
     ['<p><code>a </code><!-- separator --><code>b</code></p>', '`a b`'],
     ['<p><span><code>a </code><code>b </code></span><code>c</code></p>', '`a b c`'],
+    ['<p><code>a </code><span></span><code>b</code></p>', '`a b`'],
+    ['<p><code>a </code><span><svg></svg></span><code>b</code></p>', '`a b`'],
     ['<p><code>a` </code><code>`b</code></p>', '``a` `b``'],
     ['<p><code>&#96;</code><code>&#96;</code></p>', '` `` `'],
     ['<p><code>a</code> <code>b</code></p>', '`a` `b`'],

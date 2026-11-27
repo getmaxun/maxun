@@ -393,7 +393,9 @@ function tidyHtml(html: string): string {
       if (!el.parentNode) return;
       let next = el.nextSibling;
       while (next) {
-        if (next.type === 'comment') {
+        const emptySpan = next.type === 'tag' && next.name === 'span' &&
+          $(next).text() === '' && $(next).find(':not(span)').length === 0;
+        if (next.type === 'comment' || emptySpan) {
           $(next).remove();
         } else if (next.type === 'tag' && next.name === 'code') {
           $(el).append($(next).contents());
