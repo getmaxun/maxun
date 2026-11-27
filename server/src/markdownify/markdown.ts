@@ -4,14 +4,27 @@ import { gfm } from 'joplin-turndown-plugin-gfm';
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 import { AsyncLocalStorage } from 'async_hooks';
+import { randomUUID } from 'crypto';
 import { isolateMainContent } from './mainContent';
 
-const _als = new AsyncLocalStorage<{ baseUrl: string | null }>();
+const _als = new AsyncLocalStorage<{
+  baseUrl: string | null;
+  codeStart: string;
+  codeEnd: string;
+  codeBoundary: string;
+}>();
 
 const _turndown = (() => {
   const t = new TurndownService({
     headingStyle: "atx",
     codeBlockStyle: "fenced",
+    preformattedCode: true,
+    blankReplacement: (_content: string, node: any) => {
+      if (node.isCode) {
+        return node.nodeName === 'CODE' ? renderInlineCode(node.textContent || '') : node.textContent || '';
+      }
+      return node.isBlock ? '\n\n' : '';
+    },
     bulletListMarker: "-",
   });
 
@@ -53,7 +66,10 @@ const _turndown = (() => {
       node.nodeName === "A" && node.getAttribute("href"),
 
     replacement: (content: string, node: any) => {
-      let text = stripA11yText(content.trim().replace(/\n+/g, " "));
+      if (node.isCode) return content;
+      let text = stripA11yText(transformOutsideCode(
+        content.trim(), (prose) => prose.replace(/\n+/g, " ")
+      ));
 
       if (!text) {
         text = stripA11yText(
@@ -83,10 +99,10 @@ const _turndown = (() => {
       const headingMatch = text.match(/^(#{1,6})\s+([\s\S]+)$/);
       if (headingMatch) {
         const level = headingMatch[1];
-        const headingText = headingMatch[2]
+        const headingText = transformOutsideCode(headingMatch[2], (prose) => prose
           .split(/!\[[^\]]*\]\([^)]*\)/)[0]
           .replace(/\s+/g, " ")
-          .trim();
+        ).trim();
         if (!headingText) return "";
         return `\n${level} [${headingText}](${href})\n`;
       }
@@ -116,6 +132,27 @@ const _turndown = (() => {
   });
 
   t.use(gfm);
+  t.addRule("protectedInlineCode", {
+    filter: (node: any) => node.nodeName === 'CODE' && !(
+      node.parentNode?.nodeName === 'PRE' && !node.previousSibling && !node.nextSibling
+    ),
+    replacement: renderInlineCode,
+  });
+  t.addRule("protectedFencedCode", {
+    filter: (node: any) => node.nodeName === 'PRE' && node.firstChild?.nodeName === 'CODE',
+    replacement: (_content: string, node: any, options) => {
+      const codeNode = node.firstChild;
+      const language = /language-(\S+)/.exec(codeNode.getAttribute('class') || '')?.[1] || '';
+      const code: string = codeNode.textContent;
+      const marker = (options.fence || '```')[0];
+      let length = 3;
+      for (const run of code.matchAll(marker === '~' ? /~+/g : /`+/g)) {
+        length = Math.max(length, run[0].length + 1);
+      }
+      const fence = marker.repeat(length);
+      return `\n\n${protectCode(`${fence}${language}\n${code.replace(/\n$/, '')}\n${fence}`)}\n\n`;
+    },
+  });
   return t;
 })();
 
@@ -159,16 +196,24 @@ export async function parseMarkdown(
 ): Promise<string> {
   if (!html) return "";
 
-  return _als.run({ baseUrl: baseUrl ?? null }, () => {
+  const codeMarker = `\uE000${randomUUID()}`;
+  return _als.run({
+    baseUrl: baseUrl ?? null,
+    codeStart: `${codeMarker}-start\uE001`,
+    codeEnd: `${codeMarker}-end\uE001`,
+    codeBoundary: `${codeMarker}-boundary\uE001`,
+  }, () => {
     try {
       const tidiedHtml = tidyHtml(html as string);
       let out = _turndown.turndown(tidiedHtml);
-      out = fixBrokenLinks(out);
-      out = stripSkipLinks(out);
-      out = stripEditLinks(out);
-      out = out.replace(/\s*\((?:opens?|opening)[^)]*\b(?:tab|window)\)/gi, "");
-      out = cleanupExtraWhitespace(out);
-      return out.trim();
+      out = transformOutsideCode(out, (prose) => {
+        prose = fixBrokenLinks(prose);
+        prose = stripSkipLinks(prose);
+        prose = stripEditLinks(prose);
+        prose = prose.replace(/\s*\((?:opens?|opening)[^)]*\b(?:tab|window)\)/gi, "");
+        return cleanupExtraWhitespace(prose);
+      });
+      return unprotectCode(out).trim();
     } catch (err) {
       console.error("HTML→Markdown failed", { err });
       return "";
@@ -196,10 +241,55 @@ function getDomainFromUrl(url: string): string | null {
  * phrases are accessibility hints, never real content.
  */
 function stripA11yText(text: string): string {
-  return text
+  return transformOutsideCode(text, (prose) => prose
     .replace(/\s*\((?:opens?|opening)[^)]*\b(?:tab|window)\)/gi, "")
-    .replace(/\s*\(external link\)/gi, "")
+    .replace(/\s*\(external link\)/gi, ""))
     .trim();
+}
+
+function renderInlineCode(content: string): string {
+  const code = unprotectCode(content).replace(/\r\n?|\n/g, ' ');
+  if (!code) return '';
+  const lengths = new Set(Array.from(code.matchAll(/`+/g), (run) => run[0].length));
+  let length = 1;
+  while (lengths.has(length)) length++;
+  const delimiter = '`'.repeat(length);
+  const pad = code.startsWith('`') || code.endsWith('`') ||
+    (code.startsWith(' ') && code.endsWith(' ') && /[^ ]/.test(code)) ? ' ' : '';
+  return protectCode(`${delimiter}${pad}${code}${pad}${delimiter}`);
+}
+
+/** Mark code while rendering it; no Markdown delimiter inference is needed later. */
+function protectCode(markdown: string): string {
+  const context = _als.getStore();
+  return context ? context.codeStart + markdown + context.codeEnd : markdown;
+}
+
+function unprotectCode(markdown: string): string {
+  const context = _als.getStore();
+  return context ? markdown.split(context.codeStart).join('').split(context.codeEnd).join('') : markdown;
+}
+
+function transformOutsideCode(markdown: string, transform: (prose: string) => string): string {
+  const context = _als.getStore();
+  if (!context) return transform(markdown);
+  const cleanProseSegment = (start: number, end: number, followedByCode: boolean) => {
+    const before = start > 0 ? context.codeBoundary : '';
+    const after = followedByCode ? context.codeBoundary : '';
+    return transform(before + markdown.slice(start, end) + after)
+      .split(context.codeBoundary).join('');
+  };
+  let output = '';
+  let offset = 0;
+  let start = markdown.indexOf(context.codeStart);
+  while (start !== -1) {
+    const close = markdown.indexOf(context.codeEnd, start + context.codeStart.length);
+    const end = close === -1 ? markdown.length : close + context.codeEnd.length;
+    output += cleanProseSegment(offset, start, true) + markdown.slice(start, end);
+    offset = end;
+    start = markdown.indexOf(context.codeStart, offset);
+  }
+  return output + cleanProseSegment(offset, markdown.length, false);
 }
 
 /**
@@ -288,9 +378,44 @@ function tidyHtml(html: string): string {
 
   $content.find("button, span, a, div").each((_i, el) => {
     const $el = $(el);
+    if ($el.parents('pre, code').length > 0) return;
     if ($el.children().length > 0) return;
     if (UI_ARTIFACTS.has($el.text().trim())) $el.remove();
   });
+
+  // Join unseparated inline code before choosing its Markdown delimiters.
+  let codeChanged = true;
+  while (codeChanged) {
+    codeChanged = false;
+    const $inlineCode = $content.find('code').filter((_i, el) => $(el).parents('pre, code').length === 0);
+    $inlineCode.each((_i, el) => {
+      let $parent = $(el).parent('span');
+      while ($parent.length && $parent[0] !== $content[0] &&
+        $parent.contents().filter((_index, child) => child.type !== 'comment').length === 1) {
+        $parent.replaceWith($(el));
+        codeChanged = true;
+        $parent = $(el).parent('span');
+      }
+    });
+    $inlineCode.each((_i, el) => {
+      if (!el.parentNode) return;
+      let next = el.nextSibling;
+      while (next) {
+        const emptySpan = next.type === 'tag' && next.name === 'span' &&
+          $(next).text() === '' && $(next).find(':not(span)').length === 0;
+        if (next.type === 'comment' || emptySpan) {
+          $(next).remove();
+        } else if (next.type === 'tag' && next.name === 'code') {
+          $(el).append($(next).contents());
+          $(next).remove();
+        } else {
+          break;
+        }
+        codeChanged = true;
+        next = el.nextSibling;
+      }
+    });
+  }
 
   let resultHtml = $content.html() || "";
 
