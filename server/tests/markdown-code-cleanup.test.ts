@@ -70,3 +70,20 @@ test('generated fences exceed fence-looking code content', async () => {
     assert.equal(output, `\`\`\`\`\n${code}\n\`\`\`\``);
   }
 });
+
+test('adjacent inline code preserves separators and delimiter runs', async () => {
+  const cases = [
+    ['<p><code>a </code><code>b</code></p>', '`a b`'],
+    ['<p><code>a</code><code> b</code></p>', '`a b`'],
+    ['<p><code>a</code><code>b</code></p>', '`ab`'],
+    ['<p><code>a </code><span><code>b</code></span></p>', '`a b`'],
+    ['<p><span><code>a </code></span><code>b</code></p>', '`a b`'],
+    ['<p><code>a </code><!-- separator --><code>b</code></p>', '`a b`'],
+    ['<p><span><code>a </code><code>b </code></span><code>c</code></p>', '`a b c`'],
+    ['<p><code>a` </code><code>`b</code></p>', '``a` `b``'],
+    ['<p><code>&#96;</code><code>&#96;</code></p>', '` `` `'],
+    ['<p><code>a</code> <code>b</code></p>', '`a` `b`'],
+  ] as const;
+  const outputs = await Promise.all(cases.map(([html]) => parseMarkdown(html)));
+  assert.deepEqual(outputs, cases.map(([, expected]) => expected));
+});

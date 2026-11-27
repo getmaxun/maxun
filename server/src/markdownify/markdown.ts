@@ -375,6 +375,38 @@ function tidyHtml(html: string): string {
     if (UI_ARTIFACTS.has($el.text().trim())) $el.remove();
   });
 
+  // Join unseparated inline code before choosing its Markdown delimiters.
+  let codeChanged = true;
+  while (codeChanged) {
+    codeChanged = false;
+    const $inlineCode = $content.find('code').filter((_i, el) => $(el).parents('pre, code').length === 0);
+    $inlineCode.each((_i, el) => {
+      let $parent = $(el).parent('span');
+      while ($parent.length && $parent[0] !== $content[0] &&
+        $parent.contents().filter((_index, child) => child.type !== 'comment').length === 1) {
+        $parent.replaceWith($(el));
+        codeChanged = true;
+        $parent = $(el).parent('span');
+      }
+    });
+    $inlineCode.each((_i, el) => {
+      if (!el.parentNode) return;
+      let next = el.nextSibling;
+      while (next) {
+        if (next.type === 'comment') {
+          $(next).remove();
+        } else if (next.type === 'tag' && next.name === 'code') {
+          $(el).append($(next).contents());
+          $(next).remove();
+        } else {
+          break;
+        }
+        codeChanged = true;
+        next = el.nextSibling;
+      }
+    });
+  }
+
   let resultHtml = $content.html() || "";
 
   const hasHeading = $content.find("h1").length > 0 || $content.is("h1");
