@@ -19,6 +19,105 @@ const USER_PROMPT_PREFIX = `Summarize the following web page in plain text. Star
 
 const MAX_TOKENS = 1500;
 
+function stripUnderscoreEmphasis(input: string, width: 1 | 2): string {
+  const tokens = Array.from(input.matchAll(/\S+/gu))
+    .filter((match) => match[0].includes('/') || match[0].includes('\\'))
+    .map((match) => {
+      const value = match[0];
+      const start = match.index;
+      const trailing = /(_+)(?:(?![_\\/])\p{P})*$/u.exec(value);
+      const leading = /(^|[^\p{L}\p{M}\p{N}_\\/])(_{1,3})(?!_)/iu.exec(value);
+      let opening: { index: number; width: number; confirmed: boolean } | undefined;
+      if (leading) {
+        const index = leading.index + leading[1].length;
+        const prefix = value.slice(0, index);
+        const body = value.slice(index + leading[2].length);
+        const knownPath = /^(?:[a-z][a-z\d+.-]*:\/\/|[a-z]:[\\/]|\.{1,2}[\\/]|[\\/])/iu.test(body);
+        const paired = trailing && trailing.index > index + leading[2].length && trailing[1].length >= leading[2].length;
+        const separator = body.search(/[\\/]/);
+        const relative = separator > 0 && !body.slice(0, separator).endsWith(leading[2]);
+        if (!prefix.includes('/') && !prefix.includes('\\') && (knownPath || paired || relative)) {
+          opening = { index: start + index, width: leading[2].length, confirmed: Boolean(knownPath || paired) };
+        }
+      }
+      let closing: { start: number; end: number; literal: boolean } | undefined;
+      if (trailing) {
+        const before = value.slice(0, trailing.index);
+        const segment = before.slice(Math.max(before.lastIndexOf('/'), before.lastIndexOf('\\')) + 1);
+        const literalWidth = /^_+/.exec(segment)?.[0].length || 0;
+        closing = {
+          start: start + trailing.index,
+          end: start + trailing.index + trailing[1].length,
+          literal: literalWidth >= width && trailing[1].length <= literalWidth,
+        };
+      }
+      return { start, end: start + value.length, opening, closing };
+    });
+  const marker = '_'.repeat(width);
+  const markers: { index: number; canOpen: boolean; possibleOpen: boolean; canClose: boolean; token: (typeof tokens)[number] | undefined }[] = [];
+  let tokenIndex = 0;
+  let runStart = 0;
+  let runEnd = 0;
+  for (let index = 0; index <= input.length - width; index++) {
+    if (!input.startsWith(marker, index)) continue;
+    if (index >= runEnd) {
+      runStart = index;
+      runEnd = index + width;
+      while (input[runEnd] === '_') runEnd++;
+    }
+    while (tokenIndex < tokens.length && index >= tokens[tokenIndex].end) tokenIndex++;
+    const token = tokens[tokenIndex];
+    const protectedToken = token && index >= token.start ? token : undefined;
+    const beforeRun = input.slice(Math.max(0, runStart - 2), runStart);
+    const afterRun = input.slice(runEnd, runEnd + 2);
+    const leftBoundary = !/[\p{L}\p{M}\p{N}_]$/u.test(beforeRun);
+    const canStart = index === runStart && leftBoundary && afterRun.length > 0 && !/^\s/u.test(afterRun);
+    const pathOpening = protectedToken?.opening;
+    const atPathOpening = pathOpening?.index === index && width <= pathOpening.width;
+    const canOpen = canStart && (!protectedToken || (atPathOpening && pathOpening.confirmed));
+    const possibleOpen = Boolean(canStart && atPathOpening && !pathOpening.confirmed);
+    const canClose = index + width === runEnd && beforeRun.length > 0 && !/\s$/u.test(beforeRun) &&
+      !/^[\p{L}\p{M}\p{N}_]/u.test(afterRun) &&
+      (!protectedToken || (protectedToken.closing !== undefined && index >= protectedToken.closing.start && index + width <= protectedToken.closing.end));
+    if (canOpen || canClose || possibleOpen) markers.push({ index, canOpen, possibleOpen, canClose, token: protectedToken });
+  }
+  const nextDefinite: ((typeof markers)[number] | undefined)[] = new Array(markers.length);
+  let upcoming: (typeof markers)[number] | undefined;
+  for (let index = markers.length - 1; index >= 0; index--) {
+    nextDefinite[index] = upcoming;
+    const candidate = markers[index];
+    // A following external closer confirms emphasis starting at a bare relative path.
+    if (candidate.possibleOpen && upcoming?.canClose) candidate.canOpen = true;
+    if (candidate.canOpen || (candidate.canClose && !candidate.token)) upcoming = candidate;
+  }
+  const removed = new Set<number>();
+  let opener: (typeof markers)[number] | undefined;
+  let consumedUntil = 0;
+  for (let index = 0; index < markers.length; index++) {
+    const candidate = markers[index];
+    if (candidate.index < consumedUntil) continue;
+    if (opener && candidate.canClose && candidate.index > opener.index + width) {
+      // Prefer an external closer over a URL's literal suffix. A new opener
+      // instead confirms that the earlier URL already ended the emphasis.
+      if (candidate.token) {
+        if (nextDefinite[index]?.canClose) continue;
+        const ownWrapper = opener.token === candidate.token && candidate.token.opening?.index === opener.index;
+        if (candidate.token.closing?.literal && !ownWrapper) continue;
+      }
+      for (let offset = 0; offset < width; offset++) {
+        removed.add(opener.index + offset);
+        removed.add(candidate.index + offset);
+      }
+      opener = undefined;
+      consumedUntil = candidate.index + width;
+    } else if (!opener && candidate.canOpen) {
+      opener = candidate;
+      consumedUntil = candidate.index + width;
+    }
+  }
+  return removed.size ? input.split('').filter((_char, index) => !removed.has(index)).join('') : input;
+}
+
 function cleanOutput(text: string): string {
   let out = text.trim();
 
@@ -32,11 +131,11 @@ function cleanOutput(text: string): string {
     out = out.replace(/^```[^\n]*\n/, '').replace(/```\s*$/, '').trim();
   }
 
-  // Strip markdown bold/italic (**text**, *text*, __text__, _text_)
+  // Strip markdown bold/italic while preserving literal URL/path markers.
   out = out.replace(/\*\*([^*]+)\*\*/g, '$1');
-  out = out.replace(/__([^_]+)__/g, '$1');
   out = out.replace(/\*([^*]+)\*/g, '$1');
-  out = out.replace(/_([^_]+)_/g, '$1');
+  out = stripUnderscoreEmphasis(out, 2);
+  out = stripUnderscoreEmphasis(out, 1);
 
   // Strip ATX headers (## Heading)
   out = out.replace(/^#{1,6}\s+/gm, '');
