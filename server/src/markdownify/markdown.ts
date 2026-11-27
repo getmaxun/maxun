@@ -19,6 +19,12 @@ const _turndown = (() => {
     headingStyle: "atx",
     codeBlockStyle: "fenced",
     preformattedCode: true,
+    blankReplacement: (_content: string, node: any) => {
+      if (node.isCode) {
+        return node.nodeName === 'CODE' ? renderInlineCode(node.textContent || '') : node.textContent || '';
+      }
+      return node.isBlock ? '\n\n' : '';
+    },
     bulletListMarker: "-",
   });
 
@@ -130,17 +136,7 @@ const _turndown = (() => {
     filter: (node: any) => node.nodeName === 'CODE' && !(
       node.parentNode?.nodeName === 'PRE' && !node.previousSibling && !node.nextSibling
     ),
-    replacement: (content: string) => {
-      const code = unprotectCode(content).replace(/\r\n?|\n/g, ' ');
-      if (!code) return '';
-      const lengths = new Set(Array.from(code.matchAll(/`+/g), (run) => run[0].length));
-      let length = 1;
-      while (lengths.has(length)) length++;
-      const delimiter = '`'.repeat(length);
-      const pad = code.startsWith('`') || code.endsWith('`') ||
-        (code.startsWith(' ') && code.endsWith(' ') && /[^ ]/.test(code)) ? ' ' : '';
-      return protectCode(`${delimiter}${pad}${code}${pad}${delimiter}`);
-    },
+    replacement: renderInlineCode,
   });
   t.addRule("protectedFencedCode", {
     filter: (node: any) => node.nodeName === 'PRE' && node.firstChild?.nodeName === 'CODE',
@@ -249,6 +245,18 @@ function stripA11yText(text: string): string {
     .replace(/\s*\((?:opens?|opening)[^)]*\b(?:tab|window)\)/gi, "")
     .replace(/\s*\(external link\)/gi, ""))
     .trim();
+}
+
+function renderInlineCode(content: string): string {
+  const code = unprotectCode(content).replace(/\r\n?|\n/g, ' ');
+  if (!code) return '';
+  const lengths = new Set(Array.from(code.matchAll(/`+/g), (run) => run[0].length));
+  let length = 1;
+  while (lengths.has(length)) length++;
+  const delimiter = '`'.repeat(length);
+  const pad = code.startsWith('`') || code.endsWith('`') ||
+    (code.startsWith(' ') && code.endsWith(' ') && /[^ ]/.test(code)) ? ' ' : '';
+  return protectCode(`${delimiter}${pad}${code}${pad}${delimiter}`);
 }
 
 /** Mark code while rendering it; no Markdown delimiter inference is needed later. */

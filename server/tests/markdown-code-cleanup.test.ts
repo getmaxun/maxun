@@ -89,3 +89,15 @@ test('adjacent inline code preserves separators and delimiter runs', async () =>
   const outputs = await Promise.all(cases.map(([html]) => parseMarkdown(html)));
   assert.deepEqual(outputs, cases.map(([, expected]) => expected));
 });
+
+test('blank code keeps its whitespace without changing ordinary blank nodes', async () => {
+  const cases = [
+    ['<p>alpha<code> </code>beta</p>', 'alpha` `beta'],
+    ['<p>alpha<code>\n</code>beta</p>', 'alpha` `beta'],
+    ['<p>alpha<code></code>beta</p>', 'alphabeta'],
+    ['<p><code>a<span> </span>b</code></p>', '`a b`'],
+    ['<p>alpha</p><p> </p><p>beta</p>', 'alpha\n\nbeta'],
+  ] as const;
+  const outputs = await Promise.all(cases.map(([html]) => parseMarkdown(html)));
+  assert.deepEqual(outputs, cases.map(([, expected]) => expected));
+});
