@@ -163,11 +163,13 @@ export async function parseMarkdown(
     try {
       const tidiedHtml = tidyHtml(html as string);
       let out = _turndown.turndown(tidiedHtml);
-      out = fixBrokenLinks(out);
-      out = stripSkipLinks(out);
-      out = stripEditLinks(out);
-      out = out.replace(/\s*\((?:opens?|opening)[^)]*\b(?:tab|window)\)/gi, "");
-      out = cleanupExtraWhitespace(out);
+      out = transformOutsideCode(out, (prose) => {
+        prose = fixBrokenLinks(prose);
+        prose = stripSkipLinks(prose);
+        prose = stripEditLinks(prose);
+        prose = prose.replace(/\s*\((?:opens?|opening)[^)]*\b(?:tab|window)\)/gi, "");
+        return cleanupExtraWhitespace(prose);
+      });
       return out.trim();
     } catch (err) {
       console.error("HTML→Markdown failed", { err });
@@ -196,10 +198,79 @@ function getDomainFromUrl(url: string): string | null {
  * phrases are accessibility hints, never real content.
  */
 function stripA11yText(text: string): string {
-  return text
+  return transformOutsideCode(text, (prose) => prose
     .replace(/\s*\((?:opens?|opening)[^)]*\b(?:tab|window)\)/gi, "")
-    .replace(/\s*\(external link\)/gi, "")
+    .replace(/\s*\(external link\)/gi, ""))
     .trim();
+}
+
+/** Keep Turndown's code delimiters and contents literal during prose cleanup. */
+function transformOutsideCode(markdown: string, transform: (prose: string) => string): string {
+  let lineStart = 0;
+  let lineEnd = markdown.indexOf('\n');
+  let firstMarker = true;
+  const markers = Array.from(markdown.matchAll(/`+|~{3,}/g), (match) => {
+    const start = match.index;
+    while (lineEnd !== -1 && lineEnd < start) {
+      lineStart = lineEnd + 1;
+      lineEnd = markdown.indexOf('\n', lineStart);
+      firstMarker = true;
+    }
+    const prefix = firstMarker ? markdown.slice(lineStart, start) : undefined;
+    firstMarker = false;
+    const end = start + match[0].length;
+    return {
+      start, end, marker: match[0],
+      opensFence: match[0].length >= 3 && prefix !== undefined &&
+        /^[>\t ]*(?:(?:[-+*]|\d+[.)])[\t ]+)?$/.test(prefix),
+      closesFence: prefix !== undefined && /^[>\t ]*$/.test(prefix) &&
+        !markdown.slice(end, lineEnd === -1 ? markdown.length : lineEnd).trim(),
+    };
+  });
+  const nextMatching = new Map<string, number>();
+  const nextIndices: (number | undefined)[] = new Array(markers.length);
+  for (let index = markers.length - 1; index >= 0; index--) {
+    nextIndices[index] = nextMatching.get(markers[index].marker);
+    nextMatching.set(markers[index].marker, index);
+  }
+
+  let output = '';
+  let offset = 0;
+  const cleanProseSegment = (start: number, end: number, followedByCode: boolean) => {
+    // Code delimiters are non-whitespace, so retain that context at segment boundaries.
+    const before = start > 0 ? '\uE000' : '';
+    const after = followedByCode ? '\uE000' : '';
+    const cleaned = transform(before + markdown.slice(start, end) + after);
+    return cleaned.slice(before.length, after ? -1 : undefined);
+  };
+  for (let index = 0; index < markers.length; index++) {
+    const opening = markers[index];
+    let escapeStart = opening.start;
+    while (markdown[escapeStart - 1] === '\\') escapeStart--;
+    if ((opening.start - escapeStart) % 2) continue;
+    if (opening.marker[0] === '~' && !opening.opensFence) continue;
+
+    let closingIndex = nextIndices[index];
+    if (opening.opensFence) {
+      closingIndex = undefined;
+      for (let candidate = index + 1; candidate < markers.length; candidate++) {
+        const closing = markers[candidate];
+        if (closing.closesFence && closing.marker[0] === opening.marker[0] &&
+          closing.marker.length >= opening.marker.length) {
+          closingIndex = candidate;
+          break;
+        }
+      }
+    }
+    if (closingIndex === undefined && !opening.opensFence) continue;
+    const end = closingIndex === undefined ? markdown.length : markers[closingIndex].end;
+    output += cleanProseSegment(offset, opening.start, true);
+    output += markdown.slice(opening.start, end);
+    offset = end;
+    if (closingIndex === undefined) break;
+    index = closingIndex;
+  }
+  return output + cleanProseSegment(offset, markdown.length, false);
 }
 
 /**
@@ -288,6 +359,7 @@ function tidyHtml(html: string): string {
 
   $content.find("button, span, a, div").each((_i, el) => {
     const $el = $(el);
+    if ($el.parents('pre, code').length > 0) return;
     if ($el.children().length > 0) return;
     if (UI_ARTIFACTS.has($el.text().trim())) $el.remove();
   });
