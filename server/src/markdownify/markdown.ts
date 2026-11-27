@@ -219,12 +219,21 @@ function transformOutsideCode(markdown: string, transform: (prose: string) => st
     const prefix = firstMarker ? markdown.slice(lineStart, start) : undefined;
     firstMarker = false;
     const end = start + match[0].length;
+    const restOfLine = prefix === undefined ? '' :
+      markdown.slice(end, lineEnd === -1 ? markdown.length : lineEnd);
+    const containerPrefix = prefix?.replace(/>[\t ]?/g, '');
+    const containerIndent = Array.from(containerPrefix || '').reduce(
+      (column, char) => column + (char === '\t' ? 4 - column % 4 : 1), 0
+    );
     return {
       start, end, marker: match[0],
-      opensFence: match[0].length >= 3 && prefix !== undefined &&
-        /^[>\t ]*(?:(?:[-+*]|\d+[.)])[\t ]+)?$/.test(prefix),
-      closesFence: prefix !== undefined && /^[>\t ]*$/.test(prefix) &&
-        !markdown.slice(end, lineEnd === -1 ? markdown.length : lineEnd).trim(),
+      quoteDepth: (prefix?.match(/>/g) || []).length,
+      containerIndent,
+      opensFence: match[0].length >= 3 && containerPrefix !== undefined &&
+        /^[\t ]*(?:(?:[-+*]|\d+[.)])[\t ]+)*$/.test(containerPrefix) &&
+        (match[0][0] !== '`' || !restOfLine.includes('`')),
+      closesFence: containerPrefix !== undefined && /^[\t ]*$/.test(containerPrefix) &&
+        !restOfLine.trim(),
     };
   });
   const nextMatching = new Map<string, number>();
@@ -255,7 +264,10 @@ function transformOutsideCode(markdown: string, transform: (prose: string) => st
       closingIndex = undefined;
       for (let candidate = index + 1; candidate < markers.length; candidate++) {
         const closing = markers[candidate];
-        if (closing.closesFence && closing.marker[0] === opening.marker[0] &&
+        if (closing.closesFence && closing.quoteDepth === opening.quoteDepth &&
+          closing.containerIndent >= opening.containerIndent &&
+          closing.containerIndent <= opening.containerIndent + 3 &&
+          closing.marker[0] === opening.marker[0] &&
           closing.marker.length >= opening.marker.length) {
           closingIndex = candidate;
           break;

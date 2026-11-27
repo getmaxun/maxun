@@ -15,12 +15,18 @@ const cases = [
   ['code blocks in lists', '<ul><li><pre><code>first\n\n\n[edit]</code></pre></li></ul>', 'first\n    \n    \n    [edit]'],
   ['embedded backticks', '<pre><code>```\nconst hint = "(opens in a new tab)";\n```</code></pre>', 'const hint = "(opens in a new tab)";'],
   ['inline backticks', '<p>Keep <code>`(opens in a new tab)`</code> literally.</p>', '`` `(opens in a new tab)` ``'],
+  ['paragraph-leading long inline delimiters', '<p><code>a`b``c</code> (opens in a new window).</p>', '```a`b``c```'],
+  ['quoted-looking content in a fence', '<pre><code>&gt; ```\nconst hint = "(opens in a new tab)";</code></pre>', 'const hint = "(opens in a new tab)";'],
+  ['nested quote-looking content in a quoted fence', '<blockquote><pre><code>&gt; ```\nconst hint = "(opens in a new tab)";</code></pre></blockquote>', 'const hint = "(opens in a new tab)";'],
+  ['indented fence-looking content', '<pre><code>    ```\nconst hint = "(opens in a new tab)";</code></pre>', 'const hint = "(opens in a new tab)";'],
+  ['nested list containers', '<ul><li><ul><li><pre><code>&gt; ```\nconst hint = "(opens in a new tab)";</code></pre></li></ul></li></ul>', 'const hint = "(opens in a new tab)";'],
 ] as const;
 
 for (const [name, content, expected] of cases) {
   test(`Markdown cleanup preserves ${name}`, async () => {
-    const output = await parseMarkdown(`<article><h1>Code examples</h1><p>These examples document the exact source text to copy into a program. Its literal strings and whitespace must remain intact.</p>${content}</article>`);
+    const output = await parseMarkdown(`<article><h1>Code examples</h1><p>These examples document the exact source text to copy into a program. Its literal strings and whitespace must remain intact.</p>${content}<p>Read more (opens in a new window).</p></article>`);
     assert.ok(output.includes(expected), output);
+    assert.ok(!output.includes('(opens in a new window)'), output);
   });
 }
 
