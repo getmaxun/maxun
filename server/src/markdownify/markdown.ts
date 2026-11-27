@@ -4,14 +4,21 @@ import { gfm } from 'joplin-turndown-plugin-gfm';
 import * as cheerio from 'cheerio';
 import { URL } from 'url';
 import { AsyncLocalStorage } from 'async_hooks';
+import { randomUUID } from 'crypto';
 import { isolateMainContent } from './mainContent';
 
-const _als = new AsyncLocalStorage<{ baseUrl: string | null }>();
+const _als = new AsyncLocalStorage<{
+  baseUrl: string | null;
+  codeStart: string;
+  codeEnd: string;
+  codeBoundary: string;
+}>();
 
 const _turndown = (() => {
   const t = new TurndownService({
     headingStyle: "atx",
     codeBlockStyle: "fenced",
+    preformattedCode: true,
     bulletListMarker: "-",
   });
 
@@ -53,7 +60,10 @@ const _turndown = (() => {
       node.nodeName === "A" && node.getAttribute("href"),
 
     replacement: (content: string, node: any) => {
-      let text = stripA11yText(content.trim().replace(/\n+/g, " "));
+      if (node.isCode) return content;
+      let text = stripA11yText(transformOutsideCode(
+        content.trim(), (prose) => prose.replace(/\n+/g, " ")
+      ));
 
       if (!text) {
         text = stripA11yText(
@@ -83,10 +93,10 @@ const _turndown = (() => {
       const headingMatch = text.match(/^(#{1,6})\s+([\s\S]+)$/);
       if (headingMatch) {
         const level = headingMatch[1];
-        const headingText = headingMatch[2]
+        const headingText = transformOutsideCode(headingMatch[2], (prose) => prose
           .split(/!\[[^\]]*\]\([^)]*\)/)[0]
           .replace(/\s+/g, " ")
-          .trim();
+        ).trim();
         if (!headingText) return "";
         return `\n${level} [${headingText}](${href})\n`;
       }
@@ -116,6 +126,37 @@ const _turndown = (() => {
   });
 
   t.use(gfm);
+  t.addRule("protectedInlineCode", {
+    filter: (node: any) => node.nodeName === 'CODE' && !(
+      node.parentNode?.nodeName === 'PRE' && !node.previousSibling && !node.nextSibling
+    ),
+    replacement: (content: string) => {
+      const code = unprotectCode(content).replace(/\r\n?|\n/g, ' ');
+      if (!code) return '';
+      const lengths = new Set(Array.from(code.matchAll(/`+/g), (run) => run[0].length));
+      let length = 1;
+      while (lengths.has(length)) length++;
+      const delimiter = '`'.repeat(length);
+      const pad = code.startsWith('`') || code.endsWith('`') ||
+        (code.startsWith(' ') && code.endsWith(' ') && /[^ ]/.test(code)) ? ' ' : '';
+      return protectCode(`${delimiter}${pad}${code}${pad}${delimiter}`);
+    },
+  });
+  t.addRule("protectedFencedCode", {
+    filter: (node: any) => node.nodeName === 'PRE' && node.firstChild?.nodeName === 'CODE',
+    replacement: (_content: string, node: any, options) => {
+      const codeNode = node.firstChild;
+      const language = /language-(\S+)/.exec(codeNode.getAttribute('class') || '')?.[1] || '';
+      const code: string = codeNode.textContent;
+      const marker = (options.fence || '```')[0];
+      let length = 3;
+      for (const run of code.matchAll(marker === '~' ? /~+/g : /`+/g)) {
+        length = Math.max(length, run[0].length + 1);
+      }
+      const fence = marker.repeat(length);
+      return `\n\n${protectCode(`${fence}${language}\n${code.replace(/\n$/, '')}\n${fence}`)}\n\n`;
+    },
+  });
   return t;
 })();
 
@@ -159,7 +200,13 @@ export async function parseMarkdown(
 ): Promise<string> {
   if (!html) return "";
 
-  return _als.run({ baseUrl: baseUrl ?? null }, () => {
+  const codeMarker = `\uE000${randomUUID()}`;
+  return _als.run({
+    baseUrl: baseUrl ?? null,
+    codeStart: `${codeMarker}-start\uE001`,
+    codeEnd: `${codeMarker}-end\uE001`,
+    codeBoundary: `${codeMarker}-boundary\uE001`,
+  }, () => {
     try {
       const tidiedHtml = tidyHtml(html as string);
       let out = _turndown.turndown(tidiedHtml);
@@ -170,7 +217,7 @@ export async function parseMarkdown(
         prose = prose.replace(/\s*\((?:opens?|opening)[^)]*\b(?:tab|window)\)/gi, "");
         return cleanupExtraWhitespace(prose);
       });
-      return out.trim();
+      return unprotectCode(out).trim();
     } catch (err) {
       console.error("HTML→Markdown failed", { err });
       return "";
@@ -204,83 +251,35 @@ function stripA11yText(text: string): string {
     .trim();
 }
 
-/** Keep Turndown's code delimiters and contents literal during prose cleanup. */
-function transformOutsideCode(markdown: string, transform: (prose: string) => string): string {
-  let lineStart = 0;
-  let lineEnd = markdown.indexOf('\n');
-  let firstMarker = true;
-  const markers = Array.from(markdown.matchAll(/`+|~{3,}/g), (match) => {
-    const start = match.index;
-    while (lineEnd !== -1 && lineEnd < start) {
-      lineStart = lineEnd + 1;
-      lineEnd = markdown.indexOf('\n', lineStart);
-      firstMarker = true;
-    }
-    const prefix = firstMarker ? markdown.slice(lineStart, start) : undefined;
-    firstMarker = false;
-    const end = start + match[0].length;
-    const restOfLine = prefix === undefined ? '' :
-      markdown.slice(end, lineEnd === -1 ? markdown.length : lineEnd);
-    const containerPrefix = prefix?.replace(/>[\t ]?/g, '');
-    const containerIndent = Array.from(containerPrefix || '').reduce(
-      (column, char) => column + (char === '\t' ? 4 - column % 4 : 1), 0
-    );
-    return {
-      start, end, marker: match[0],
-      quoteDepth: (prefix?.match(/>/g) || []).length,
-      containerIndent,
-      opensFence: match[0].length >= 3 && containerPrefix !== undefined &&
-        /^[\t ]*(?:(?:[-+*]|\d+[.)])[\t ]+)*$/.test(containerPrefix) &&
-        (match[0][0] !== '`' || !restOfLine.includes('`')),
-      closesFence: containerPrefix !== undefined && /^[\t ]*$/.test(containerPrefix) &&
-        !restOfLine.trim(),
-    };
-  });
-  const nextMatching = new Map<string, number>();
-  const nextIndices: (number | undefined)[] = new Array(markers.length);
-  for (let index = markers.length - 1; index >= 0; index--) {
-    nextIndices[index] = nextMatching.get(markers[index].marker);
-    nextMatching.set(markers[index].marker, index);
-  }
+/** Mark code while rendering it; no Markdown delimiter inference is needed later. */
+function protectCode(markdown: string): string {
+  const context = _als.getStore();
+  return context ? context.codeStart + markdown + context.codeEnd : markdown;
+}
 
+function unprotectCode(markdown: string): string {
+  const context = _als.getStore();
+  return context ? markdown.split(context.codeStart).join('').split(context.codeEnd).join('') : markdown;
+}
+
+function transformOutsideCode(markdown: string, transform: (prose: string) => string): string {
+  const context = _als.getStore();
+  if (!context) return transform(markdown);
+  const cleanProseSegment = (start: number, end: number, followedByCode: boolean) => {
+    const before = start > 0 ? context.codeBoundary : '';
+    const after = followedByCode ? context.codeBoundary : '';
+    return transform(before + markdown.slice(start, end) + after)
+      .split(context.codeBoundary).join('');
+  };
   let output = '';
   let offset = 0;
-  const cleanProseSegment = (start: number, end: number, followedByCode: boolean) => {
-    // Code delimiters are non-whitespace, so retain that context at segment boundaries.
-    const before = start > 0 ? '\uE000' : '';
-    const after = followedByCode ? '\uE000' : '';
-    const cleaned = transform(before + markdown.slice(start, end) + after);
-    return cleaned.slice(before.length, after ? -1 : undefined);
-  };
-  for (let index = 0; index < markers.length; index++) {
-    const opening = markers[index];
-    let escapeStart = opening.start;
-    while (markdown[escapeStart - 1] === '\\') escapeStart--;
-    if ((opening.start - escapeStart) % 2) continue;
-    if (opening.marker[0] === '~' && !opening.opensFence) continue;
-
-    let closingIndex = nextIndices[index];
-    if (opening.opensFence) {
-      closingIndex = undefined;
-      for (let candidate = index + 1; candidate < markers.length; candidate++) {
-        const closing = markers[candidate];
-        if (closing.closesFence && closing.quoteDepth === opening.quoteDepth &&
-          closing.containerIndent >= opening.containerIndent &&
-          closing.containerIndent <= opening.containerIndent + 3 &&
-          closing.marker[0] === opening.marker[0] &&
-          closing.marker.length >= opening.marker.length) {
-          closingIndex = candidate;
-          break;
-        }
-      }
-    }
-    if (closingIndex === undefined && !opening.opensFence) continue;
-    const end = closingIndex === undefined ? markdown.length : markers[closingIndex].end;
-    output += cleanProseSegment(offset, opening.start, true);
-    output += markdown.slice(opening.start, end);
+  let start = markdown.indexOf(context.codeStart);
+  while (start !== -1) {
+    const close = markdown.indexOf(context.codeEnd, start + context.codeStart.length);
+    const end = close === -1 ? markdown.length : close + context.codeEnd.length;
+    output += cleanProseSegment(offset, start, true) + markdown.slice(start, end);
     offset = end;
-    if (closingIndex === undefined) break;
-    index = closingIndex;
+    start = markdown.indexOf(context.codeStart, offset);
   }
   return output + cleanProseSegment(offset, markdown.length, false);
 }

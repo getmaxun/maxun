@@ -20,6 +20,17 @@ const cases = [
   ['nested quote-looking content in a quoted fence', '<blockquote><pre><code>&gt; ```\nconst hint = "(opens in a new tab)";</code></pre></blockquote>', 'const hint = "(opens in a new tab)";'],
   ['indented fence-looking content', '<pre><code>    ```\nconst hint = "(opens in a new tab)";</code></pre>', 'const hint = "(opens in a new tab)";'],
   ['nested list containers', '<ul><li><ul><li><pre><code>&gt; ```\nconst hint = "(opens in a new tab)";</code></pre></li></ul></li></ul>', 'const hint = "(opens in a new tab)";'],
+  ['one-space fence content', '<pre><code> ```\nconst hint = "(opens in a new tab)";</code></pre>', 'const hint = "(opens in a new tab)";'],
+  ['two-space fence content', '<pre><code>  ```\nconst hint = "(opens in a new tab)";</code></pre>', 'const hint = "(opens in a new tab)";'],
+  ['three-space fence content', '<pre><code>   ```\nconst hint = "(opens in a new tab)";</code></pre>', 'const hint = "(opens in a new tab)";'],
+  ['links inside code', '<p><code><a href="#hint">(opens in a new tab)</a></code></p>', '`(opens in a new tab)`'],
+  ['language hints', '<pre><code class="language-typescript extra">const count = 1;</code></pre>', '```typescript\nconst count = 1;\n```'],
+  ['image syntax in linked heading code', '<a href="https://example.test"><h2>Use <code>![x](image.png)</code> here</h2></a>', '`![x](image.png)`'],
+  ['spaces in linked heading code', '<a href="https://example.test"><h2>Use <code>a  b</code> here</h2></a>', '`a  b`'],
+  ['URI backticks before code', '<p><a href="https://example.test/a`b">API</a> then <code>(opens in a new tab)</code>.</p>', '`(opens in a new tab)`'],
+  ['nested code elements', '<p><code>a <code>b</code> c</code></p>', '``a `b` c``'],
+  ['inline code spaces', '<p>Keep <code>a  b</code> literally.</p>', '`a  b`'],
+  ['inline code edge spaces', '<p>Keep <code> a </code> literally.</p>', '`  a  `'],
 ] as const;
 
 for (const [name, content, expected] of cases) {
@@ -27,6 +38,7 @@ for (const [name, content, expected] of cases) {
     const output = await parseMarkdown(`<article><h1>Code examples</h1><p>These examples document the exact source text to copy into a program. Its literal strings and whitespace must remain intact.</p>${content}<p>Read more (opens in a new window).</p></article>`);
     assert.ok(output.includes(expected), output);
     assert.ok(!output.includes('(opens in a new window)'), output);
+    assert.ok(!output.includes('\uE000'), output);
   });
 }
 
@@ -38,6 +50,23 @@ test('Markdown cleanup still removes prose-only accessibility and edit hints', a
 
 test('Markdown cleanup keeps ordinary code and adjacent prose spacing', async () => {
   const output = await parseMarkdown('<article><p>Run <code>hello()</code> now.</p><pre><code>const count = 1;</code></pre></article>');
-  assert.ok(output.includes('Run `hello()` now.'), output);
-  assert.ok(output.includes('```\nconst count = 1;\n```'), output);
+  assert.equal(output, 'Run `hello()` now.\n\n```\nconst count = 1;\n```');
+});
+
+test('concurrent conversions keep code protection and base URLs isolated', async () => {
+  const outputs = await Promise.all([
+    parseMarkdown('<article><p><a href="/guide">Guide</a> <code>(opens in a new tab)</code></p></article>', 'https://first.test/start'),
+    parseMarkdown('<article><p><a href="/guide">Guide</a> <code>[edit]</code></p></article>', 'https://second.test/start'),
+  ]);
+  assert.equal(outputs[0], '[Guide](https://first.test/guide) `(opens in a new tab)`');
+  assert.equal(outputs[1], '[Guide](https://second.test/guide) `[edit]`');
+});
+
+test('generated fences exceed fence-looking code content', async () => {
+  for (const prefix of ['', ' ', '  ', '   ', '    ', '> ']) {
+    const code = `${prefix}\`\`\`\nconst hint = "(opens in a new tab)";`;
+    const html = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const output = await parseMarkdown(`<pre><code>${html}</code></pre>`);
+    assert.equal(output, `\`\`\`\`\n${code}\n\`\`\`\``);
+  }
 });
