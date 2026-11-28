@@ -147,7 +147,7 @@
     "eslint": "^8.57.1",
     "eslint-config-react-app": "^7.0.1",
     "js-cookie": "^3.0.5",
-    "nodemon": "^2.0.15",
+    "nodemon": "^3.0.0",
     "sequelize-cli": "^6.6.2",
     "ts-node": "^10.4.0",
     "vite": "^6.4.2",
