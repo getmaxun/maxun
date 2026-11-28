@@ -144,7 +144,7 @@
     "concurrently": "^10.0.0",
     "cross-env": "^10.0.0",
     "esbuild": "^0.28.1",
-    "eslint": "^8.57.1",
+    "eslint": "^10.0.0",
     "eslint-config-react-app": "^7.0.1",
     "js-cookie": "^3.0.5",
     "nodemon": "^2.0.15",
