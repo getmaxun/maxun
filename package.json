@@ -9,7 +9,7 @@
     "minimatch@3": "^3.1.5"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.137.0",
+    "@anthropic-ai/sdk": "^1.0.0",
     "@cliqz/adblocker-playwright": "^1.30.0",
     "@emotion/react": "^11.9.0",
     "@emotion/styled": "^11.8.1",
