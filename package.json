@@ -37,7 +37,7 @@
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "cron-parser": "^4.9.0",
+    "cron-parser": "^5.0.0",
     "cross-fetch": "^4.0.0",
     "csurf": "^1.11.0",
     "diff": "^9.0.0",
